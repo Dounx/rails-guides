@@ -1,2015 +1,2228 @@
-# Active Record 查询接口
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-本文介绍使用 Active Record 从数据库中检索数据的不同方法。
+Active Record Query Interface
+=============================
 
-读完本文后，您将学到：
+This guide covers different ways to retrieve data from the database using Active Record.
 
-*   如何使用各种方法和条件查找记录；
-*   如何指定所查找记录的排序方式、想要检索的属性、分组方式和其他特性；
-*   如何使用预先加载以减少数据检索所需的数据库查询的数量；
-*   如何使用动态查找方法；
-*   如何通过方法链来连续使用多个 Active Record 方法；
-*   如何检查某个记录是否存在；
-*   如何在 Active Record 模型上做各种计算；
-*   如何在关联上执行 `EXPLAIN` 命令。
+After reading this guide, you will know:
 
------------------------------------------------------------------------------
+* How to find records using a variety of methods and conditions.
+* How to specify the order, retrieved attributes, grouping, and other properties of the found records.
+* How to use eager loading to reduce the number of database queries needed for data retrieval.
+* How to use dynamic finder methods.
+* How to use method chaining to use multiple Active Record methods together.
+* How to check for the existence of particular records.
+* How to perform various calculations on Active Record models.
+* How to run EXPLAIN on relations.
 
-如果你习惯直接使用 SQL 来查找数据库记录，那么你通常会发现 Rails 为执行相同操作提供了更好的方式。在大多数情况下，Active Record 使你无需使用 SQL。
+--------------------------------------------------------------------------------
 
-本文中的示例代码会用到下面的一个或多个模型：
+What is the Active Record Query Interface?
+------------------------------------------
 
-TIP: 除非另有说明，下面所有模型都使用 `id` 作为主键。
+If you're used to using raw SQL to find database records, then you will generally find that there are better ways to carry out the same operations in Rails. Active Record insulates you from the need to use SQL in most cases.
+
+Active Record will perform queries on the database for you and is compatible with most database systems, including MySQL, MariaDB, PostgreSQL, and SQLite. Regardless of which database system you're using, the Active Record method format will always be the same.
+
+Code examples throughout this guide will refer to one or more of the following models:
+
+TIP: All of the following models use `id` as the primary key, unless specified otherwise.
 
 ```ruby
-class Client < ApplicationRecord
-  has_one :address
-  has_many :orders
-  has_and_belongs_to_many :roles
+class Author < ApplicationRecord
+  has_many :books, -> { order(year_published: :desc) }
 end
 ```
 
 ```ruby
-class Address < ApplicationRecord
-  belongs_to :client
+class Book < ApplicationRecord
+  belongs_to :supplier
+  belongs_to :author
+  has_many :reviews
+  has_and_belongs_to_many :orders, join_table: 'books_orders'
+
+  scope :in_print, -> { where(out_of_print: false) }
+  scope :out_of_print, -> { where(out_of_print: true) }
+  scope :old, -> { where('year_published < ?', 50.years.ago )}
+  scope :out_of_print_and_expensive, -> { out_of_print.where('price > 500') }
+  scope :costs_more_than, ->(amount) { where('price > ?', amount) }
+end
+```
+
+```ruby
+class Customer < ApplicationRecord
+  has_many :orders
+  has_many :reviews
 end
 ```
 
 ```ruby
 class Order < ApplicationRecord
-  belongs_to :client, counter_cache: true
+  belongs_to :customer
+  has_and_belongs_to_many :books, join_table: 'books_orders'
+
+  enum status: [:shipped, :being_packed, :complete, :cancelled]
+
+  scope :created_before, ->(time) { where('created_at < ?', time) }
 end
 ```
 
 ```ruby
-class Role < ApplicationRecord
-  has_and_belongs_to_many :clients
+class Review < ApplicationRecord
+  belongs_to :customer
+  belongs_to :book
+
+  enum state: [:not_reviewed, :published, :hidden]
 end
 ```
 
-Active Record 会为你执行数据库查询，它和大多数数据库系统兼容，包括 MySQL、MariaDB、PostgreSQL 和 SQLite。不管使用哪个数据库系统，Active Record 方法的用法总是相同的。
-
-<a class="anchor" id="retrieving-objects-from-the-database"></a>
-
-## 从数据库中检索对象
-
-Active Record 提供了几个用于从数据库中检索对象的查找方法。查找方法接受参数并执行指定的数据库查询，使我们无需直接编写 SQL。
-
-下面列出这些查找方法：
-
-*   `find`
-*   `create_with`
-*   `distinct`
-*   `eager_load`
-*   `extending`
-*   `from`
-*   `group`
-*   `having`
-*   `includes`
-*   `joins`
-*   `left_outer_joins`
-*   `limit`
-*   `lock`
-*   `none`
-*   `offset`
-*   `order`
-*   `preload`
-*   `readonly`
-*   `references`
-*   `reorder`
-*   `reverse_order`
-*   `select`
-*   `where`
-
-返回集合的查找方法，如 `where` 和 `group`，返回一个 `ActiveRecord::Relation` 实例。查找单个记录的方法，如 `find` 和 `first`，返回相应模型的一个实例。
-
-`Model.find(options)` 执行的主要操作可以概括为：
-
-*   把提供的选项转换为等价的 SQL 查询。
-*   触发 SQL 查询并从数据库中检索对应的结果。
-*   为每个查询结果实例化对应的模型对象。
-*   当存在回调时，先调用 `after_find` 回调再调用 `after_initialize` 回调。
-
-<a class="anchor" id="retrieving-a-single-object"></a>
-
-### 检索单个对象
-
-Active Record 为检索单个对象提供了几个不同的方法。
-
-<a class="anchor" id="find"></a>
-
-#### `find` 方法
-
-可以使用 `find` 方法检索指定主键对应的对象，指定主键时可以使用多个选项。例如：
-
 ```ruby
-# 查找主键（ID）为 10 的客户
-client = Client.find(10)
-# => #<Client id: 10, first_name: "Ryan">
-```
-
-和上面的代码等价的 SQL 是：
-
-```sql
-SELECT * FROM clients WHERE (clients.id = 10) LIMIT 1
-```
-
-如果没有找到匹配的记录，`find` 方法抛出 `ActiveRecord::RecordNotFound` 异常。
-
-还可以使用 `find` 方法查询多个对象，方法是调用 `find` 方法并传入主键构成的数组。返回值是包含所提供的主键的所有匹配记录的数组。例如：
-
-```ruby
-# 查找主键为 1 和 10 的客户
-client = Client.find([1, 10]) # Or even Client.find(1, 10)
-# => [#<Client id: 1, first_name: "Lifo">, #<Client id: 10, first_name: "Ryan">]
-```
-
-和上面的代码等价的 SQL 是：
-
-```sql
-SELECT * FROM clients WHERE (clients.id IN (1,10))
-```
-
-WARNING: 如果所提供的主键都没有匹配记录，那么 `find` 方法会抛出 `ActiveRecord::RecordNotFound` 异常。
-
-<a class="anchor" id="take"></a>
-
-#### `take` 方法
-
-`take` 方法检索一条记录而不考虑排序。例如：
-
-```ruby
-client = Client.take
-# => #<Client id: 1, first_name: "Lifo">
-```
-
-和上面的代码等价的 SQL 是：
-
-```sql
-SELECT * FROM clients LIMIT 1
-```
-
-如果没有找到记录，`take` 方法返回 `nil`，而不抛出异常。
-
-`take` 方法接受数字作为参数，并返回不超过指定数量的查询结果。例如：
-
-```ruby
-client = Client.take(2)
-# => [
-#   #<Client id: 1, first_name: "Lifo">,
-#   #<Client id: 220, first_name: "Sara">
-# ]
-```
-
-和上面的代码等价的 SQL 是：
-
-```sql
-SELECT * FROM clients LIMIT 2
-```
-
-`take!` 方法的行为和 `take` 方法类似，区别在于如果没有找到匹配的记录，`take!` 方法抛出 `ActiveRecord::RecordNotFound` 异常。
-
-TIP: 对于不同的数据库引擎，`take` 方法检索的记录可能不一样。
-
-<a class="anchor" id="first"></a>
-
-#### `first` 方法
-
-`first` 方法默认查找按主键排序的第一条记录。例如：
-
-```ruby
-client = Client.first
-# => #<Client id: 1, first_name: "Lifo">
-```
-
-和上面的代码等价的 SQL 是：
-
-```sql
-SELECT * FROM clients ORDER BY clients.id ASC LIMIT 1
-```
-
-如果没有找到匹配的记录，`first` 方法返回 `nil`，而不抛出异常。
-
-如果默认作用域 （请参阅 [应用默认作用域](#applying-a-default-scope)）包含排序方法，`first` 方法会返回按照这个顺序排序的第一条记录。
-
-`first` 方法接受数字作为参数，并返回不超过指定数量的查询结果。例如：
-
-```ruby
-client = Client.first(3)
-# => [
-#   #<Client id: 1, first_name: "Lifo">,
-#   #<Client id: 2, first_name: "Fifo">,
-#   #<Client id: 3, first_name: "Filo">
-# ]
-```
-
-和上面的代码等价的 SQL 是：
-
-```sql
-SELECT * FROM clients ORDER BY clients.id ASC LIMIT 3
-```
-
-对于使用 `order` 排序的集合，`first` 方法返回按照指定属性排序的第一条记录。例如：
-
-```ruby
-client = Client.order(:first_name).first
-# => #<Client id: 2, first_name: "Fifo">
-```
-
-和上面的代码等价的 SQL 是：
-
-```sql
-SELECT * FROM clients ORDER BY clients.first_name ASC LIMIT 1
-```
-
-`first!` 方法的行为和 `first` 方法类似，区别在于如果没有找到匹配的记录，`first!` 方法会抛出 `ActiveRecord::RecordNotFound` 异常。
-
-<a class="anchor" id="last"></a>
-
-#### `last` 方法
-
-`last` 方法默认查找按主键排序的最后一条记录。例如：
-
-```ruby
-client = Client.last
-# => #<Client id: 221, first_name: "Russel">
-```
-
-和上面的代码等价的 SQL 是：
-
-```sql
-SELECT * FROM clients ORDER BY clients.id DESC LIMIT 1
-```
-
-如果没有找到匹配的记录，`last` 方法返回 `nil`，而不抛出异常。
-
-如果默认作用域 （请参阅 [应用默认作用域](#applying-a-default-scope)）包含排序方法，`last` 方法会返回按照这个顺序排序的最后一条记录。
-
-`last` 方法接受数字作为参数，并返回不超过指定数量的查询结果。例如：
-
-```ruby
-client = Client.last(3)
-# => [
-#   #<Client id: 219, first_name: "James">,
-#   #<Client id: 220, first_name: "Sara">,
-#   #<Client id: 221, first_name: "Russel">
-# ]
-```
-
-和上面的代码等价的 SQL 是：
-
-```sql
-SELECT * FROM clients ORDER BY clients.id DESC LIMIT 3
-```
-
-对于使用 `order` 排序的集合，`last` 方法返回按照指定属性排序的最后一条记录。例如：
-
-```ruby
-client = Client.order(:first_name).last
-# => #<Client id: 220, first_name: "Sara">
-```
-
-和上面的代码等价的 SQL 是：
-
-```sql
-SELECT * FROM clients ORDER BY clients.first_name DESC LIMIT 1
-```
-
-`last!` 方法的行为和 `last` 方法类似，区别在于如果没有找到匹配的记录，`last!` 方法会抛出 `ActiveRecord::RecordNotFound` 异常。
-
-<a class="anchor" id="find-by"></a>
-
-#### `find_by` 方法
-
-`find_by` 方法查找匹配指定条件的第一条记录。 例如：
-
-```ruby
-Client.find_by first_name: 'Lifo'
-# => #<Client id: 1, first_name: "Lifo">
-
-Client.find_by first_name: 'Jon'
-# => nil
-```
-
-上面的代码等价于：
-
-```ruby
-Client.where(first_name: 'Lifo').take
-```
-
-和上面的代码等价的 SQL 是：
-
-```sql
-SELECT * FROM clients WHERE (clients.first_name = 'Lifo') LIMIT 1
-```
-
-`find_by!` 方法的行为和 `find_by` 方法类似，区别在于如果没有找到匹配的记录，`find_by!` 方法会抛出 `ActiveRecord::RecordNotFound` 异常。例如：
-
-```ruby
-Client.find_by! first_name: 'does not exist'
-# => ActiveRecord::RecordNotFound
-```
-
-上面的代码等价于：
-
-```ruby
-Client.where(first_name: 'does not exist').take!
-```
-
-<a class="anchor" id="retrieving-multiple-objects-in-batches"></a>
-
-### 批量检索多个对象
-
-我们常常需要遍历大量记录，例如向大量用户发送时事通讯、导出数据等。
-
-处理这类问题的方法看起来可能很简单：
-
-```ruby
-# 如果表中记录很多，可能消耗大量内存
-User.all.each do |user|
-  NewsMailer.weekly(user).deliver_now
+class Supplier < ApplicationRecord
+  has_many :books
+  has_many :authors, through: :books
 end
 ```
 
-但随着数据表越来越大，这种方法越来越行不通，因为 `User.all.each` 会使 Active Record 一次性取回整个数据表，为每条记录创建模型对象，并把整个模型对象数组保存在内存中。事实上，如果我们有大量记录，整个模型对象数组需要占用的空间可能会超过可用的内存容量。
+![Diagram of all of the bookstore models](images/active_record_querying/bookstore_models.png)
 
-Rails 提供了两种方法来解决这个问题，两种方法都是把整个记录分成多个对内存友好的批处理。第一种方法是通过 `find_each` 方法每次检索一批记录，然后逐一把每条记录作为模型传入块。第二种方法是通过 `find_in_batches` 方法每次检索一批记录，然后把这批记录整个作为模型数组传入块。
+Retrieving Objects from the Database
+------------------------------------
 
-TIP: `find_each` 和 `find_in_batches` 方法用于大量记录的批处理，这些记录数量很大以至于不适合一次性保存在内存中。如果只需要循环 1000 条记录，那么应该首选常规的 `find` 方法。
+To retrieve objects from the database, Active Record provides several finder methods. Each finder method allows you to pass arguments into it to perform certain queries on your database without writing raw SQL.
 
-<a class="anchor" id="find-each"></a>
+The methods are:
 
-#### `find_each` 方法
+* [`annotate`][]
+* [`find`][]
+* [`create_with`][]
+* [`distinct`][]
+* [`eager_load`][]
+* [`extending`][]
+* [`extract_associated`][]
+* [`from`][]
+* [`group`][]
+* [`having`][]
+* [`includes`][]
+* [`joins`][]
+* [`left_outer_joins`][]
+* [`limit`][]
+* [`lock`][]
+* [`none`][]
+* [`offset`][]
+* [`optimizer_hints`][]
+* [`order`][]
+* [`preload`][]
+* [`readonly`][]
+* [`references`][]
+* [`reorder`][]
+* [`reselect`][]
+* [`reverse_order`][]
+* [`select`][]
+* [`where`][]
 
-`find_each` 方法批量检索记录，然后逐一把每条记录作为模型传入块。在下面的例子中，`find_each` 方法取回 1000 条记录，然后逐一把每条记录作为模型传入块。
+Finder methods that return a collection, such as `where` and `group`, return an instance of [`ActiveRecord::Relation`][].  Methods that find a single entity, such as `find` and `first`, return a single instance of the model.
+
+The primary operation of `Model.find(options)` can be summarized as:
+
+* Convert the supplied options to an equivalent SQL query.
+* Fire the SQL query and retrieve the corresponding results from the database.
+* Instantiate the equivalent Ruby object of the appropriate model for every resulting row.
+* Run `after_find` and then `after_initialize` callbacks, if any.
+
+[`ActiveRecord::Relation`]: https://api.rubyonrails.org/classes/ActiveRecord/Relation.html
+[`annotate`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-annotate
+[`create_with`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-create_with
+[`distinct`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-distinct
+[`eager_load`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-eager_load
+[`extending`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-extending
+[`extract_associated`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-extract_associated
+[`find`]: https://api.rubyonrails.org/classes/ActiveRecord/FinderMethods.html#method-i-find
+[`from`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-from
+[`group`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-group
+[`having`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-having
+[`includes`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-includes
+[`joins`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-joins
+[`left_outer_joins`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-left_outer_joins
+[`limit`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-limit
+[`lock`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-lock
+[`none`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-none
+[`offset`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-offset
+[`optimizer_hints`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-optimizer_hints
+[`order`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-order
+[`preload`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-preload
+[`readonly`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-readonly
+[`references`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-references
+[`reorder`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-reorder
+[`reselect`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-reselect
+[`reverse_order`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-reverse_order
+[`select`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-select
+[`where`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-where
+
+### Retrieving a Single Object
+
+Active Record provides several different ways of retrieving a single object.
+
+#### `find`
+
+Using the [`find`][] method, you can retrieve the object corresponding to the specified _primary key_ that matches any supplied options. For example:
+
+```irb
+# Find the customer with primary key (id) 10.
+irb> customer = Customer.find(10)
+=> #<Customer id: 10, first_name: "Ryan">
+```
+
+The SQL equivalent of the above is:
+
+```sql
+SELECT * FROM customers WHERE (customers.id = 10) LIMIT 1
+```
+
+The `find` method will raise an `ActiveRecord::RecordNotFound` exception if no matching record is found.
+
+You can also use this method to query for multiple objects. Call the `find` method and pass in an array of primary keys. The return will be an array containing all of the matching records for the supplied _primary keys_. For example:
+
+```irb
+# Find the customers with primary keys 1 and 10.
+irb> customers = Customer.find([1, 10]) # OR Customer.find(1, 10)
+=> [#<Customer id: 1, first_name: "Lifo">, #<Customer id: 10, first_name: "Ryan">]
+```
+
+The SQL equivalent of the above is:
+
+```sql
+SELECT * FROM customers WHERE (customers.id IN (1,10))
+```
+
+WARNING: The `find` method will raise an `ActiveRecord::RecordNotFound` exception unless a matching record is found for **all** of the supplied primary keys.
+
+#### `take`
+
+The [`take`][] method retrieves a record without any implicit ordering. For example:
+
+```irb
+irb> customer = Customer.take
+=> #<Customer id: 1, first_name: "Lifo">
+```
+
+The SQL equivalent of the above is:
+
+```sql
+SELECT * FROM customers LIMIT 1
+```
+
+The `take` method returns `nil` if no record is found and no exception will be raised.
+
+You can pass in a numerical argument to the `take` method to return up to that number of results. For example
+
+```irb
+irb> customers = Customer.take(2)
+=> [#<Customer id: 1, first_name: "Lifo">, #<Customer id: 220, first_name: "Sara">]
+```
+
+The SQL equivalent of the above is:
+
+```sql
+SELECT * FROM customers LIMIT 2
+```
+
+The [`take!`][] method behaves exactly like `take`, except that it will raise `ActiveRecord::RecordNotFound` if no matching record is found.
+
+TIP: The retrieved record may vary depending on the database engine.
+
+[`take`]: https://api.rubyonrails.org/classes/ActiveRecord/FinderMethods.html#method-i-take
+[`take!`]: https://api.rubyonrails.org/classes/ActiveRecord/FinderMethods.html#method-i-take-21
+
+#### `first`
+
+The [`first`][] method finds the first record ordered by primary key (default). For example:
+
+```irb
+irb> customer = Customer.first
+=> #<Customer id: 1, first_name: "Lifo">
+```
+
+The SQL equivalent of the above is:
+
+```sql
+SELECT * FROM customers ORDER BY customers.id ASC LIMIT 1
+```
+
+The `first` method returns `nil` if no matching record is found and no exception will be raised.
+
+If your [default scope](active_record_querying.html#applying-a-default-scope) contains an order method, `first` will return the first record according to this ordering.
+
+You can pass in a numerical argument to the `first` method to return up to that number of results. For example
+
+```irb
+irb> customers = Customer.first(3)
+=> [#<Customer id: 1, first_name: "Lifo">, #<Customer id: 2, first_name: "Fifo">, #<Customer id: 3, first_name: "Filo">]
+```
+
+The SQL equivalent of the above is:
+
+```sql
+SELECT * FROM customers ORDER BY customers.id ASC LIMIT 3
+```
+
+On a collection that is ordered using `order`, `first` will return the first record ordered by the specified attribute for `order`.
+
+```irb
+irb> customer = Customer.order(:first_name).first
+=> #<Customer id: 2, first_name: "Fifo">
+```
+
+The SQL equivalent of the above is:
+
+```sql
+SELECT * FROM customers ORDER BY customers.first_name ASC LIMIT 1
+```
+
+The [`first!`][] method behaves exactly like `first`, except that it will raise `ActiveRecord::RecordNotFound` if no matching record is found.
+
+[`first`]: https://api.rubyonrails.org/classes/ActiveRecord/FinderMethods.html#method-i-first
+[`first!`]: https://api.rubyonrails.org/classes/ActiveRecord/FinderMethods.html#method-i-first-21
+
+#### `last`
+
+The [`last`][] method finds the last record ordered by primary key (default). For example:
+
+```irb
+irb> customer = Customer.last
+=> #<Customer id: 221, first_name: "Russel">
+```
+
+The SQL equivalent of the above is:
+
+```sql
+SELECT * FROM customers ORDER BY customers.id DESC LIMIT 1
+```
+
+The `last` method returns `nil` if no matching record is found and no exception will be raised.
+
+If your [default scope](active_record_querying.html#applying-a-default-scope) contains an order method, `last` will return the last record according to this ordering.
+
+You can pass in a numerical argument to the `last` method to return up to that number of results. For example
+
+```irb
+irb> customers = Customer.last(3)
+=> [#<Customer id: 219, first_name: "James">, #<Customer id: 220, first_name: "Sara">, #<Customer id: 221, first_name: "Russel">]
+```
+
+The SQL equivalent of the above is:
+
+```sql
+SELECT * FROM customers ORDER BY customers.id DESC LIMIT 3
+```
+
+On a collection that is ordered using `order`, `last` will return the last record ordered by the specified attribute for `order`.
+
+```irb
+irb> customer = Customer.order(:first_name).last
+=> #<Customer id: 220, first_name: "Sara">
+```
+
+The SQL equivalent of the above is:
+
+```sql
+SELECT * FROM customers ORDER BY customers.first_name DESC LIMIT 1
+```
+
+The [`last!`][] method behaves exactly like `last`, except that it will raise `ActiveRecord::RecordNotFound` if no matching record is found.
+
+[`last`]: https://api.rubyonrails.org/classes/ActiveRecord/FinderMethods.html#method-i-last
+[`last!`]: https://api.rubyonrails.org/classes/ActiveRecord/FinderMethods.html#method-i-last-21
+
+#### `find_by`
+
+The [`find_by`][] method finds the first record matching some conditions. For example:
+
+```irb
+irb> Customer.find_by first_name: 'Lifo'
+=> #<Customer id: 1, first_name: "Lifo">
+
+irb> Customer.find_by first_name: 'Jon'
+=> nil
+```
+
+It is equivalent to writing:
 
 ```ruby
-User.find_each do |user|
-  NewsMailer.weekly(user).deliver_now
+Customer.where(first_name: 'Lifo').take
+```
+
+The SQL equivalent of the above is:
+
+```sql
+SELECT * FROM customers WHERE (customers.first_name = 'Lifo') LIMIT 1
+```
+
+The [`find_by!`][] method behaves exactly like `find_by`, except that it will raise `ActiveRecord::RecordNotFound` if no matching record is found. For example:
+
+```irb
+irb> Customer.find_by! first_name: 'does not exist'
+ActiveRecord::RecordNotFound
+```
+
+This is equivalent to writing:
+
+```ruby
+Customer.where(first_name: 'does not exist').take!
+```
+
+[`find_by`]: https://api.rubyonrails.org/classes/ActiveRecord/FinderMethods.html#method-i-find_by
+[`find_by!`]: https://api.rubyonrails.org/classes/ActiveRecord/FinderMethods.html#method-i-find_by-21
+
+### Retrieving Multiple Objects in Batches
+
+We often need to iterate over a large set of records, as when we send a newsletter to a large set of customers, or when we export data.
+
+This may appear straightforward:
+
+```ruby
+# This may consume too much memory if the table is big.
+Customer.all.each do |customer|
+  NewsMailer.weekly(customer).deliver_now
 end
 ```
 
-这一过程会不断重复，直到处理完所有记录。
+But this approach becomes increasingly impractical as the table size increases, since `Customer.all.each` instructs Active Record to fetch _the entire table_ in a single pass, build a model object per row, and then keep the entire array of model objects in memory. Indeed, if we have a large number of records, the entire collection may exceed the amount of memory available.
 
-如前所述，`find_each` 能处理模型类，此外它还能处理关系：
+Rails provides two methods that address this problem by dividing records into memory-friendly batches for processing. The first method, `find_each`, retrieves a batch of records and then yields _each_ record to the block individually as a model. The second method, `find_in_batches`, retrieves a batch of records and then yields _the entire batch_ to the block as an array of models.
+
+TIP: The `find_each` and `find_in_batches` methods are intended for use in the batch processing of a large number of records that wouldn't fit in memory all at once. If you just need to loop over a thousand records the regular find methods are the preferred option.
+
+#### `find_each`
+
+The [`find_each`][] method retrieves records in batches and then yields _each_ one to the block. In the following example, `find_each` retrieves customers in batches of 1000 and yields them to the block one by one:
 
 ```ruby
-User.where(weekly_subscriber: true).find_each do |user|
-  NewsMailer.weekly(user).deliver_now
+Customer.find_each do |customer|
+  NewsMailer.weekly(customer).deliver_now
 end
 ```
 
-前提是关系不能有顺序，因为这个方法在迭代时有既定的顺序。
+This process is repeated, fetching more batches as needed, until all of the records have been processed.
 
-如果接收者定义了顺序，具体行为取决于 `config.active_record.error_on_ignored_order` 旗标。设为 `true` 时，抛出 `ArgumentError` 异常，否则忽略顺序，发出提醒（这是默认设置）。这一行为可使用 `:error_on_ignore` 选项覆盖，详情参见下文。
+`find_each` works on model classes, as seen above, and also on relations:
+
+```ruby
+Customer.where(weekly_subscriber: true).find_each do |customer|
+  NewsMailer.weekly(customer).deliver_now
+end
+```
+
+as long as they have no ordering, since the method needs to force an order
+internally to iterate.
+
+If an order is present in the receiver the behaviour depends on the flag
+`config.active_record.error_on_ignored_order`. If true, `ArgumentError` is
+raised, otherwise the order is ignored and a warning issued, which is the
+default. This can be overridden with the option `:error_on_ignore`, explained
+below.
+
+[`find_each`]: https://api.rubyonrails.org/classes/ActiveRecord/Batches.html#method-i-find_each
+
+##### Options for `find_each`
 
 **`:batch_size`**
 
-`:batch_size` 选项用于指明批量检索记录时一次检索多少条记录。例如，一次检索 5000 条记录：
+The `:batch_size` option allows you to specify the number of records to be retrieved in each batch, before being passed individually to the block. For example, to retrieve records in batches of 5000:
 
 ```ruby
-User.find_each(batch_size: 5000) do |user|
-  NewsMailer.weekly(user).deliver_now
+Customer.find_each(batch_size: 5000) do |customer|
+  NewsMailer.weekly(customer).deliver_now
 end
 ```
 
 **`:start`**
 
-记录默认是按主键的升序方式取回的，这里的主键必须是整数。`:start` 选项用于配置想要取回的记录序列的第一个 ID，比这个 ID 小的记录都不会取回。这个选项有时候很有用，例如当需要恢复之前中断的批处理时，只需从最后一个取回的记录之后开始继续处理即可。
+By default, records are fetched in ascending order of the primary key. The `:start` option allows you to configure the first ID of the sequence whenever the lowest ID is not the one you need. This would be useful, for example, if you wanted to resume an interrupted batch process, provided you saved the last processed ID as a checkpoint.
 
-下面的例子把时事通讯发送给主键从 2000 开始的用户：
+For example, to send newsletters only to customers with the primary key starting from 2000:
 
 ```ruby
-User.find_each(start: 2000) do |user|
-  NewsMailer.weekly(user).deliver_now
+Customer.find_each(start: 2000) do |customer|
+  NewsMailer.weekly(customer).deliver_now
 end
 ```
 
 **`:finish`**
 
-和 `:start` 选项类似，`:finish` 选项用于配置想要取回的记录序列的最后一个 ID，比这个 ID 大的记录都不会取回。这个选项有时候很有用，例如可以通过配置 `:start` 和 `:finish` 选项指明想要批处理的子记录集。
+Similar to the `:start` option, `:finish` allows you to configure the last ID of the sequence whenever the highest ID is not the one you need.
+This would be useful, for example, if you wanted to run a batch process using a subset of records based on `:start` and `:finish`.
 
-下面的例子把时事通讯发送给主键从 2000 到 10000 的用户：
+For example, to send newsletters only to customers with the primary key starting from 2000 up to 10000:
 
 ```ruby
-User.find_each(start: 2000, finish: 10000) do |user|
-  NewsMailer.weekly(user).deliver_now
+Customer.find_each(start: 2000, finish: 10000) do |customer|
+  NewsMailer.weekly(customer).deliver_now
 end
 ```
 
-另一个例子是使用多个职程（worker）处理同一个进程队列。通过分别配置 `:start` 和 `:finish` 选项可以让每个职程每次都处理 10000 条记录。
+Another example would be if you wanted multiple workers handling the same
+processing queue. You could have each worker handle 10000 records by setting the
+appropriate `:start` and `:finish` options on each worker.
 
 **`:error_on_ignore`**
 
-覆盖应用的配置，指定有顺序的关系是否抛出异常。
+Overrides the application config to specify if an error should be raised when an
+order is present in the relation.
 
-<a class="anchor" id="find-in-batches"></a>
+#### `find_in_batches`
 
-#### `find_in_batches` 方法
-
-`find_in_batches` 方法和 `find_each` 方法类似，两者都是批量检索记录。区别在于，`find_in_batches` 方法会把一批记录作为模型数组传入块，而不是像 `find_each` 方法那样逐一把每条记录作为模型传入块。下面的例子每次把 1000 张发票的数组一次性传入块（最后一次传入块的数组中的发票数量可能不到 1000）：
+The [`find_in_batches`][] method is similar to `find_each`, since both retrieve batches of records. The difference is that `find_in_batches` yields _batches_ to the block as an array of models, instead of individually. The following example will yield to the supplied block an array of up to 1000 customers at a time, with the final block containing any remaining customers:
 
 ```ruby
-# 一次把 1000 张发票组成的数组传给 add_invoices
-Invoice.find_in_batches do |invoices|
-  export.add_invoices(invoices)
+# Give add_customers an array of 1000 customers at a time.
+Customer.find_in_batches do |customers|
+  export.add_customers(customers)
 end
 ```
 
-如前所述，`find_in_batches` 能处理模型，也能处理关系：
+`find_in_batches` works on model classes, as seen above, and also on relations:
 
 ```ruby
-Invoice.pending.find_in_batches do |invoice|
-  pending_invoices_export.add_invoices(invoices)
+# Give add_customers an array of 1000 recently active customers at a time.
+Customer.recently_active.find_in_batches do |customers|
+  export.add_customers(customers)
 end
 ```
 
-但是关系不能有顺序，因为这个方法在迭代时有既定的顺序。
+as long as they have no ordering, since the method needs to force an order
+internally to iterate.
 
-<a class="anchor" id="options-for-find-in-batches"></a>
+[`find_in_batches`]: https://api.rubyonrails.org/classes/ActiveRecord/Batches.html#method-i-find_in_batches
 
-##### `find_in_batches` 方法的选项
+##### Options for `find_in_batches`
 
-`find_in_batches` 方法接受的选项与 `find_each` 方法一样。
+The `find_in_batches` method accepts the same options as `find_each`:
 
-<a class="anchor" id="conditions"></a>
+**`:batch_size`**
 
-## 条件查询
-
-`where` 方法用于指明限制返回记录所使用的条件，相当于 SQL 语句的 `WHERE` 部分。条件可以使用字符串、数组或散列指定。
-
-<a class="anchor" id="pure-string-conditions"></a>
-
-### 纯字符串条件
-
-可以直接用纯字符串为查找添加条件。例如，`Client.where("orders_count = '2'")` 会查找所有 `orders_count` 字段的值为 2 的客户记录。
-
-WARNING: 使用纯字符串创建条件存在容易受到 SQL 注入攻击的风险。例如，`Client.where("first_name LIKE '%#{params[:first_name]}%'")` 是不安全的。在下一节中我们会看到，使用数组创建条件是推荐的做法。
-
-<a class="anchor" id="array-conditions"></a>
-
-### 数组条件
-
-如果 `Client.where("orders_count = '2'")` 这个例子中的数字是变化的，比如说是从别处传递过来的参数，那么可以像下面这样进行查找：
+Just like for `find_each`, `batch_size` establishes how many records will be retrieved in each group. For example, retrieving batches of 2500 records can be specified as:
 
 ```ruby
-Client.where("orders_count = ?", params[:orders])
+Customer.find_in_batches(batch_size: 2500) do |customers|
+  export.add_customers(customers)
+end
 ```
 
-Active Record 会把第一个参数作为条件字符串，并用之后的其他参数来替换条件字符串中的问号（`?`）。
+**`:start`**
 
-我们还可以指定多个条件：
+The `start` option allows specifying the beginning ID from where records will be selected. As mentioned before, by default records are fetched in ascending order of the primary key. For example, to retrieve customers starting on ID: 5000 in batches of 2500 records, the following code can be used:
 
 ```ruby
-Client.where("orders_count = ? AND locked = ?", params[:orders], false)
+Customer.find_in_batches(batch_size: 2500, start: 5000) do |customers|
+  export.add_customers(customers)
+end
 ```
 
-在上面的例子中，第一个问号会被替换为 `params[:orders]` 的值，第二个问号会被替换为 `false` 在 SQL 中对应的值，这个值是什么取决于所使用的数据库适配器。
+**`:finish`**
 
-强烈推荐使用下面这种写法：
+The `finish` option allows specifying the ending ID of the records to be retrieved. The code below shows the case of retrieving customers in batches, up to the customer with ID: 7000:
 
 ```ruby
-Client.where("orders_count = ?", params[:orders])
+Customer.find_in_batches(finish: 7000) do |customers|
+  export.add_customers(customers)
+end
 ```
 
-而不是：
+**`:error_on_ignore`**
+
+The `error_on_ignore` option overrides the application config to specify if an error should be raised when a specific order is present in the relation.
+
+Conditions
+----------
+
+The [`where`][] method allows you to specify conditions to limit the records returned, representing the `WHERE`-part of the SQL statement. Conditions can either be specified as a string, array, or hash.
+
+### Pure String Conditions
+
+If you'd like to add conditions to your find, you could just specify them in there, just like `Book.where("title = 'Introduction to Algorithms'")`. This will find all books where the `title` field value is 'Introduction to Algorithms'.
+
+WARNING: Building your own conditions as pure strings can leave you vulnerable to SQL injection exploits. For example, `Book.where("title LIKE '%#{params[:title]}%'")` is not safe. See the next section for the preferred way to handle conditions using an array.
+
+### Array Conditions
+
+Now what if that title could vary, say as an argument from somewhere? The find would then take the form:
 
 ```ruby
-Client.where("orders_count = #{params[:orders]}")
+Book.where("title = ?", params[:title])
 ```
 
-原因是出于参数的安全性考虑。把变量直接放入条件字符串会导致变量原封不动地传递给数据库，这意味着即使是恶意用户提交的变量也不会被转义。这样一来，整个数据库就处于风险之中，因为一旦恶意用户发现自己能够滥用数据库，他就可能做任何事情。所以，永远不要把参数直接放入条件字符串。
+Active Record will take the first argument as the conditions string and any additional arguments will replace the question marks `(?)` in it.
 
-TIP: 关于 SQL 注入的危险性的更多介绍，请参阅 [SQL 注入](security.html#sql-injection)。
-
-<a class="anchor" id="placeholder-conditions"></a>
-
-#### 条件中的占位符
-
-和问号占位符（`?`）类似，我们还可以在条件字符串中使用符号占位符，并通过散列提供符号对应的值：
+If you want to specify multiple conditions:
 
 ```ruby
-Client.where("created_at >= :start_date AND created_at <= :end_date",
+Book.where("title = ? AND out_of_print = ?", params[:title], false)
+```
+
+In this example, the first question mark will be replaced with the value in `params[:title]` and the second will be replaced with the SQL representation of `false`, which depends on the adapter.
+
+This code is highly preferable:
+
+```ruby
+Book.where("title = ?", params[:title])
+```
+
+to this code:
+
+```ruby
+Book.where("title = #{params[:title]}")
+```
+
+because of argument safety. Putting the variable directly into the conditions string will pass the variable to the database **as-is**. This means that it will be an unescaped variable directly from a user who may have malicious intent. If you do this, you put your entire database at risk because once a user finds out they can exploit your database they can do just about anything to it. Never ever put your arguments directly inside the conditions string.
+
+TIP: For more information on the dangers of SQL injection, see the [Ruby on Rails Security Guide](security.html#sql-injection).
+
+#### Placeholder Conditions
+
+Similar to the `(?)` replacement style of params, you can also specify keys in your conditions string along with a corresponding keys/values hash:
+
+```ruby
+Book.where("created_at >= :start_date AND created_at <= :end_date",
   {start_date: params[:start_date], end_date: params[:end_date]})
 ```
 
-如果条件中有很多变量，那么上面这种写法的可读性更高。
+This makes for clearer readability if you have a large number of variable conditions.
 
-<a class="anchor" id="hash-conditions"></a>
+### Hash Conditions
 
-### 散列条件
+Active Record also allows you to pass in hash conditions which can increase the readability of your conditions syntax. With hash conditions, you pass in a hash with keys of the fields you want qualified and the values of how you want to qualify them:
 
-Active Record 还允许使用散列条件，以提高条件语句的可读性。使用散列条件时，散列的键指明需要限制的字段，键对应的值指明如何进行限制。
+NOTE: Only equality, range, and subset checking are possible with Hash conditions.
 
-NOTE: 在散列条件中，只能进行相等性、范围和子集检查。
-
-<a class="anchor" id="equality-conditions"></a>
-
-#### 相等性条件
+#### Equality Conditions
 
 ```ruby
-Client.where(locked: true)
+Book.where(out_of_print: true)
 ```
 
-上面的代码会生成下面的 SQL 语句：
+This will generate SQL like this:
 
 ```sql
-SELECT * FROM clients WHERE (clients.locked = 1)
+SELECT * FROM books WHERE (books.out_of_print = 1)
 ```
 
-其中字段名也可以是字符串：
+The field name can also be a string:
 
 ```ruby
-Client.where('locked' => true)
+Book.where('out_of_print' => true)
 ```
 
-对于 `belongs_to` 关联来说，如果使用 Active Record 对象作为值，就可以使用关联键来指定模型。这种方法也适用于多态关联。
+In the case of a belongs_to relationship, an association key can be used to specify the model if an Active Record object is used as the value. This method works with polymorphic relationships as well.
 
 ```ruby
-Article.where(author: author)
-Author.joins(:articles).where(articles: { author: author })
+author = Author.first
+Book.where(author: author)
+Author.joins(:books).where(books: { author: author })
 ```
 
-NOTE: 相等性条件中的值不能是符号。例如，`Client.where(status: :active)` 这种写法是错误的。
-
-<a class="anchor" id="range-conditions"></a>
-
-#### 范围条件
+#### Range Conditions
 
 ```ruby
-Client.where(created_at: (Time.now.midnight - 1.day)..Time.now.midnight)
+Book.where(created_at: (Time.now.midnight - 1.day)..Time.now.midnight)
 ```
 
-上面的代码会使用 `BETWEEN` SQL 表达式查找所有昨天创建的客户记录：
+This will find all books created yesterday by using a `BETWEEN` SQL statement:
 
 ```sql
-SELECT * FROM clients WHERE (clients.created_at BETWEEN '2008-12-21 00:00:00' AND '2008-12-22 00:00:00')
+SELECT * FROM books WHERE (books.created_at BETWEEN '2008-12-21 00:00:00' AND '2008-12-22 00:00:00')
 ```
 
-这是 [数组条件](#array-conditions)中那个示例代码的更简短的写法。
+This demonstrates a shorter syntax for the examples in [Array Conditions](#array-conditions)
 
-<a class="anchor" id="subset-conditions"></a>
+#### Subset Conditions
 
-#### 子集条件
-
-要想用 `IN` 表达式来查找记录，可以在散列条件中使用数组：
+If you want to find records using the `IN` expression you can pass an array to the conditions hash:
 
 ```ruby
-Client.where(orders_count: [1,3,5])
+Customer.where(orders_count: [1,3,5])
 ```
 
-上面的代码会生成下面的 SQL 语句：
+This code will generate SQL like this:
 
 ```sql
-SELECT * FROM clients WHERE (clients.orders_count IN (1,3,5))
+SELECT * FROM customers WHERE (customers.orders_count IN (1,3,5))
 ```
 
-<a class="anchor" id="not-conditions"></a>
+### NOT Conditions
 
-### NOT 条件
-
-可以用 `where.not` 创建 `NOT` SQL 查询：
+`NOT` SQL queries can be built by [`where.not`][]:
 
 ```ruby
-Client.where.not(locked: true)
+Customer.where.not(orders_count: [1,3,5])
 ```
 
-也就是说，先调用没有参数的 `where` 方法，然后马上链式调用 `not` 方法，就可以生成这个查询。上面的代码会生成下面的 SQL 语句：
+In other words, this query can be generated by calling `where` with no argument, then immediately chain with `not` passing `where` conditions.  This will generate SQL like this:
 
 ```sql
-SELECT * FROM clients WHERE (clients.locked != 1)
+SELECT * FROM customers WHERE (customers.orders_count NOT IN (1,3,5))
 ```
 
-<a class="anchor" id="ordering"></a>
+[`where.not`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods/WhereChain.html#method-i-not
 
-## 排序
+### OR Conditions
 
-要想按特定顺序从数据库中检索记录，可以使用 `order` 方法。
-
-例如，如果想按 `created_at` 字段的升序方式取回记录：
+`OR` conditions between two relations can be built by calling [`or`][] on the first
+relation, and passing the second one as an argument.
 
 ```ruby
-Client.order(:created_at)
-# 或
-Client.order("created_at")
+Customer.where(last_name: 'Smith').or(Customer.where(orders_count: [1,3,5]))
 ```
-
-还可以使用 `ASC`（升序） 或 `DESC`（降序） 指定排序方式：
-
-```ruby
-Client.order(created_at: :desc)
-# 或
-Client.order(created_at: :asc)
-# 或
-Client.order("created_at DESC")
-# 或
-Client.order("created_at ASC")
-```
-
-或按多个字段排序：
-
-```ruby
-Client.order(orders_count: :asc, created_at: :desc)
-# 或
-Client.order(:orders_count, created_at: :desc)
-# 或
-Client.order("orders_count ASC, created_at DESC")
-# 或
-Client.order("orders_count ASC", "created_at DESC")
-```
-
-如果多次调用 `order` 方法，后续排序会在第一次排序的基础上进行：
 
 ```sql
-Client.order("orders_count ASC").order("created_at DESC")
-# SELECT * FROM clients ORDER BY orders_count ASC, created_at DESC
+SELECT * FROM customers WHERE (customers.last_name = 'Smith' OR customers.orders_count IN (1,3,5))
 ```
 
-WARNING: 使用 **MySQL 5.7.5** 及以上版本时，若想从结果集合中选择字段，要使用 `select`、`pluck` 和 `ids` 等方法。如果 `order` 子句中使用的字段不在选择列表中，`order` 方法抛出 `ActiveRecord::StatementInvalid` 异常。从结果集合中选择字段的方法参见下一节。
+[`or`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-or
 
+Ordering
+--------
 
-<a class="anchor" id="selecting-specific-fields"></a>
+To retrieve records from the database in a specific order, you can use the [`order`][] method.
 
-## 选择特定字段
-
-`Model.find` 默认使用 `select *` 从结果集中选择所有字段。
-
-可以使用 `select` 方法从结果集中选择字段的子集。
-
-例如，只选择 `viewable_by` 和 `locked` 字段：
+For example, if you're getting a set of records and want to order them in ascending order by the `created_at` field in your table:
 
 ```ruby
-Client.select("viewable_by, locked")
+Customer.order(:created_at)
+# OR
+Customer.order("created_at")
 ```
 
-上面的代码会生成下面的 SQL 语句：
+You could specify `ASC` or `DESC` as well:
+
+```ruby
+Customer.order(created_at: :desc)
+# OR
+Customer.order(created_at: :asc)
+# OR
+Customer.order("created_at DESC")
+# OR
+Customer.order("created_at ASC")
+```
+
+Or ordering by multiple fields:
+
+```ruby
+Customer.order(orders_count: :asc, created_at: :desc)
+# OR
+Customer.order(:orders_count, created_at: :desc)
+# OR
+Customer.order("orders_count ASC, created_at DESC")
+# OR
+Customer.order("orders_count ASC", "created_at DESC")
+```
+
+If you want to call `order` multiple times, subsequent orders will be appended to the first:
+
+```irb
+irb> Customer.order("orders_count ASC").order("created_at DESC")
+SELECT * FROM customers ORDER BY orders_count ASC, created_at DESC
+```
+
+WARNING: In most database systems, on selecting fields with `distinct` from a result set using methods like `select`, `pluck` and `ids`; the `order` method will raise an `ActiveRecord::StatementInvalid` exception unless the field(s) used in `order` clause are included in the select list. See the next section for selecting fields from the result set.
+
+Selecting Specific Fields
+-------------------------
+
+By default, `Model.find` selects all the fields from the result set using `select *`.
+
+To select only a subset of fields from the result set, you can specify the subset via the [`select`][] method.
+
+For example, to select only `isbn` and `out_of_print` columns:
+
+```ruby
+Book.select(:isbn, :out_of_print)
+# OR
+Book.select("isbn, out_of_print")
+```
+
+The SQL query used by this find call will be somewhat like:
 
 ```sql
-SELECT viewable_by, locked FROM clients
+SELECT isbn, out_of_print FROM books
 ```
 
-请注意，上面的代码初始化的模型对象只包含了所选择的字段，这时如果访问这个模型对象未包含的字段就会抛出异常：
+Be careful because this also means you're initializing a model object with only the fields that you've selected. If you attempt to access a field that is not in the initialized record you'll receive:
 
 ```
 ActiveModel::MissingAttributeError: missing attribute: <attribute>
 ```
 
-其中 `<attribute>` 是我们想要访问的字段。`id` 方法不会引发 `ActiveRecord::MissingAttributeError` 异常，因此在使用关联时一定要小心，因为只有当 `id` 方法正常工作时关联才能正常工作。
+Where `<attribute>` is the attribute you asked for. The `id` method will not raise the `ActiveRecord::MissingAttributeError`, so just be careful when working with associations because they need the `id` method to function properly.
 
-在查询时如果想让某个字段的同值记录只出现一次，可以使用 `distinct` 方法添加唯一性约束：
+If you would like to only grab a single record per unique value in a certain field, you can use [`distinct`][]:
 
 ```ruby
-Client.select(:name).distinct
+Customer.select(:last_name).distinct
 ```
 
-上面的代码会生成下面的 SQL 语句：
+This would generate SQL like:
 
 ```sql
-SELECT DISTINCT name FROM clients
+SELECT DISTINCT last_name FROM customers
 ```
 
-唯一性约束在添加之后还可以删除：
+You can also remove the uniqueness constraint:
 
 ```ruby
-query = Client.select(:name).distinct
-# => 返回无重复的名字
+# Returns unique last_names
+query = Customer.select(:last_name).distinct
 
+# Returns all last_names, even if there are duplicates
 query.distinct(false)
-# => 返回所有名字，即使有重复
 ```
 
-<a class="anchor" id="limit-and-offset"></a>
+Limit and Offset
+----------------
 
-## 限量和偏移量
+To apply `LIMIT` to the SQL fired by the `Model.find`, you can specify the `LIMIT` using [`limit`][] and [`offset`][] methods on the relation.
 
-要想在 `Model.find` 生成的 SQL 语句中使用 `LIMIT` 子句，可以在关联上使用 `limit` 和 `offset` 方法。
-
-`limit` 方法用于指明想要取回的记录数量，`offset` 方法用于指明取回记录时在第一条记录之前要跳过多少条记录。例如：
+You can use `limit` to specify the number of records to be retrieved, and use `offset` to specify the number of records to skip before starting to return the records. For example
 
 ```ruby
-Client.limit(5)
+Customer.limit(5)
 ```
 
-上面的代码会返回 5 条客户记录，因为没有使用 `offset` 方法，所以返回的这 5 条记录就是前 5 条记录。生成的 SQL 语句如下：
+will return a maximum of 5 customers and because it specifies no offset it will return the first 5 in the table. The SQL it executes looks like this:
 
 ```sql
-SELECT * FROM clients LIMIT 5
+SELECT * FROM customers LIMIT 5
 ```
 
-如果使用 `offset` 方法：
+Adding `offset` to that
 
 ```ruby
-Client.limit(5).offset(30)
+Customer.limit(5).offset(30)
 ```
 
-这时会返回从第 31 条记录开始的 5 条记录。生成的 SQL 语句如下：
+will return instead a maximum of 5 customers beginning with the 31st. The SQL looks like:
 
 ```sql
-SELECT * FROM clients LIMIT 5 OFFSET 30
+SELECT * FROM customers LIMIT 5 OFFSET 30
 ```
 
-<a class="anchor" id="group"></a>
+Group
+-----
 
-## 分组
+To apply a `GROUP BY` clause to the SQL fired by the finder, you can use the [`group`][] method.
 
-要想在查找方法生成的 SQL 语句中使用 `GROUP BY` 子句，可以使用 `group` 方法。
-
-例如，如果我们想根据订单创建日期查找订单记录：
+For example, if you want to find a collection of the dates on which orders were created:
 
 ```ruby
-Order.select("date(created_at) as ordered_date, sum(price) as total_price").group("date(created_at)")
+Order.select("created_at").group("created_at")
 ```
 
-上面的代码会为数据库中同一天创建的订单创建 `Order` 对象。生成的 SQL 语句如下：
+And this will give you a single `Order` object for each date where there are orders in the database.
+
+The SQL that would be executed would be something like this:
 
 ```sql
-SELECT date(created_at) as ordered_date, sum(price) as total_price
+SELECT created_at
 FROM orders
-GROUP BY date(created_at)
+GROUP BY created_at
 ```
 
-<a class="anchor" id="total-of-grouped-items"></a>
+### Total of grouped items
 
-### 分组项目的总数
+To get the total of grouped items on a single query, call [`count`][] after the `group`.
 
-要想得到一次查询中分组项目的总数，可以在调用 `group` 方法后调用 `count` 方法。
-
-```ruby
-Order.group(:status).count
-# => { 'awaiting_approval' => 7, 'paid' => 12 }
+```irb
+irb> Order.group(:status).count
+=> {"being_packed"=>7, "shipped"=>12}
 ```
 
-上面的代码会生成下面的 SQL 语句：
+The SQL that would be executed would be something like this:
 
 ```sql
 SELECT COUNT (*) AS count_all, status AS status
-FROM "orders"
+FROM orders
 GROUP BY status
 ```
 
-<a class="anchor" id="having"></a>
+[`count`]: https://api.rubyonrails.org/classes/ActiveRecord/Calculations.html#method-i-count
 
-## `having` 方法
+Having
+------
 
-SQL 语句用 `HAVING` 子句指明 `GROUP BY` 字段的约束条件。要想在 `Model.find` 生成的 SQL 语句中使用 `HAVING` 子句，可以使用 `having` 方法。例如：
+SQL uses the `HAVING` clause to specify conditions on the `GROUP BY` fields. You can add the `HAVING` clause to the SQL fired by the `Model.find` by adding the [`having`][] method to the find.
+
+For example:
 
 ```ruby
-Order.select("date(created_at) as ordered_date, sum(price) as total_price").
-  group("date(created_at)").having("sum(price) > ?", 100)
+Order.select("created_at, sum(total) as total_price").
+  group("created_at").having("sum(total) > ?", 200)
 ```
 
-上面的代码会生成下面的 SQL 语句：
+The SQL that would be executed would be something like this:
 
 ```sql
-SELECT date(created_at) as ordered_date, sum(price) as total_price
+SELECT created_at as ordered_date, sum(total) as total_price
 FROM orders
-GROUP BY date(created_at)
-HAVING sum(price) > 100
+GROUP BY created_at
+HAVING sum(total) > 200
 ```
 
-上面的查询会返回每个 `Order` 对象的日期和总价，查询结果按日期分组并排序，并且总价必须高于 100。
+This returns the date and total price for each order object, grouped by the day they were ordered and where the total is more than $200.
 
-<a class="anchor" id="overriding-conditions"></a>
-
-## 条件覆盖
-
-<a class="anchor" id="unscope"></a>
-
-### `unscope` 方法
-
-可以使用 `unscope` 方法删除某些条件。 例如：
+You would access the `total_price` for each order object returned like this:
 
 ```ruby
-Article.where('id > 10').limit(20).order('id asc').unscope(:order)
+big_orders = Order.select("created_at, sum(total) as total_price")
+                  .group("created_at")
+                  .having("sum(total) > ?", 200)
+
+big_orders[0].total_price
+# Returns the total price for the first Order object
 ```
 
-上面的代码会生成下面的 SQL 语句：
+Overriding Conditions
+---------------------
+
+### `unscope`
+
+You can specify certain conditions to be removed using the [`unscope`][] method. For example:
+
+```ruby
+Book.where('id > 100').limit(20).order('id desc').unscope(:order)
+```
+
+The SQL that would be executed:
 
 ```sql
-SELECT * FROM articles WHERE id > 10 LIMIT 20
+SELECT * FROM books WHERE id > 100 LIMIT 20
 
-# 没使用 `unscope` 之前的查询
-SELECT * FROM articles WHERE id > 10 ORDER BY id asc LIMIT 20
+# Original query without `unscope`
+SELECT * FROM books WHERE id > 100 ORDER BY id desc LIMIT 20
+
 ```
 
-还可以使用 `unscope` 方法删除 `where` 方法中的某些条件。例如：
+You can also unscope specific `where` clauses. For example, this will remove `id` condition from the where clause:
 
 ```ruby
-Article.where(id: 10, trashed: false).unscope(where: :id)
-# SELECT "articles".* FROM "articles" WHERE trashed = 0
+Book.where(id: 10, out_of_print: false).unscope(where: :id)
+# SELECT books.* FROM books WHERE out_of_print = 0
 ```
 
-在关联中使用 `unscope` 方法，会对整个关联造成影响：
+A relation which has used `unscope` will affect any relation into which it is merged:
 
 ```ruby
-Article.order('id asc').merge(Article.unscope(:order))
-# SELECT "articles".* FROM "articles"
+Book.order('id desc').merge(Book.unscope(:order))
+# SELECT books.* FROM books
 ```
 
-<a class="anchor" id="only"></a>
+[`unscope`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-unscope
 
-### `only` 方法
+### `only`
 
-可以使用 `only` 方法覆盖某些条件。例如：
+You can also override conditions using the [`only`][] method. For example:
 
 ```ruby
-Article.where('id > 10').limit(20).order('id desc').only(:order, :where)
+Book.where('id > 10').limit(20).order('id desc').only(:order, :where)
 ```
 
-上面的代码会生成下面的 SQL 语句：
+The SQL that would be executed:
 
 ```sql
-SELECT * FROM articles WHERE id > 10 ORDER BY id DESC
+SELECT * FROM books WHERE id > 10 ORDER BY id DESC
 
-# 没使用 `only` 之前的查询
-SELECT "articles".* FROM "articles" WHERE (id > 10) ORDER BY id desc LIMIT 20
+# Original query without `only`
+SELECT * FROM books WHERE id > 10 ORDER BY id DESC LIMIT 20
+
 ```
 
-<a class="anchor" id="reorder"></a>
+[`only`]: https://api.rubyonrails.org/classes/ActiveRecord/SpawnMethods.html#method-i-only
 
-### `reorder` 方法
+### `reselect`
 
-可以使用 `reorder` 方法覆盖默认作用域中的排序方式。例如：
+The [`reselect`][] method overrides an existing select statement. For example:
 
 ```ruby
-class Article < ApplicationRecord
-  has_many :comments, -> { order('posted_at DESC') }
+Book.select(:title, :isbn).reselect(:created_at)
+```
+
+The SQL that would be executed:
+
+```sql
+SELECT `books`.`created_at` FROM `books`
+```
+
+Compare this to the case where the `reselect` clause is not used:
+
+```ruby
+Book.select(:title, :isbn).select(:created_at)
+```
+
+the SQL executed would be:
+
+```sql
+SELECT `books`.`title`, `books`.`isbn`, `books`.`created_at` FROM `books`
+```
+
+### `reorder`
+
+The [`reorder`][] method overrides the default scope order. For example if the class definition includes this:
+
+```ruby
+class Author < ApplicationRecord
+  has_many :books, -> { order(year_published: :desc) }
 end
 ```
 
-```ruby
-Article.find(10).comments.reorder('name')
-```
-
-上面的代码会生成下面的 SQL 语句：
-
-```sql
-SELECT * FROM articles WHERE id = 10
-SELECT * FROM comments WHERE article_id = 10 ORDER BY name
-```
-
-如果不使用 `reorder` 方法，那么会生成下面的 SQL 语句：
-
-```sql
-SELECT * FROM articles WHERE id = 10
-SELECT * FROM comments WHERE article_id = 10 ORDER BY posted_at DESC
-```
-
-<a class="anchor" id="reverse-order"></a>
-
-### `reverse_order` 方法
-
-可以使用 `reverse_order` 方法反转排序条件。
-
-```sql
-Client.where("orders_count > 10").order(:name).reverse_order
-```
-
-上面的代码会生成下面的 SQL 语句：
-
-```sql
-SELECT * FROM clients WHERE orders_count > 10 ORDER BY name DESC
-```
-
-如果查询时没有使用 `order` 方法，那么 `reverse_order` 方法会使查询结果按主键的降序方式排序。
+And you execute this:
 
 ```ruby
-Client.where("orders_count > 10").reverse_order
+Author.find(10).books
 ```
 
-上面的代码会生成下面的 SQL 语句：
+The SQL that would be executed:
 
 ```sql
-SELECT * FROM clients WHERE orders_count > 10 ORDER BY clients.id DESC
+SELECT * FROM authors WHERE id = 10 LIMIT 1
+SELECT * FROM books WHERE author_id = 10 ORDER BY year_published DESC
 ```
 
-`reverse_order` 方法不接受任何参数。
-
-<a class="anchor" id="rewhere"></a>
-
-### `rewhere` 方法
-
-可以使用 `rewhere` 方法覆盖 `where` 方法中指定的条件。例如：
+You can using the `reorder` clause to specify a different way to order the books:
 
 ```ruby
-Article.where(trashed: true).rewhere(trashed: false)
+Author.find(10).books.reorder('year_published ASC')
 ```
 
-上面的代码会生成下面的 SQL 语句：
+The SQL that would be executed:
 
 ```sql
-SELECT * FROM articles WHERE `trashed` = 0
+SELECT * FROM authors WHERE id = 10 LIMIT 1
+SELECT * FROM books WHERE author_id = 10 ORDER BY year_published ASC
 ```
 
-如果不使用 `rewhere` 方法而是再次使用 `where` 方法：
+### `reverse_order`
 
-```sql
-Article.where(trashed: true).where(trashed: false)
-```
-
-会生成下面的 SQL 语句：
-
-```sql
-SELECT * FROM articles WHERE `trashed` = 1 AND `trashed` = 0
-```
-
-<a class="anchor" id="null-relation"></a>
-
-## 空关系
-
-`none` 方法返回可以在链式调用中使用的、不包含任何记录的空关系。在这个空关系上应用后续条件链，会继续生成空关系。对于可能返回零结果、但又需要在链式调用中使用的方法或作用域，可以使用 `none` 方法来提供返回值。
+The [`reverse_order`][] method reverses the ordering clause if specified.
 
 ```ruby
-Article.none # 返回一个空 Relation 对象，而且不执行查询
+Customer.where("orders_count > 10").order(:last_name).reverse_order
+```
+
+The SQL that would be executed:
+
+```sql
+SELECT * FROM customers WHERE orders_count > 10 ORDER BY last_name DESC
+```
+
+If no ordering clause is specified in the query, the `reverse_order` orders by the primary key in reverse order.
+
+```ruby
+Customer.where("orders_count > 10").reverse_order
+```
+
+The SQL that would be executed:
+
+```sql
+SELECT * FROM customers WHERE orders_count > 10 ORDER BY customers.id DESC
+```
+
+The `reverse_order` method accepts **no** arguments.
+
+### `rewhere`
+
+The [`rewhere`][] method overrides an existing, named `where` condition. For example:
+
+```ruby
+Book.where(out_of_print: true).rewhere(out_of_print: false)
+```
+
+The SQL that would be executed:
+
+```sql
+SELECT * FROM books WHERE `out_of_print` = 0
+```
+
+If the `rewhere` clause is not used, the where clauses are ANDed together:
+
+```ruby
+Book.where(out_of_print: true).where(out_of_print: false)
+```
+
+the SQL executed would be:
+
+```sql
+SELECT * FROM books WHERE `out_of_print` = 1 AND `out_of_print` = 0
+```
+
+[`rewhere`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-rewhere
+
+Null Relation
+-------------
+
+The [`none`][] method returns a chainable relation with no records. Any subsequent conditions chained to the returned relation will continue generating empty relations. This is useful in scenarios where you need a chainable response to a method or a scope that could return zero results.
+
+```ruby
+Order.none # returns an empty Relation and fires no queries.
 ```
 
 ```ruby
-# 下面的 visible_articles 方法期待返回一个空 Relation 对象
-@articles = current_user.visible_articles.where(name: params[:name])
+# The highlighted_reviews method below is expected to always return a Relation.
+Book.first.highlighted_reviews.average(:rating)
+# => Returns average rating of a book
 
-def visible_articles
-  case role
-  when 'Country Manager'
-    Article.where(country: country)
-  when 'Reviewer'
-    Article.published
-  when 'Bad User'
-    Article.none # => 如果这里返回 [] 或 nil，会导致调用方出错
+class Book
+  # Returns reviews if there are atleast 5,
+  # else consider this as non-reviewed book
+  def highlighted_reviews
+    if reviews.count > 5
+      reviews
+    else
+      Review.none # Does not meet minimum threshold yet
+    end
   end
 end
 ```
 
-<a class="anchor" id="readonly-objects"></a>
+Readonly Objects
+----------------
 
-## 只读对象
-
-在关联中使用 Active Record 提供的 `readonly` 方法，可以显式禁止修改任何返回对象。如果尝试修改只读对象，不但不会成功，还会抛出 `ActiveRecord::ReadOnlyRecord` 异常。
+Active Record provides the [`readonly`][] method on a relation to explicitly disallow modification of any of the returned objects. Any attempt to alter a readonly record will not succeed, raising an `ActiveRecord::ReadOnlyRecord` exception.
 
 ```ruby
-client = Client.readonly.first
-client.visits += 1
-client.save
+customer = Customer.readonly.first
+customer.visits += 1
+customer.save
 ```
 
-在上面的代码中，`client` 被显式设置为只读对象，因此在更新 `client.visits` 的值后调用 `client.save` 会抛出 `ActiveRecord::ReadOnlyRecord` 异常。
+As `customer` is explicitly set to be a readonly object, the above code will raise an `ActiveRecord::ReadOnlyRecord` exception when calling `customer.save` with an updated value of _visits_.
 
-<a class="anchor" id="locking-records-for-update"></a>
+Locking Records for Update
+--------------------------
 
-## 在更新时锁定记录
+Locking is helpful for preventing race conditions when updating records in the database and ensuring atomic updates.
 
-在数据库中，锁定用于避免更新记录时的条件竞争，并确保原子更新。
+Active Record provides two locking mechanisms:
 
-Active Record 提供了两种锁定机制：
+* Optimistic Locking
+* Pessimistic Locking
 
-*   乐观锁定
-*   悲观锁定
+### Optimistic Locking
 
-<a class="anchor" id="optimistic-locking"></a>
+Optimistic locking allows multiple users to access the same record for edits, and assumes a minimum of conflicts with the data. It does this by checking whether another process has made changes to a record since it was opened. An `ActiveRecord::StaleObjectError` exception is thrown if that has occurred and the update is ignored.
 
-### 乐观锁定
+**Optimistic locking column**
 
-乐观锁定允许多个用户访问并编辑同一记录，并假设数据发生冲突的可能性最小。其原理是检查读取记录后是否有其他进程尝试更新记录，如果有就抛出 `ActiveRecord::StaleObjectError` 异常，并忽略该更新。
+In order to use optimistic locking, the table needs to have a column called `lock_version` of type integer. Each time the record is updated, Active Record increments the `lock_version` column. If an update request is made with a lower value in the `lock_version` field than is currently in the `lock_version` column in the database, the update request will fail with an `ActiveRecord::StaleObjectError`.
 
-<a class="anchor" id="optimistic-locking-column"></a>
-
-#### 字段的乐观锁定
-
-为了使用乐观锁定，数据表中需要有一个整数类型的 `lock_version` 字段。每次更新记录时，Active Record 都会增加 `lock_version` 字段的值。如果更新请求中 `lock_version` 字段的值比当前数据库中 `lock_version` 字段的值小，更新请求就会失败，并抛出 `ActiveRecord::StaleObjectError` 异常。例如：
+For example:
 
 ```ruby
-c1 = Client.find(1)
-c2 = Client.find(1)
+c1 = Customer.find(1)
+c2 = Customer.find(1)
 
-c1.first_name = "Michael"
+c1.first_name = "Sandra"
 c1.save
 
-c2.name = "should fail"
-c2.save # 抛出 ActiveRecord::StaleObjectError
+c2.first_name = "Michael"
+c2.save # Raises an ActiveRecord::StaleObjectError
 ```
 
-抛出异常后，我们需要救援异常并处理冲突，或回滚，或合并，或应用其他业务逻辑来解决冲突。
+You're then responsible for dealing with the conflict by rescuing the exception and either rolling back, merging, or otherwise apply the business logic needed to resolve the conflict.
 
-通过设置 `ActiveRecord::Base.lock_optimistically = false` 可以关闭乐观锁定。
+This behavior can be turned off by setting `ActiveRecord::Base.lock_optimistically = false`.
 
-可以使用 `ActiveRecord::Base` 提供的 `locking_column` 类属性来覆盖 `lock_version` 字段名：
+To override the name of the `lock_version` column, `ActiveRecord::Base` provides a class attribute called `locking_column`:
 
 ```ruby
-class Client < ApplicationRecord
-  self.locking_column = :lock_client_column
+class Customer < ApplicationRecord
+  self.locking_column = :lock_customer_column
 end
 ```
 
-<a class="anchor" id="pessimistic-locking"></a>
+### Pessimistic Locking
 
-### 悲观锁定
+Pessimistic locking uses a locking mechanism provided by the underlying database. Using `lock` when building a relation obtains an exclusive lock on the selected rows. Relations using `lock` are usually wrapped inside a transaction for preventing deadlock conditions.
 
-悲观锁定使用底层数据库提供的锁定机制。在创建关联时使用 `lock` 方法，会在选定字段上生成互斥锁。使用 `lock` 方法的关联通常被包装在事务中，以避免发生死锁。例如：
+For example:
 
 ```ruby
-Item.transaction do
-  i = Item.lock.first
-  i.name = 'Jones'
-  i.save!
+Book.transaction do
+  book = Book.lock.first
+  book.title = 'Algorithms, second edition'
+  book.save!
 end
 ```
 
-对于 MySQL 后端，上面的会话会生成下面的 SQL 语句：
+The above session produces the following SQL for a MySQL backend:
 
 ```sql
 SQL (0.2ms)   BEGIN
-Item Load (0.3ms)   SELECT * FROM `items` LIMIT 1 FOR UPDATE
-Item Update (0.4ms)   UPDATE `items` SET `updated_at` = '2009-02-07 18:05:56', `name` = 'Jones' WHERE `id` = 1
+Book Load (0.3ms)   SELECT * FROM `books` LIMIT 1 FOR UPDATE
+Book Update (0.4ms)   UPDATE `books` SET `updated_at` = '2009-02-07 18:05:56', `title` = 'Algorithms, second edition' WHERE `id` = 1
 SQL (0.8ms)   COMMIT
 ```
 
-要想支持其他锁定类型，可以直接传递 SQL 给 `lock` 方法。例如，MySQL 的 `LOCK IN SHARE MODE` 表达式在锁定记录时允许其他查询读取记录，这个表达式可以用作锁定选项：
+You can also pass raw SQL to the `lock` method for allowing different types of locks. For example, MySQL has an expression called `LOCK IN SHARE MODE` where you can lock a record but still allow other queries to read it. To specify this expression just pass it in as the lock option:
 
 ```ruby
-Item.transaction do
-  i = Item.lock("LOCK IN SHARE MODE").find(1)
-  i.increment!(:views)
+Book.transaction do
+  book = Book.lock("LOCK IN SHARE MODE").find(1)
+  book.increment!(:views)
 end
 ```
 
-对于已有模型实例，可以启动事务并一次性获取锁：
+NOTE:  Note that your database must support the raw SQL, that you pass in to the `lock` method.
+
+If you already have an instance of your model, you can start a transaction and acquire the lock in one go using the following code:
 
 ```ruby
-item = Item.first
-item.with_lock do
-  # 这个块在事务中调用
-  # item 已经锁定
-  item.increment!(:views)
+book = Book.first
+book.with_lock do
+  # This block is called within a transaction,
+  # book is already locked.
+  book.increment!(:views)
 end
 ```
 
-<a class="anchor" id="joining-tables"></a>
+Joining Tables
+--------------
 
-## 联结表
+Active Record provides two finder methods for specifying `JOIN` clauses on the
+resulting SQL: `joins` and `left_outer_joins`.
+While `joins` should be used for `INNER JOIN` or custom queries,
+`left_outer_joins` is used for queries using `LEFT OUTER JOIN`.
 
-Active Record 提供了 `joins` 和 `left_outer_joins` 这两个查找方法，用于指明生成的 SQL 语句中的 `JOIN` 子句。其中，`joins` 方法用于 `INNER JOIN` 查询或定制查询，`left_outer_joins` 用于 `LEFT OUTER JOIN` 查询。
+### `joins`
 
-<a class="anchor" id="joins"></a>
+There are multiple ways to use the [`joins`][] method.
 
-### `joins` 方法
+#### Using a String SQL Fragment
 
-`joins` 方法有多种用法。
-
-<a class="anchor" id="using-a-string-sql-fragment"></a>
-
-#### 使用字符串 SQL 片段
-
-在 `joins` 方法中可以直接用 SQL 指明 `JOIN` 子句：
+You can just supply the raw SQL specifying the `JOIN` clause to `joins`:
 
 ```ruby
-Author.joins("INNER JOIN posts ON posts.author_id = authors.id AND posts.published = 't'")
+Author.joins("INNER JOIN books ON books.author_id = authors.id AND books.out_of_print = FALSE")
 ```
 
-上面的代码会生成下面的 SQL 语句：
+This will result in the following SQL:
 
 ```sql
-SELECT authors.* FROM authors INNER JOIN posts ON posts.author_id = authors.id AND posts.published = 't'
+SELECT authors.* FROM authors INNER JOIN books ON books.author_id = authors.id AND books.out_of_print = FALSE
 ```
 
-<a class="anchor" id="using-array-hash-of-named-associations"></a>
+#### Using Array/Hash of Named Associations
 
-#### 使用具名关联数组或散列
+Active Record lets you use the names of the [associations](association_basics.html) defined on the model as a shortcut for specifying `JOIN` clauses for those associations when using the `joins` method.
 
-使用 `joins` 方法时，Active Record 允许我们使用在模型上定义的关联的名称，作为指明这些关联的 `JOIN` 子句的快捷方式。
+All of the following will produce the expected join queries using `INNER JOIN`:
 
-例如，假设有 `Category`、`Article`、`Comment`、`Guest` 和 `Tag` 这几个模型：
+##### Joining a Single Association
 
 ```ruby
-class Category < ApplicationRecord
-  has_many :articles
-end
-
-class Article < ApplicationRecord
-  belongs_to :category
-  has_many :comments
-  has_many :tags
-end
-
-class Comment < ApplicationRecord
-  belongs_to :article
-  has_one :guest
-end
-
-class Guest < ApplicationRecord
-  belongs_to :comment
-end
-
-class Tag < ApplicationRecord
-  belongs_to :article
-end
+Book.joins(:reviews)
 ```
 
-下面几种用法都会使用 `INNER JOIN` 生成我们想要的关联查询。
-
-（译者注：原文此处开始出现编号错误，由译者根据内容逻辑关系进行了修正。）
-
-<a class="anchor" id="joining-a-single-association"></a>
-
-##### 单个关联的联结
-
-```ruby
-Category.joins(:articles)
-```
-
-上面的代码会生成下面的 SQL 语句：
+This produces:
 
 ```sql
-SELECT categories.* FROM categories
-  INNER JOIN articles ON articles.category_id = categories.id
+SELECT books.* FROM books
+  INNER JOIN reviews ON reviews.book_id = books.id
 ```
 
-这个查询的意思是把所有包含了文章的（非空）分类作为一个 `Category` 对象返回。请注意，如果多篇文章同属于一个分类，那么这个分类会在 `Category` 对象中出现多次。要想让每个分类只出现一次，可以使用 `Category.joins(:articles).distinct`。
+Or, in English: "return a Book object for all books with reviews". Note that you will see duplicate books if a book has more than one review.  If you want unique books, you can use `Book.joins(:reviews).distinct`.
 
-<a class="anchor" id="joining-multiple-associations"></a>
-
-##### 多个关联的联结
+#### Joining Multiple Associations
 
 ```ruby
-Article.joins(:category, :comments)
+Book.joins(:author, :reviews)
 ```
 
-上面的代码会生成下面的 SQL 语句：
+This produces:
 
 ```sql
-SELECT articles.* FROM articles
-  INNER JOIN categories ON articles.category_id = categories.id
-  INNER JOIN comments ON comments.article_id = articles.id
+SELECT books.* FROM books
+  INNER JOIN authors ON authors.id = books.author_id
+  INNER JOIN reviews ON reviews.book_id = books.id
 ```
 
-这个查询的意思是把所有属于某个分类并至少拥有一条评论的文章作为一个 `Article` 对象返回。同样请注意，拥有多条评论的文章会在 `Article` 对象中出现多次。
+Or, in English: "return all books with their author that have at least one review". Note again that books with multiple reviews will show up multiple times.
 
-<a class="anchor" id="joining-nested-associations-single-level"></a>
-
-##### 单层嵌套关联的联结
+##### Joining Nested Associations (Single Level)
 
 ```ruby
-Article.joins(comments: :guest)
+Book.joins(reviews: :customer)
 ```
 
-上面的代码会生成下面的 SQL 语句：
+This produces:
 
 ```sql
-SELECT articles.* FROM articles
-  INNER JOIN comments ON comments.article_id = articles.id
-  INNER JOIN guests ON guests.comment_id = comments.id
+SELECT books.* FROM books
+  INNER JOIN reviews ON reviews.book_id = book.id
+  INNER JOIN customer ON customers.id = reviews.id
 ```
 
-这个查询的意思是把所有拥有访客评论的文章作为一个 `Article` 对象返回。
+Or, in English: "return all books that have a review by a customer."
 
-<a class="anchor" id="joining-nested-associations-multiple-level"></a>
 
-##### 多层嵌套关联的联结
+##### Joining Nested Associations (Multiple Level)
 
 ```ruby
-Category.joins(articles: [{ comments: :guest }, :tags])
+Author.joins(books: [{reviews: { customer: :orders} }, :supplier] )
 ```
 
-上面的代码会生成下面的 SQL 语句：
+This produces:
 
 ```sql
-SELECT categories.* FROM categories
-  INNER JOIN articles ON articles.category_id = categories.id
-  INNER JOIN comments ON comments.article_id = articles.id
-  INNER JOIN guests ON guests.comment_id = comments.id
-  INNER JOIN tags ON tags.article_id = articles.id
+SELECT * FROM authors
+  INNER JOIN books ON books.author_id = authors.id
+  INNER JOIN reviews ON reviews.book_id = books.id
+  INNER JOIN customers ON customers.id = reviews.customer_id
+  INNER JOIN orders ON orders.customer_id = customers.id
+INNER JOIN suppliers ON suppliers.id = books.supplier_id
 ```
 
-这个查询的意思是把所有包含文章的分类作为一个 `Category` 对象返回，其中这些文章都拥有访客评论并且带有标签。
+Or, in English: "return all authors that have books with reviews _and_ have been ordered by a customer, and the suppliers for those books."
 
-<a class="anchor" id="specifying-conditions-on-the-joined-tables"></a>
 
-#### 为联结表指明条件
+#### Specifying Conditions on the Joined Tables
 
-可以使用普通的数组和字符串条件作为关联数据表的条件。但如果想使用散列条件作为关联数据表的条件，就需要使用特殊语法了：
+You can specify conditions on the joined tables using the regular [Array](#array-conditions) and [String](#pure-string-conditions) conditions. [Hash conditions](#hash-conditions) provide a special syntax for specifying conditions for the joined tables:
 
 ```ruby
 time_range = (Time.now.midnight - 1.day)..Time.now.midnight
-Client.joins(:orders).where('orders.created_at' => time_range)
+Customer.joins(:orders).where('orders.created_at' => time_range).distinct
 ```
 
-还有一种更干净的替代语法，即嵌套使用散列条件：
+This will find all customers who have orders that were created yesterday, using a `BETWEEN` SQL expression to compare `created_at`.
+
+An alternative and cleaner syntax is to nest the hash conditions:
 
 ```ruby
 time_range = (Time.now.midnight - 1.day)..Time.now.midnight
-Client.joins(:orders).where(orders: { created_at: time_range })
+Customer.joins(:orders).where(orders: { created_at: time_range }).distinct
 ```
 
-这个查询会查找所有在昨天创建过订单的客户，在生成的 SQL 语句中同样使用了 `BETWEEN` SQL 表达式。
-
-<a class="anchor" id="left-outer-joins"></a>
-
-### `left_outer_joins` 方法
-
-如果想要选择一组记录，而不管它们是否具有关联记录，可以使用 `left_outer_joins` 方法。
+For more advanced conditions or to reuse an existing named scope, `Relation#merge` may be used. First, let's add a new named scope to the Order model:
 
 ```ruby
-Author.left_outer_joins(:posts).distinct.select('authors.*, COUNT(posts.*) AS posts_count').group('authors.id')
-```
+class Order < ApplicationRecord
+  belongs_to :customer
 
-上面的代码会生成下面的 SQL 语句：
-
-```sql
-SELECT DISTINCT authors.*, COUNT(posts.*) AS posts_count FROM "authors"
-LEFT OUTER JOIN posts ON posts.author_id = authors.id GROUP BY authors.id
-```
-
-这个查询的意思是返回所有作者和每位作者的帖子数，而不管这些作者是否发过帖子。
-
-<a class="anchor" id="eager-loading-associations"></a>
-
-## 及早加载关联
-
-及早加载是一种用于加载 `Model.find` 返回对象的关联记录的机制，目的是尽可能减少查询次数。
-
-**N + 1 查询问题**
-
-假设有如下代码，查找 10 条客户记录并打印这些客户的邮编：
-
-```ruby
-clients = Client.limit(10)
-
-clients.each do |client|
-  puts client.address.postcode
+  scope :created_in_time_range, ->(time_range) {
+    where(created_at: time_range)
+  }
 end
 ```
 
-上面的代码第一眼看起来不错，但实际上存在查询总次数较高的问题。这段代码总共需要执行 1（查找 10 条客户记录）+ 10（每条客户记录都需要加载地址）= 11 次查询。
-
-**N + 1 查询问题的解决办法**
-
-Active Record 允许我们提前指明需要加载的所有关联，这是通过在调用 `Model.find` 时指明 `includes` 方法实现的。通过指明 `includes` 方法，Active Record 会使用尽可能少的查询来加载所有已指明的关联。
-
-回到之前 N + 1 查询问题的例子，我们重写其中的 `Client.limit(10)` 来使用及早加载：
+Now we can use `Relation#merge` to merge in the `created_in_time_range` scope:
 
 ```ruby
-clients = Client.includes(:address).limit(10)
+time_range = (Time.now.midnight - 1.day)..Time.now.midnight
+Customer.joins(:orders).merge(Order.created_in_time_range(time_range)).distinct
+```
 
-clients.each do |client|
-  puts client.address.postcode
+This will find all customers who have orders that were created yesterday, again using a `BETWEEN` SQL expression.
+
+### `left_outer_joins`
+
+If you want to select a set of records whether or not they have associated
+records you can use the [`left_outer_joins`][] method.
+
+```ruby
+Customer.left_outer_joins(:reviews).distinct.select('customers.*, COUNT(reviews.*) AS reviews_count').group('customers.id')
+```
+
+Which produces:
+
+```sql
+SELECT DISTINCT customers.*, COUNT(reviews.*) AS reviews_count FROM customers
+LEFT OUTER JOIN reviews ON reviews.customer_id = customers.id GROUP BY customers.id
+```
+
+Which means: "return all customers with their count of reviews, whether or not they
+have any reviews at all"
+
+
+Eager Loading Associations
+--------------------------
+
+Eager loading is the mechanism for loading the associated records of the objects returned by `Model.find` using as few queries as possible.
+
+**N + 1 queries problem**
+
+Consider the following code, which finds 10 books and prints their authors' last_name:
+
+```ruby
+books = Book.limit(10)
+
+books.each do |book|
+  puts book.author.last_name
 end
 ```
 
-上面的代码只执行 2 次查询，而不是之前的 11 次查询：
+This code looks fine at the first sight. But the problem lies within the total number of queries executed. The above code executes 1 (to find 10 books) + 10 (one per each book to load the author) = **11** queries in total.
 
-```sql
-SELECT * FROM clients LIMIT 10
-SELECT addresses.* FROM addresses
-  WHERE (addresses.client_id IN (1,2,3,4,5,6,7,8,9,10))
-```
+**Solution to N + 1 queries problem**
 
-<a class="anchor" id="eager-loading-multiple-associations"></a>
+Active Record lets you specify in advance all the associations that are going to be loaded. This is possible by specifying the [`includes`][] method of the `Model.find` call. With `includes`, Active Record ensures that all of the specified associations are loaded using the minimum possible number of queries.
 
-### 及早加载多个关联
-
-通过在 `includes` 方法中使用数组、散列或嵌套散列，Active Record 允许我们在一次 `Model.find` 调用中及早加载任意数量的关联。
-
-<a class="anchor" id="array-of-multiple-associations"></a>
-
-#### 多个关联的数组
+Revisiting the above case, we could rewrite `Book.limit(10)` to eager load authors:
 
 ```ruby
-Article.includes(:category, :comments)
-```
+books = Book.includes(:author).limit(10)
 
-上面的代码会加载所有文章、所有关联的分类和每篇文章的所有评论。
-
-<a class="anchor" id="nested-associations-hash"></a>
-
-#### 嵌套关联的散列
-
-```ruby
-Category.includes(articles: [{ comments: :guest }, :tags]).find(1)
-```
-
-上面的代码会查找 ID 为 1 的分类，并及早加载所有关联的文章、这些文章关联的标签和评论，以及这些评论关联的访客。
-
-<a class="anchor" id="specifying-conditions-on-eager-loaded-associations"></a>
-
-### 为关联的及早加载指明条件
-
-尽管 Active Record 允许我们像 `joins` 方法那样为关联的及早加载指明条件，但推荐的方式是使用[联结](#joining-tables)。
-
-尽管如此，在必要时仍然可以用 `where` 方法来为关联的及早加载指明条件。
-
-```ruby
-Article.includes(:comments).where(comments: { visible: true })
-```
-
-上面的代码会生成使用 `LEFT OUTER JOIN` 子句的 SQL 语句，而 `joins` 方法会成生使用 `INNER JOIN` 子句的 SQL 语句。
-
-```sql
-SELECT "articles"."id" AS t0_r0, ... "comments"."updated_at" AS t1_r5 FROM "articles" LEFT OUTER JOIN "comments" ON "comments"."article_id" = "articles"."id" WHERE (comments.visible = 1)
-```
-
-如果上面的代码没有使用 `where` 方法，就会生成常规的一组两条查询语句。
-
-NOTE: 要想像上面的代码那样使用 `where` 方法，必须在 `where` 方法中使用散列。如果想要在 `where` 方法中使用字符串 SQL 片段，就必须用 `references` 方法强制使用联结表：
-
-```ruby
-Article.includes(:comments).where("comments.visible = true").references(:comments)
-```
-
-
-通过在 `where` 方法中使用字符串 SQL 片段并使用 `references` 方法这种方式，即使一条评论都没有，所有文章仍然会被加载。而在使用 `joins` 方法（`INNER JOIN`）时，必须匹配关联条件，否则一条记录都不会返回。
-
-<a class="anchor" id="scopes"></a>
-
-## 作用域
-
-作用域允许我们把常用查询定义为方法，然后通过在关联对象或模型上调用方法来引用这些查询。fotnote:[“作用域”和“作用域方法”在本文中是一个意思。——译者注]在作用域中，我们可以使用之前介绍过的所有方法，如 `where`、`join` 和 `includes` 方法。所有作用域都会返回 `ActiveRecord::Relation` 对象，这样就可以继续在这个对象上调用其他方法（如其他作用域）。
-
-要想定义简单的作用域，我们可以在类中通过 `scope` 方法定义作用域，并传入调用这个作用域时执行的查询。
-
-```ruby
-class Article < ApplicationRecord
-  scope :published, -> { where(published: true) }
+books.each do |book|
+  puts book.author.last_name
 end
 ```
 
-通过上面这种方式定义作用域和通过定义类方法来定义作用域效果完全相同，至于使用哪种方式只是个人喜好问题：
+The above code will execute just **2** queries, as opposed to **11** queries in the previous case:
+
+```sql
+SELECT * FROM books LIMIT 10
+SELECT authors.* FROM authors
+  WHERE (authors.id IN (1,2,3,4,5,6,7,8,9,10))
+```
+
+### Eager Loading Multiple Associations
+
+Active Record lets you eager load any number of associations with a single `Model.find` call by using an array, hash, or a nested hash of array/hash with the `includes` method.
+
+#### Array of Multiple Associations
 
 ```ruby
-class Article < ApplicationRecord
-  def self.published
-    where(published: true)
+Customer.includes(:orders, :reviews)
+```
+
+This loads all the customers and the associated orders and reviews for each.
+
+#### Nested Associations Hash
+
+```ruby
+Customer.includes(orders: {books: [:supplier, :author]}).find(1)
+```
+
+This will find the customer with id 1 and eager load all of the associated orders for it, the books for all of the orders, and the author and supplier for each of the books.
+
+### Specifying Conditions on Eager Loaded Associations
+
+Even though Active Record lets you specify conditions on the eager loaded associations just like `joins`, the recommended way is to use [joins](#joining-tables) instead.
+
+However if you must do this, you may use `where` as you would normally.
+
+```ruby
+Author.includes(:books).where(books: { out_of_print: true })
+```
+
+This would generate a query which contains a `LEFT OUTER JOIN` whereas the
+`joins` method would generate one using the `INNER JOIN` function instead.
+
+```sql
+  SELECT authors.id AS t0_r0, ... books.updated_at AS t1_r5 FROM authors LEFT OUTER JOIN "books" ON "books"."author_id" = "authors"."id" WHERE (books.out_of_print = 1)
+```
+
+If there was no `where` condition, this would generate the normal set of two queries.
+
+NOTE: Using `where` like this will only work when you pass it a Hash. For
+SQL-fragments you need to use `references` to force joined tables:
+
+```ruby
+Author.includes(:books).where("books.out_of_print = true").references(:books)
+```
+
+If, in the case of this `includes` query, there were no books for any
+authors, all the authors would still be loaded. By using `joins` (an INNER
+JOIN), the join conditions **must** match, otherwise no records will be
+returned.
+
+NOTE: If an association is eager loaded as part of a join, any fields from a custom select clause will not be present on the loaded models.
+This is because it is ambiguous whether they should appear on the parent record, or the child.
+
+Scopes
+------
+
+Scoping allows you to specify commonly-used queries which can be referenced as method calls on the association objects or models. With these scopes, you can use every method previously covered such as `where`, `joins` and `includes`. All scope bodies should return an `ActiveRecord::Relation` or `nil` to allow for further methods (such as other scopes) to be called on it.
+
+To define a simple scope, we use the [`scope`][] method inside the class, passing the query that we'd like to run when this scope is called:
+
+```ruby
+class Book < ApplicationRecord
+  scope :out_of_print, -> { where(out_of_print: true) }
+end
+```
+
+To call this `out_of_print` scope we can call it on either the class:
+
+```irb
+irb> Book.out_of_print
+=> #<ActiveRecord::Relation> # all out of print books
+```
+
+Or on an association consisting of `Book` objects:
+
+```irb
+irb> author = Author.first
+irb> author.books.out_of_print
+=> #<ActiveRecord::Relation> # all out of print books by `author`
+```
+
+Scopes are also chainable within scopes:
+
+```ruby
+class Book < ApplicationRecord
+  scope :out_of_print, -> { where(out_of_print: true) }
+  scope :out_of_print_and_expensive, -> { out_of_print.where("price > 500") }
+end
+```
+
+[`scope`]: https://api.rubyonrails.org/classes/ActiveRecord/Scoping/Named/ClassMethods.html#method-i-scope
+
+### Passing in arguments
+
+Your scope can take arguments:
+
+```ruby
+class Book < ApplicationRecord
+  scope :costs_more_than, ->(amount) { where("price > ?", amount) }
+end
+```
+
+Call the scope as if it were a class method:
+
+```irb
+irb> Book.costs_more_than(100.10)
+```
+
+However, this is just duplicating the functionality that would be provided to you by a class method.
+
+```ruby
+class Book < ApplicationRecord
+  def self.costs_more_than(amount)
+    where("price > ?", amount)
   end
 end
 ```
 
-在作用域中可以链接其他作用域：
+These methods will still be accessible on the association objects:
 
-```ruby
-class Article < ApplicationRecord
-  scope :published,               -> { where(published: true) }
-  scope :published_and_commented, -> { published.where("comments_count > 0") }
-end
+```irb
+irb> author.books.costs_more_than(100.10)
 ```
 
-我们可以在模型上调用 `published` 作用域：
+### Using conditionals
+
+Your scope can utilize conditionals:
 
 ```ruby
-Article.published # => [published articles]
-```
-
-或在多个 `Article` 对象组成的关联对象上调用 `published` 作用域：
-
-```ruby
-category = Category.first
-category.articles.published # => [published articles belonging to this category]
-```
-
-<a class="anchor" id="passing-in-arguments"></a>
-
-### 传入参数
-
-作用域可以接受参数：
-
-```ruby
-class Article < ApplicationRecord
-  scope :created_before, ->(time) { where("created_at < ?", time) }
-end
-```
-
-调用作用域和调用类方法一样：
-
-```ruby
-Article.created_before(Time.zone.now)
-```
-
-不过这只是复制了本该通过类方法提供给我们的的功能。
-
-```ruby
-class Article < ApplicationRecord
-  def self.created_before(time)
-    where("created_at < ?", time)
-  end
-end
-```
-
-当作用域需要接受参数时，推荐改用类方法。使用类方法时，这些方法仍然可以在关联对象上访问：
-
-```ruby
-category.articles.created_before(time)
-```
-
-<a class="anchor" id="using-conditionals"></a>
-
-### 使用条件
-
-我们可以在作用域中使用条件：
-
-```ruby
-class Article < ApplicationRecord
+class Order < ApplicationRecord
   scope :created_before, ->(time) { where("created_at < ?", time) if time.present? }
 end
 ```
 
-和之前的例子一样，作用域的这一行为也和类方法类似。
+Like the other examples, this will behave similarly to a class method.
 
 ```ruby
-class Article < ApplicationRecord
+class Order < ApplicationRecord
   def self.created_before(time)
     where("created_at < ?", time) if time.present?
   end
 end
 ```
 
-不过有一点需要特别注意：不管条件的值是 `true` 还是 `false`，作用域总是返回 `ActiveRecord::Relation` 对象，而当条件是 `false` 时，类方法返回的是 `nil`。因此，当链接带有条件的类方法时，如果任何一个条件的值是 `false`，就会引发 `NoMethodError` 异常。
+However, there is one important caveat: A scope will always return an `ActiveRecord::Relation` object, even if the conditional evaluates to `false`, whereas a class method, will return `nil`. This can cause `NoMethodError` when chaining class methods with conditionals, if any of the conditionals return `false`.
 
-<a class="anchor" id="applying-a-default-scope"></a>
+### Applying a default scope
 
-### 应用默认作用域
-
-要想在模型的所有查询中应用作用域，我们可以在这个模型上使用 `default_scope` 方法。
+If we wish for a scope to be applied across all queries to the model we can use the
+[`default_scope`][] method within the model itself.
 
 ```ruby
-class Client < ApplicationRecord
-  default_scope { where("removed_at IS NULL") }
+class Book < ApplicationRecord
+  default_scope { where(out_of_print: false) }
 end
 ```
 
-应用默认作用域后，在这个模型上执行查询，会生成下面这样的 SQL 语句：
+When queries are executed on this model, the SQL query will now look something like
+this:
 
 ```sql
-SELECT * FROM clients WHERE removed_at IS NULL
+SELECT * FROM books WHERE (out_of_print = false)
 ```
 
-如果想用默认作用域做更复杂的事情，我们也可以把它定义为类方法：
+If you need to do more complex things with a default scope, you can alternatively
+define it as a class method:
 
 ```ruby
-class Client < ApplicationRecord
+class Book < ApplicationRecord
   def self.default_scope
-    # 应该返回一个 ActiveRecord::Relation 对象
+    # Should return an ActiveRecord::Relation.
   end
 end
 ```
 
-NOTE: 默认作用域在创建记录时同样起作用，但在更新记录时不起作用。例如：
-
-```ruby
-class Client < ApplicationRecord
-  default_scope { where(active: true) }
-end
-
-Client.new          # => #<Client id: nil, active: true>
-Client.unscoped.new # => #<Client id: nil, active: nil>
-```
-
-
-<a class="anchor" id="merging-of-scopes"></a>
-
-### 合并作用域
-
-和 `WHERE` 子句一样，我们用 `AND` 来合并作用域。
-
-```ruby
-class User < ApplicationRecord
-  scope :active, -> { where state: 'active' }
-  scope :inactive, -> { where state: 'inactive' }
-end
-
-User.active.inactive
-# SELECT "users".* FROM "users" WHERE "users"."state" = 'active' AND "users"."state" = 'inactive'
-```
-
-我们可以混合使用 `scope` 和 `where` 方法，这样最后生成的 SQL 语句会使用 `AND` 连接所有条件。
-
-```ruby
-User.active.where(state: 'finished')
-# SELECT "users".* FROM "users" WHERE "users"."state" = 'active' AND "users"."state" = 'finished'
-```
-
-如果使用 `Relation#merge` 方法，那么在发生条件冲突时总是最后的 `WHERE` 子句起作用。
-
-```ruby
-User.active.merge(User.inactive)
-# SELECT "users".* FROM "users" WHERE "users"."state" = 'inactive'
-```
-
-有一点需要特别注意，`default_scope` 总是在所有 `scope` 和 `where` 之前起作用。
-
-```ruby
-class User < ApplicationRecord
-  default_scope { where state: 'pending' }
-  scope :active, -> { where state: 'active' }
-  scope :inactive, -> { where state: 'inactive' }
-end
-
-User.all
-# SELECT "users".* FROM "users" WHERE "users"."state" = 'pending'
-
-User.active
-# SELECT "users".* FROM "users" WHERE "users"."state" = 'pending' AND "users"."state" = 'active'
-
-User.where(state: 'inactive')
-# SELECT "users".* FROM "users" WHERE "users"."state" = 'pending' AND "users"."state" = 'inactive'
-```
-
-在上面的代码中我们可以看到，在 `scope` 条件和 `where` 条件中都合并了 `default_scope` 条件。
-
-<a class="anchor" id="removing-all-scoping"></a>
-
-### 删除所有作用域
-
-在需要时，可以使用 `unscoped` 方法删除作用域。如果在模型中定义了默认作用域，但在某次查询中又不想应用默认作用域，这时就可以使用 `unscoped` 方法。
-
-```ruby
-Client.unscoped.load
-```
-
-`unscoped` 方法会删除所有作用域，仅在数据表上执行常规查询。
-
-```ruby
-Client.unscoped.all
-# SELECT "clients".* FROM "clients"
-
-Client.where(published: false).unscoped.all
-# SELECT "clients".* FROM "clients"
-```
-
-`unscoped` 方法也接受块作为参数。
-
-```ruby
-Client.unscoped {
-  Client.created_before(Time.zone.now)
-}
-```
-
-<a class="anchor" id="dynamic-finders"></a>
-
-## 动态查找方法
-
-Active Record 为数据表中的每个字段（也称为属性）都提供了查找方法（也就是动态查找方法）。例如，对于 `Client` 模型的 `first_name` 字段，Active Record 会自动生成 `find_by_first_name` 查找方法。对于 `Client` 模型的 `locked` 字段，Active Record 会自动生成 `find_by_locked` 查找方法。
-
-在调用动态查找方法时可以在末尾加上感叹号（`!`），例如 `Client.find_by_name!("Ryan")`，这样如果动态查找方法没有返回任何记录，就会抛出 `ActiveRecord::RecordNotFound` 异常。
-
-如果想同时查询 `first_name` 和 `locked` 字段，可以在动态查找方法中用 `and` 把这两个字段连起来，例如 `Client.find_by_first_name_and_locked("Ryan", true)`。
-
-<a class="anchor" id="enums"></a>
-
-## `enum` 宏
-
-`enum` 宏把整数字段映射为一组可能的值。
+NOTE: The `default_scope` is also applied while creating/building a record
+when the scope arguments are given as a `Hash`. It is not applied while
+updating a record. E.g.:
 
 ```ruby
 class Book < ApplicationRecord
-  enum availability: [:available, :unavailable]
+  default_scope { where(out_of_print: false) }
 end
 ```
 
-上面的代码会自动创建用于查询模型的对应作用域，同时会添加用于转换状态和查询当前状态的方法。
-
-```ruby
-# 下面的示例只查询可用的图书
-Book.available
-# 或
-Book.where(availability: :available)
-
-book = Book.new(availability: :available)
-book.available?   # => true
-book.unavailable! # => true
-book.available?   # => false
+```irb
+irb> Book.new
+=> #<Book id: nil, out_of_print: false>
+irb> Book.unscoped.new
+=> #<Book id: nil, out_of_print: nil>
 ```
 
-请访问 [Rails API 文档](http://api.rubyonrails.org/classes/ActiveRecord/Enum.html)，查看 `enum` 宏的完整文档。
-
-<a class="anchor" id="understanding-the-method-chaining"></a>
-
-## 理解方法链
-
-Active Record 实现[方法链](http://en.wikipedia.org/wiki/Method_chaining)的方式既简单又直接，有了方法链我们就可以同时使用多个 Active Record 方法。
-
-当之前的方法调用返回 `ActiveRecord::Relation` 对象时，例如 `all`、`where` 和 `joins` 方法，我们就可以在语句中把方法连接起来。返回单个对象的方法（请参阅 [检索单个对象](#retrieving-a-single-object)）必须位于语句的末尾。
-
-下面给出了一些例子。本文无法涵盖所有的可能性，这里给出的只是很少的一部分例子。在调用 Active Record 方法时，查询不会立即生成并发送到数据库，这些操作只有在实际需要数据时才会执行。下面的每个例子都会生成一次查询。
-
-<a class="anchor" id="retrieving-filtered-data-from-multiple-tables"></a>
-
-### 从多个数据表中检索过滤后的数据
+Be aware that, when given in the `Array` format, `default_scope` query arguments
+cannot be converted to a `Hash` for default attribute assignment. E.g.:
 
 ```ruby
-Person
-  .select('people.id, people.name, comments.text')
-  .joins(:comments)
-  .where('comments.created_at > ?', 1.week.ago)
+class Book < ApplicationRecord
+  default_scope { where("out_of_print = ?", false) }
+end
 ```
 
-上面的代码会生成下面的 SQL 语句：
+```irb
+irb> Book.new
+=> #<Book id: nil, out_of_print: nil>
+```
+
+[`default_scope`]: https://api.rubyonrails.org/classes/ActiveRecord/Scoping/Default/ClassMethods.html#method-i-default_scope
+
+### Merging of scopes
+
+Just like `where` clauses, scopes are merged using `AND` conditions.
+
+```ruby
+class Book < ApplicationRecord
+  scope :in_print, -> { where(out_of_print: false) }
+  scope :out_of_print, -> { where(out_of_print: true) }
+
+  scope :recent, -> { where('year_published >= ?', Date.current.year - 50 )}
+  scope :old, -> { where('year_published < ?', Date.current.year - 50 )}
+end
+```
+
+```irb
+irb> Book.out_of_print.old
+SELECT books.* FROM books WHERE books.out_of_print = 'true' AND books.year_published < 1969
+```
+
+We can mix and match `scope` and `where` conditions and the final SQL
+will have all conditions joined with `AND`.
+
+```irb
+irb> Book.in_print.where('price < 100')
+SELECT books.* FROM books WHERE books.out_of_print = 'false' AND books.price < 100
+```
+
+If we do want the last `where` clause to win then [`merge`][] can
+be used.
+
+```irb
+irb> Book.in_print.merge(Book.out_of_print)
+SELECT books.* FROM books WHERE books.out_of_print = true
+```
+
+One important caveat is that `default_scope` will be prepended in
+`scope` and `where` conditions.
+
+```ruby
+class Book < ApplicationRecord
+  default_scope { where('year_published >= ?', Date.current.year - 50 )}
+
+  scope :in_print, -> { where(out_of_print: false) }
+  scope :out_of_print, -> { where(out_of_print: true) }
+end
+```
+
+```irb
+irb> Book.all
+SELECT books.* FROM books WHERE (year_published >= 1969)
+
+irb> Book.in_print
+SELECT books.* FROM books WHERE (year_published >= 1969) AND books.out_of_print = true
+
+irb> Book.where('price > 50')
+SELECT books.* FROM books WHERE (year_published >= 1969) AND (price > 50)
+```
+
+As you can see above the `default_scope` is being merged in both
+`scope` and `where` conditions.
+
+[`merge`]: https://api.rubyonrails.org/classes/ActiveRecord/SpawnMethods.html#method-i-merge
+
+### Removing All Scoping
+
+If we wish to remove scoping for any reason we can use the [`unscoped`][] method. This is
+especially useful if a `default_scope` is specified in the model and should not be
+applied for this particular query.
+
+```ruby
+Book.unscoped.load
+```
+
+This method removes all scoping and will do a normal query on the table.
+
+```irb
+irb> Book.unscoped.all
+SELECT books.* FROM books
+
+irb> Book.where(out_of_print: true).unscoped.all
+SELECT books.* FROM books
+```
+
+`unscoped` can also accept a block:
+
+```irb
+irb> Book.unscoped { Book.out_of_print }
+SELECT books.* FROM books WHERE books.out_of_print
+```
+
+[`unscoped`]: https://api.rubyonrails.org/classes/ActiveRecord/Scoping/Default/ClassMethods.html#method-i-unscoped
+
+Dynamic Finders
+---------------
+
+For every field (also known as an attribute) you define in your table,
+Active Record provides a finder method. If you have a field called `first_name` on your `Customer` model for example,
+you get the instance method `find_by_first_name` for free from Active Record.
+If you also have a `locked` field on the `Customer` model, you also get `find_by_locked` method.
+
+You can specify an exclamation point (`!`) on the end of the dynamic finders
+to get them to raise an `ActiveRecord::RecordNotFound` error if they do not return any records, like `Customer.find_by_name!("Ryan")`
+
+If you want to find both by `name` and `orders_count`, you can chain these finders together by simply typing "`and`" between the fields.
+For example, `Customer.find_by_first_name_and_orders_count("Ryan", 5)`.
+
+Enums
+-----
+
+An enum lets you define an Array of values for an attribute and refer to them by name.  The actual value stored in the database is an integer that has been mapped to one of the values.
+
+Declaring an enum will:
+
+* Create scopes that can be used to find all objects that have or do not have one of the enum values
+* Create an instance method that can be used to determine if an object has a particular value for the enum
+* Create an instance method that can be used to change the enum value of an object
+
+for all possible values of an enum.
+
+For example, given this [`enum`][] declaration:
+
+```ruby
+class Order < ApplicationRecord
+  enum status: [:shipped, :being_packaged, :complete, :cancelled]
+end
+```
+
+These [scopes](#scopes) are created automatically and can be used to find all objects with or without a particular value for `status`:
+
+```irb
+irb> Order.shipped
+=> #<ActiveRecord::Relation> # all orders with status == :shipped
+irb> Order.not_shipped
+=> #<ActiveRecord::Relation> # all orders with status != :shipped
+```
+
+These instance methods are created automatically and query whether the model has that value for the `status` enum:
+
+```irb
+irb> order = Order.shipped.first
+irb> order.shipped?
+=> true
+irb> order.complete?
+=> false
+```
+
+These instance methods are created automatically and will first update the value of `status` to the named value
+ and then query whether or not the status has been successfully set to the value:
+
+```irb
+irb> order = Order.first
+irb> order.shipped!
+UPDATE "orders" SET "status" = ?, "updated_at" = ? WHERE "orders"."id" = ?  [["status", 0], ["updated_at", "2019-01-24 07:13:08.524320"], ["id", 1]]
+=> true
+```
+
+Full documentation about enums can be found [here](https://api.rubyonrails.org/classes/ActiveRecord/Enum.html).
+
+[`enum`]: https://api.rubyonrails.org/classes/ActiveRecord/Enum.html#method-i-enum
+
+Understanding Method Chaining
+-----------------------------
+
+The Active Record pattern implements [Method Chaining](https://en.wikipedia.org/wiki/Method_chaining),
+which allow us to use multiple Active Record methods together in a simple and straightforward way.
+
+You can chain methods in a statement when the previous method called returns an
+[`ActiveRecord::Relation`][], like `all`, `where`, and `joins`. Methods that return
+a single object (see [Retrieving a Single Object Section](#retrieving-a-single-object))
+have to be at the end of the statement.
+
+There are some examples below. This guide won't cover all the possibilities, just a few as examples.
+When an Active Record method is called, the query is not immediately generated and sent to the database.
+ The query is sent only when the data is actually needed. So each example below generates a single query.
+
+### Retrieving filtered data from multiple tables
+
+```ruby
+Customer
+  .select('customers.id, customers.last_name, reviews.body')
+  .joins(:reviews)
+  .where('reviews.created_at > ?', 1.week.ago)
+```
+
+The result should be something like this:
 
 ```sql
-SELECT people.id, people.name, comments.text
-FROM people
-INNER JOIN comments
-  ON comments.person_id = people.id
-WHERE comments.created_at > '2015-01-01'
+SELECT customers.id, customers.last_name, reviews.body
+FROM customers
+INNER JOIN reviews
+  ON reviews.customer_id = customers.id
+WHERE (reviews.created_at > '2019-01-08')
 ```
 
-<a class="anchor" id="retrieving-specific-data-from-multiple-tables"></a>
-
-### 从多个数据表中检索特定的数据
+### Retrieving specific data from multiple tables
 
 ```ruby
-Person
-  .select('people.id, people.name, companies.name')
-  .joins(:company)
-  .find_by('people.name' => 'John') # this should be the last
+Book.select('books.id, books.title, authors.first_name')
+  .joins(:author)
+  .find_by(title: 'Abstraction and Specification in Program Development')
 ```
 
-上面的代码会生成下面的 SQL 语句：
+The above should generate:
 
 ```sql
-SELECT people.id, people.name, companies.name
-FROM people
-INNER JOIN companies
-  ON companies.person_id = people.id
-WHERE people.name = 'John'
+SELECT books.id, books.title, authors.first_name
+FROM books
+INNER JOIN authors
+ ON authors.id = books.author_id
+WHERE books.title = $1 [["title", "Abstraction and Specification in Program Development"]]
 LIMIT 1
 ```
 
-NOTE: 请注意，如果查询匹配多条记录，`find_by` 方法会取回第一条记录并忽略其他记录（如上面的 SQL 语句中的 `LIMIT 1`）。
+NOTE: Note that if a query matches multiple records, `find_by` will
+fetch only the first one and ignore the others (see the `LIMIT 1`
+statement above).
 
-<a class="anchor" id="find-or-build-a-new-object"></a>
+Find or Build a New Object
+--------------------------
 
-## 查找或创建新对象
+It's common that you need to find a record or create it if it doesn't exist. You can do that with the `find_or_create_by` and `find_or_create_by!` methods.
 
-我们经常需要查找记录并在找不到记录时创建记录，这时我们可以使用 `find_or_create_by` 和 `find_or_create_by!` 方法。
+### `find_or_create_by`
 
-<a class="anchor" id="find-or-create_by"></a>
+The [`find_or_create_by`][] method checks whether a record with the specified attributes exists. If it doesn't, then `create` is called. Let's see an example.
 
-### `find_or_create_by` 方法
+Suppose you want to find a customer named 'Andy', and if there's none, create one. You can do so by running:
 
-`find_or_create_by` 方法检查具有指定属性的记录是否存在。如果记录不存在，就调用 `create` 方法创建记录。让我们看一个例子。
-
-假设我们在查找名为“Andy”的用户记录，但是没找到，因此要创建这条记录。这时我们可以执行下面的代码：
-
-```ruby
-Client.find_or_create_by(first_name: 'Andy')
-# => #<Client id: 1, first_name: "Andy", orders_count: 0, locked: true, created_at: "2011-08-30 06:09:27", updated_at: "2011-08-30 06:09:27">
+```irb
+irb> Customer.find_or_create_by(first_name: 'Andy')
+=> #<Customer id: 5, first_name: "Andy", last_name: nil, title: nil, visits: 0, orders_count: nil, lock_version: 0, created_at: "2019-01-17 07:06:45", updated_at: "2019-01-17 07:06:45">
 ```
 
-上面的代码会生成下面的 SQL 语句：
+The SQL generated by this method looks like this:
 
 ```sql
-SELECT * FROM clients WHERE (clients.first_name = 'Andy') LIMIT 1
+SELECT * FROM customers WHERE (customers.first_name = 'Andy') LIMIT 1
 BEGIN
-INSERT INTO clients (created_at, first_name, locked, orders_count, updated_at) VALUES ('2011-08-30 05:22:57', 'Andy', 1, NULL, '2011-08-30 05:22:57')
+INSERT INTO customers (created_at, first_name, locked, orders_count, updated_at) VALUES ('2011-08-30 05:22:57', 'Andy', 1, NULL, '2011-08-30 05:22:57')
 COMMIT
 ```
 
-`find_or_create_by` 方法会返回已存在的记录或新建的记录。在本例中，名为“Andy”的客户记录并不存在，因此会创建并返回这条记录。
+`find_or_create_by` returns either the record that already exists or the new record. In our case, we didn't already have a customer named Andy so the record is created and returned.
 
-新建记录不一定会保存到数据库，是否保存取决于验证是否通过（就像 `create` 方法那样）。
+The new record might not be saved to the database; that depends on whether validations passed or not (just like `create`).
 
-假设我们想在新建记录时把 `locked` 字段设置为 `false`，但又不想在查询中进行设置。例如，我们想查找名为“Andy”的客户记录，但这条记录并不存在，因此要创建这条记录并把 `locked` 字段设置为 `false`。
+Suppose we want to set the 'locked' attribute to `false` if we're
+creating a new record, but we don't want to include it in the query. So
+we want to find the customer named "Andy", or if that customer doesn't
+exist, create a customer named "Andy" which is not locked.
 
-要完成这一操作有两种方式。第一种方式是使用 `create_with` 方法：
+We can achieve this in two ways. The first is to use `create_with`:
 
 ```ruby
-Client.create_with(locked: false).find_or_create_by(first_name: 'Andy')
+Customer.create_with(locked: false).find_or_create_by(first_name: 'Andy')
 ```
 
-第二种方式是使用块：
+The second way is using a block:
 
 ```ruby
-Client.find_or_create_by(first_name: 'Andy') do |c|
+Customer.find_or_create_by(first_name: 'Andy') do |c|
   c.locked = false
 end
 ```
 
-只有在创建客户记录时才会执行该块。第二次运行这段代码时（此时客户记录已创建），块会被忽略。
+The block will only be executed if the customer is being created. The
+second time we run this code, the block will be ignored.
 
-<a class="anchor" id="find-or-create-by-exclamation-point"></a>
+[`find_or_create_by`]: https://api.rubyonrails.org/classes/ActiveRecord/Relation.html#method-i-find_or_create_by
 
-### `find_or_create_by!` 方法
+### `find_or_create_by!`
 
-我们也可以使用 `find_or_create_by!` 方法，这样如果新建记录是无效的就会抛出异常。本文不涉及数据验证，不过这里我们暂且假设已经在 `Client` 模型中添加了下面的数据验证：
+You can also use [`find_or_create_by!`][] to raise an exception if the new record is invalid. Validations are not covered on this guide, but let's assume for a moment that you temporarily add
 
 ```ruby
 validates :orders_count, presence: true
 ```
 
-如果我们尝试新建客户记录，但忘了传递 `orders_count` 字段的值，新建记录就是无效的，因而会抛出下面的异常：
+to your `Customer` model. If you try to create a new `Customer` without passing an `orders_count`, the record will be invalid and an exception will be raised:
 
-```ruby
-Client.find_or_create_by!(first_name: 'Andy')
-# => ActiveRecord::RecordInvalid: Validation failed: Orders count can't be blank
+```irb
+irb> Customer.find_or_create_by!(first_name: 'Andy')
+ActiveRecord::RecordInvalid: Validation failed: Orders count can't be blank
 ```
 
-<a class="anchor" id="find-or-initialize-by"></a>
+[`find_or_create_by!`]: https://api.rubyonrails.org/classes/ActiveRecord/Relation.html#method-i-find_or_create_by-21
 
-### `find_or_initialize_by` 方法
+### `find_or_initialize_by`
 
-`find_or_initialize_by` 方法的工作原理和 `find_or_create_by` 方法类似，区别之处在于前者调用的是 `new` 方法而不是 `create` 方法。这意味着新建模型实例在内存中创建，但没有保存到数据库。下面继续使用介绍 `find_or_create_by` 方法时使用的例子，我们现在想查找名为“Nick”的客户记录：
+The [`find_or_initialize_by`][] method will work just like
+`find_or_create_by` but it will call `new` instead of `create`. This
+means that a new model instance will be created in memory but won't be
+saved to the database. Continuing with the `find_or_create_by` example, we
+now want the customer named 'Nina':
 
-```ruby
-nick = Client.find_or_initialize_by(first_name: 'Nick')
-# => #<Client id: nil, first_name: "Nick", orders_count: 0, locked: true, created_at: "2011-08-30 06:09:27", updated_at: "2011-08-30 06:09:27">
+```irb
+irb> nina = Customer.find_or_initialize_by(first_name: 'Nina')
+=> #<Customer id: nil, first_name: "Nina", orders_count: 0, locked: true, created_at: "2011-08-30 06:09:27", updated_at: "2011-08-30 06:09:27">
 
-nick.persisted?
-# => false
+irb> nina.persisted?
+=> false
 
-nick.new_record?
-# => true
+irb> nina.new_record?
+=> true
 ```
 
-出现上面的执行结果是因为 `nick` 对象还没有保存到数据库。在上面的代码中，`find_or_initialize_by` 方法会生成下面的 SQL 语句：
+Because the object is not yet stored in the database, the SQL generated looks like this:
 
 ```sql
-SELECT * FROM clients WHERE (clients.first_name = 'Nick') LIMIT 1
+SELECT * FROM customers WHERE (customers.first_name = 'Nina') LIMIT 1
 ```
 
-要想把 `nick` 对象保存到数据库，只需调用 `save` 方法：
+When you want to save it to the database, just call `save`:
 
-```ruby
-nick.save
-# => true
+```irb
+irb> nina.save
+=> true
 ```
 
-<a class="anchor" id="finding-by-sql"></a>
+[`find_or_initialize_by`]: https://api.rubyonrails.org/classes/ActiveRecord/Relation.html#method-i-find_or_initialize_by
 
-## 使用 SQL 语句进行查找
+Finding by SQL
+--------------
 
-要想直接使用 SQL 语句在数据表中查找记录，可以使用 `find_by_sql` 方法。`find_by_sql` 方法总是返回对象的数组，即使底层查询只返回了一条记录也是如此。例如，我们可以执行下面的查询：
+If you'd like to use your own SQL to find records in a table you can use [`find_by_sql`][]. The `find_by_sql` method will return an array of objects even if the underlying query returns just a single record. For example you could run this query:
 
-```ruby
-Client.find_by_sql("SELECT * FROM clients
-  INNER JOIN orders ON clients.id = orders.client_id
-  ORDER BY clients.created_at desc")
-# =>  [
-#   #<Client id: 1, first_name: "Lucas" >,
-#   #<Client id: 2, first_name: "Jan" >,
-#   ...
-# ]
+```irb
+irb> Customer.find_by_sql("SELECT * FROM customers INNER JOIN orders ON customers.id = orders.customer_id ORDER BY customers.created_at desc")
+=> [#<Customer id: 1, first_name: "Lucas" ...>, #<Customer id: 2, first_name: "Jan" ...>, ...]
 ```
 
-`find_by_sql` 方法提供了对数据库进行定制查询并取回实例化对象的简单方式。
+`find_by_sql` provides you with a simple way of making custom calls to the database and retrieving instantiated objects.
 
-<a class="anchor" id="select-all"></a>
+[`find_by_sql`]: https://api.rubyonrails.org/classes/ActiveRecord/Querying.html#method-i-find_by_sql
 
-### `select_all` 方法
+### `select_all`
 
-`find_by_sql` 方法有一个名为 `connection#select_all` 的近亲。和 `find_by_sql` 方法一样，`select_all` 方法也会使用定制的 SQL 语句从数据库中检索对象，区别在于 `select_all` 方法不会对这些对象进行实例化，而是返回一个散列构成的数组，其中每个散列表示一条记录。
+`find_by_sql` has a close relative called [`connection.select_all`][]. `select_all` will retrieve
+objects from the database using custom SQL just like `find_by_sql` but will not instantiate them.
+This method will return an instance of `ActiveRecord::Result` class and calling `to_a` on this
+object would return you an array of hashes where each hash indicates a record.
 
-```ruby
-Client.connection.select_all("SELECT first_name, created_at FROM clients WHERE id = '1'")
-# => [
-#   {"first_name"=>"Rafael", "created_at"=>"2012-11-10 23:23:45.281189"},
-#   {"first_name"=>"Eileen", "created_at"=>"2013-12-09 11:22:35.221282"}
-# ]
+```irb
+irb> Customer.connection.select_all("SELECT first_name, created_at FROM customers WHERE id = '1'").to_hash
+=> [{"first_name"=>"Rafael", "created_at"=>"2012-11-10 23:23:45.281189"}, {"first_name"=>"Eileen", "created_at"=>"2013-12-09 11:22:35.221282"}]
 ```
 
-<a class="anchor" id="pluck"></a>
+[`connection.select_all`]: https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/DatabaseStatements.html#method-i-select_all
 
-### `pluck` 方法
+### `pluck`
 
-`pluck` 方法用于在模型对应的底层数据表中查询单个或多个字段。它接受字段名的列表作为参数，并返回这些字段的值的数组，数组中的每个值都具有对应的数据类型。
+[`pluck`][] can be used to query single or multiple columns from the underlying table of a model. It accepts a list of column names as an argument and returns an array of values of the specified columns with the corresponding data type.
 
-```ruby
-Client.where(active: true).pluck(:id)
-# SELECT id FROM clients WHERE active = 1
-# => [1, 2, 3]
+```irb
+irb> Book.where(out_of_print: true).pluck(:id)
+SELECT id FROM books WHERE out_of_print = false
+=> [1, 2, 3]
 
-Client.distinct.pluck(:role)
-# SELECT DISTINCT role FROM clients
-# => ['admin', 'member', 'guest']
+irb> Order.distinct.pluck(:status)
+SELECT DISTINCT status FROM orders
+=> ["shipped", "being_packed", "cancelled"]
 
-Client.pluck(:id, :name)
-# SELECT clients.id, clients.name FROM clients
-# => [[1, 'David'], [2, 'Jeremy'], [3, 'Jose']]
+irb> Customer.pluck(:id, :first_name)
+SELECT customers.id, customers.name FROM customers
+=> [[1, "David"], [2, "Fran"], [3, "Jose"]]
 ```
 
-使用 `pluck` 方法，我们可以把下面的代码：
+`pluck` makes it possible to replace code like:
 
 ```ruby
-Client.select(:id).map { |c| c.id }
-# 或
-Client.select(:id).map(&:id)
-# 或
-Client.select(:id, :name).map { |c| [c.id, c.name] }
+Customer.select(:id).map { |c| c.id }
+# or
+Customer.select(:id).map(&:id)
+# or
+Customer.select(:id, :name).map { |c| [c.id, c.first_name] }
 ```
 
-替换为：
+with:
 
 ```ruby
-Client.pluck(:id)
-# 或
-Client.pluck(:id, :name)
+Customer.pluck(:id)
+# or
+Customer.pluck(:id, :first_name)
 ```
 
-和 `select` 方法不同，`pluck` 方法把数据库查询结果直接转换为 Ruby 数组，而不是构建 Active Record 对象。这意味着对于大型查询或常用查询，`pluck` 方法的性能更好。不过对于 `pluck` 方法，模型方法重载是不可用的。例如：
+Unlike `select`, `pluck` directly converts a database result into a Ruby `Array`,
+without constructing `ActiveRecord` objects. This can mean better performance for
+a large or often-running query. However, any model method overrides will
+not be available. For example:
 
 ```ruby
-class Client < ApplicationRecord
+class Customer < ApplicationRecord
   def name
-    "I am #{super}"
+    "I am #{first_name}"
   end
 end
-
-Client.select(:name).map &:name
-# => ["I am David", "I am Jeremy", "I am Jose"]
-
-Client.pluck(:name)
-# => ["David", "Jeremy", "Jose"]
 ```
 
-此外，和 `select` 方法及其他 `Relation` 作用域不同，`pluck` 方法会触发即时查询，因此在 `pluck` 方法之前可以链接作用域，但在 `pluck` 方法之后不能链接作用域：
+```irb
+irb> Customer.select(:first_name).map &:name
+=> ["I am David", "I am Jeremy", "I am Jose"]
 
-```ruby
-Client.pluck(:name).limit(1)
-# => NoMethodError: undefined method `limit' for #<Array:0x007ff34d3ad6d8>
-
-Client.limit(1).pluck(:name)
-# => ["David"]
+irb> Customer.pluck(:first_name)
+=> ["David", "Jeremy", "Jose"]
 ```
 
-<a class="anchor" id="ids"></a>
+You are not limited to querying fields from a single table, you can query multiple tables as well.
 
-### `ids` 方法
+```irb
+irb> Order.joins(:customer, :books).pluck("orders.created_at, customers.email,  books.title")
+```
 
-使用 `ids` 方法可以获得关联的所有 ID，也就是数据表的主键。
+Furthermore, unlike `select` and other `Relation` scopes, `pluck` triggers an immediate
+query, and thus cannot be chained with any further scopes, although it can work with
+scopes already constructed earlier:
 
-```ruby
-Person.ids
-# SELECT id FROM people
+```irb
+irb> Customer.pluck(:first_name).limit(1)
+NoMethodError: undefined method `limit' for #<Array:0x007ff34d3ad6d8>
+
+irb> Customer.limit(1).pluck(:first_name)
+=> ["David"]
+```
+
+NOTE: You should also know that using `pluck` will trigger eager loading if the relation object contains include values, even if the eager loading is not necessary for the query. For example:
+
+```irb
+irb> assoc = Customer.includes(:reviews)
+irb> assoc.pluck(:id)
+SELECT "customers"."id" FROM "customers" LEFT OUTER JOIN "reviews" ON "reviews"."id" = "customers"."review_id"
+```
+
+One way to avoid this is to `unscope` the includes:
+
+```irb
+irb> assoc.unscope(:includes).pluck(:id)
+```
+
+[`pluck`]: https://api.rubyonrails.org/classes/ActiveRecord/Calculations.html#method-i-pluck
+
+### `ids`
+
+[`ids`][] can be used to pluck all the IDs for the relation using the table's primary key.
+
+```irb
+irb> Customer.ids
+SELECT id FROM customers
 ```
 
 ```ruby
-class Person < ApplicationRecord
-  self.primary_key = "person_id"
+class Customer < ApplicationRecord
+  self.primary_key = "customer_id"
 end
-
-Person.ids
-# SELECT person_id FROM people
 ```
 
-<a class="anchor" id="existence-of-objects"></a>
+```irb
+irb> Customer.ids
+SELECT customer_id FROM customers
+```
 
-## 检查对象是否存在
+[`ids`]: https://api.rubyonrails.org/classes/ActiveRecord/Calculations.html#method-i-ids
 
-要想检查对象是否存在，可以使用 `exists?` 方法。`exists?` 方法查询数据库的工作原理和 `find` 方法相同，但是 `find` 方法返回的是对象或对象集合，而 `exists?` 方法返回的是 `true` 或 `false`。
+Existence of Objects
+--------------------
+
+If you simply want to check for the existence of the object there's a method called [`exists?`][].
+This method will query the database using the same query as `find`, but instead of returning an
+object or collection of objects it will return either `true` or `false`.
 
 ```ruby
-Client.exists?(1)
+Customer.exists?(1)
 ```
 
-`exists?` 方法也接受多个值作为参数，并且只要有一条对应记录存在就会返回 `true`。
+The `exists?` method also takes multiple values, but the catch is that it will return `true` if any
+one of those records exists.
 
 ```ruby
-Client.exists?(id: [1,2,3])
-# 或
-Client.exists?(name: ['John', 'Sergei'])
+Customer.exists?(id: [1,2,3])
+# or
+Customer.exists?(name: ['Jane', 'Sergei'])
 ```
 
-我们还可以在模型或关联上调用 `exists?` 方法，这时不需要任何参数。
+It's even possible to use `exists?` without any arguments on a model or a relation.
 
 ```ruby
-Client.where(first_name: 'Ryan').exists?
+Customer.where(first_name: 'Ryan').exists?
 ```
 
-只要存在一条名为“Ryan”的客户记录，上面的代码就会返回 `true`，否则返回 `false`。
+The above returns `true` if there is at least one customer with the `first_name` 'Ryan' and `false`
+otherwise.
 
 ```ruby
-Client.exists?
+Customer.exists?
 ```
 
-如果 `clients` 数据表是空的，上面的代码返回 `false`，否则返回 `true`。
+The above returns `false` if the `customers` table is empty and `true` otherwise.
 
-我们还可以在模型或关联上调用 `any?` 和 `many?` 方法来检查对象是否存在。
+You can also use `any?` and `many?` to check for existence on a model or relation.  `many?` will use SQL `count` to determine if the item exists.
 
 ```ruby
-# 通过模型
-Article.any?
-Article.many?
+# via a model
+Order.any?   # => SELECT 1 AS one FROM orders
+Order.many?  # => SELECT COUNT(*) FROM orders
 
-# 通过指定的作用域
-Article.recent.any?
-Article.recent.many?
+# via a named scope
+Order.shipped.any?   # => SELECT 1 AS one FROM orders WHERE orders.status = 0
+Order.shipped.many?  # => SELECT COUNT(*) FROM orders WHERE orders.status = 0
 
-# 通过关系
-Article.where(published: true).any?
-Article.where(published: true).many?
+# via a relation
+Book.where(out_of_print: true).any?
+Book.where(out_of_print: true).many?
 
-# 通过关联
-Article.first.categories.any?
-Article.first.categories.many?
+# via an association
+Customer.first.orders.any?
+Customer.first.orders.many?
 ```
 
-<a class="anchor" id="calculations"></a>
+[`exists?`]: https://api.rubyonrails.org/classes/ActiveRecord/FinderMethods.html#method-i-exists-3F
 
-## 计算
+Calculations
+------------
 
-在本节的前言中我们以 `count` 方法为例，例子中提到的所有选项对本节的各小节都适用。
+This section uses [`count`][] as an example method in this preamble, but the options described apply to all sub-sections.
 
-所有用于计算的方法都可以直接在模型上调用：
+All calculation methods work directly on a model:
 
-```ruby
-Client.count
-# SELECT count(*) AS count_all FROM clients
+```irb
+irb> Customer.count
+SELECT COUNT(*) FROM customers
 ```
 
-或者在关联上调用：
+Or on a relation:
 
-```ruby
-Client.where(first_name: 'Ryan').count
-# SELECT count(*) AS count_all FROM clients WHERE (first_name = 'Ryan')
+```irb
+irb> Customer.where(first_name: 'Ryan').count
+SELECT COUNT(*) FROM customers WHERE (first_name = 'Ryan')
 ```
 
-我们还可以在关联上执行各种查找方法来执行复杂的计算：
+You can also use various finder methods on a relation for performing complex calculations:
 
-```ruby
-Client.includes("orders").where(first_name: 'Ryan', orders: { status: 'received' }).count
+```irb
+irb> Customer.includes("orders").where(first_name: 'Ryan', orders: { status: 'shipped' }).count
 ```
 
-上面的代码会生成下面的 SQL 语句：
+Which will execute:
 
 ```sql
-SELECT count(DISTINCT clients.id) AS count_all FROM clients
-  LEFT OUTER JOIN orders ON orders.client_id = clients.id WHERE
-  (clients.first_name = 'Ryan' AND orders.status = 'received')
+SELECT COUNT(DISTINCT customers.id) FROM customers
+  LEFT OUTER JOIN orders ON orders.customer_id = customers.id
+  WHERE (customers.first_name = 'Ryan' AND orders.status = 0)
 ```
+assuming that Order has `enum status: [ :shipped, :being_packed, :cancelled ]`
 
-<a class="anchor" id="count"></a>
+### Count
 
-### `count` 方法
+If you want to see how many records are in your model's table you could call `Customer.count` and that will return the number.
+If you want to be more specific and find all the customers with a title present in the database you can use `Customer.count(:title)`.
 
-要想知道模型对应的数据表中有多少条记录，可以使用 `Client.count` 方法，这个方法的返回值就是记录条数。如果想要知道特定记录的条数，例如具有 `age` 字段值的所有客户记录的条数，可以使用 `Client.count(:age)`。
+For options, please see the parent section, [Calculations](#calculations).
 
-关于 `count` 方法的选项的更多介绍，请参阅 [计算](#calculations)。
+### Average
 
-<a class="anchor" id="average"></a>
-
-### `average` 方法
-
-要想知道数据表中某个字段的平均值，可以在数据表对应的类上调用 `average` 方法。例如：
+If you want to see the average of a certain number in one of your tables you can call the [`average`][] method on the class that relates to the table. This method call will look something like this:
 
 ```ruby
-Client.average("orders_count")
+Order.average("subtotal")
 ```
 
-上面的代码会返回表示 `orders_count` 字段平均值的数字（可能是浮点数，如 3.14159265）。
+This will return a number (possibly a floating point number such as 3.14159265) representing the average value in the field.
 
-关于 `average` 方法的选项的更多介绍，请参阅 [计算](#calculations)。
+For options, please see the parent section, [Calculations](#calculations).
 
-<a class="anchor" id="minimum"></a>
+[`average`]: https://api.rubyonrails.org/classes/ActiveRecord/Calculations.html#method-i-average
 
-### `minimum` 方法
+### Minimum
 
-要想查找数据表中某个字段的最小值，可以在数据表对应的类上调用 `minimum` 方法。例如：
+If you want to find the minimum value of a field in your table you can call the [`minimum`][] method on the class that relates to the table. This method call will look something like this:
 
 ```ruby
-Client.minimum("age")
+Order.minimum("subtotal")
 ```
 
-关于 `minimum` 方法的选项的更多介绍，请参阅 [计算](#calculations)。
+For options, please see the parent section, [Calculations](#calculations).
 
-<a class="anchor" id="maximum"></a>
+[`minimum`]: https://api.rubyonrails.org/classes/ActiveRecord/Calculations.html#method-i-minimum
 
-### `maximum` 方法
+### Maximum
 
-要想查找数据表中某个字段的最大值，可以在数据表对应的类上调用 `maximum` 方法。例如：
+If you want to find the maximum value of a field in your table you can call the [`maximum`][] method on the class that relates to the table. This method call will look something like this:
 
 ```ruby
-Client.maximum("age")
+Order.maximum("subtotal")
 ```
 
-关于 `maximum` 方法的选项的更多介绍，请参阅 [计算](#calculations)。
+For options, please see the parent section, [Calculations](#calculations).
 
-<a class="anchor" id="sum"></a>
+[`maximum`]: https://api.rubyonrails.org/classes/ActiveRecord/Calculations.html#method-i-maximum
 
-### `sum` 方法
+### Sum
 
-要想知道数据表中某个字段的所有字段值之和，可以在数据表对应的类上调用 `sum` 方法。例如：
+If you want to find the sum of a field for all records in your table you can call the [`sum`][] method on the class that relates to the table. This method call will look something like this:
 
 ```ruby
-Client.sum("orders_count")
+Order.sum("subtotal")
 ```
 
-关于 `sum` 方法的选项的更多介绍，请参阅 [计算](#calculations)。
+For options, please see the parent section, [Calculations](#calculations).
 
-<a class="anchor" id="running-explain"></a>
+[`sum`]: https://api.rubyonrails.org/classes/ActiveRecord/Calculations.html#method-i-sum
 
-## 执行 `EXPLAIN` 命令
+Running EXPLAIN
+---------------
 
-我们可以在关联触发的查询上执行 `EXPLAIN` 命令。例如：
+You can run [`explain`][] on a relation. EXPLAIN output varies for each database.
+
+For example, running
 
 ```ruby
-User.where(id: 1).joins(:articles).explain
+Customer.where(id: 1).joins(:orders).explain
 ```
 
-对于 MySQL 和 MariaDB 数据库后端，上面的代码会产生下面的输出结果：
+may yield
 
 ```
-EXPLAIN for: SELECT `users`.* FROM `users` INNER JOIN `articles` ON `articles`.`user_id` = `users`.`id` WHERE `users`.`id` = 1
-+----+-------------+----------+-------+---------------+
-| id | select_type | table    | type  | possible_keys |
-+----+-------------+----------+-------+---------------+
-|  1 | SIMPLE      | users    | const | PRIMARY       |
-|  1 | SIMPLE      | articles | ALL   | NULL          |
-+----+-------------+----------+-------+---------------+
+EXPLAIN for: SELECT `customers`.* FROM `customers` INNER JOIN `orders` ON `orders`.`customer_id` = `customers`.`id` WHERE `customers`.`id` = 1
++----+-------------+------------+-------+---------------+
+| id | select_type | table      | type  | possible_keys |
++----+-------------+------------+-------+---------------+
+|  1 | SIMPLE      | customers  | const | PRIMARY       |
+|  1 | SIMPLE      | orders     | ALL   | NULL          |
++----+-------------+------------+-------+---------------+
 +---------+---------+-------+------+-------------+
 | key     | key_len | ref   | rows | Extra       |
 +---------+---------+-------+------+-------------+
@@ -2020,36 +2233,43 @@ EXPLAIN for: SELECT `users`.* FROM `users` INNER JOIN `articles` ON `articles`.`
 2 rows in set (0.00 sec)
 ```
 
-Active Record 会模拟对应数据库的 shell 来打印输出结果。因此对于 PostgreSQL 数据库后端，同样的代码会产生下面的输出结果：
+under MySQL and MariaDB.
+
+Active Record performs a pretty printing that emulates that of the
+corresponding database shell. So, the same query running with the
+PostgreSQL adapter would yield instead
 
 ```
-EXPLAIN for: SELECT "users".* FROM "users" INNER JOIN "articles" ON "articles"."user_id" = "users"."id" WHERE "users"."id" = 1
+EXPLAIN for: SELECT "customers".* FROM "customers" INNER JOIN "orders" ON "orders"."customer_id" = "customers"."id" WHERE "customers"."id" = $1 [["id", 1]]
                                   QUERY PLAN
 ------------------------------------------------------------------------------
- Nested Loop Left Join  (cost=0.00..37.24 rows=8 width=0)
-   Join Filter: (articles.user_id = users.id)
-   ->  Index Scan using users_pkey on users  (cost=0.00..8.27 rows=1 width=4)
-         Index Cond: (id = 1)
-   ->  Seq Scan on articles  (cost=0.00..28.88 rows=8 width=4)
-         Filter: (articles.user_id = 1)
-(6 rows)
+ Nested Loop  (cost=4.33..20.85 rows=4 width=164)
+    ->  Index Scan using customers_pkey on customers  (cost=0.15..8.17 rows=1 width=164)
+          Index Cond: (id = '1'::bigint)
+    ->  Bitmap Heap Scan on orders  (cost=4.18..12.64 rows=4 width=8)
+          Recheck Cond: (customer_id = '1'::bigint)
+          ->  Bitmap Index Scan on index_orders_on_customer_id  (cost=0.00..4.18 rows=4 width=0)
+                Index Cond: (customer_id = '1'::bigint)
+(7 rows)
 ```
 
-及早加载在底层可能会触发多次查询，有的查询可能需要使用之前查询的结果。因此，`explain` 方法实际上先执行了查询，然后询问查询计划。例如：
+Eager loading may trigger more than one query under the hood, and some queries
+may need the results of previous ones. Because of that, `explain` actually
+executes the query, and then asks for the query plans. For example,
 
 ```ruby
-User.where(id: 1).includes(:articles).explain
+Customer.where(id: 1).includes(:orders).explain
 ```
 
-对于 MySQL 和 MariaDB 数据库后端，上面的代码会产生下面的输出结果：
+may yield this for MySQL and MariaDB:
 
 ```
-EXPLAIN for: SELECT `users`.* FROM `users`  WHERE `users`.`id` = 1
-+----+-------------+-------+-------+---------------+
-| id | select_type | table | type  | possible_keys |
-+----+-------------+-------+-------+---------------+
-|  1 | SIMPLE      | users | const | PRIMARY       |
-+----+-------------+-------+-------+---------------+
+EXPLAIN for: SELECT `customers`.* FROM `customers`  WHERE `customers`.`id` = 1
++----+-------------+-----------+-------+---------------+
+| id | select_type | table     | type  | possible_keys |
++----+-------------+-----------+-------+---------------+
+|  1 | SIMPLE      | customers | const | PRIMARY       |
++----+-------------+-----------+-------+---------------+
 +---------+---------+-------+------+-------+
 | key     | key_len | ref   | rows | Extra |
 +---------+---------+-------+------+-------+
@@ -2058,12 +2278,12 @@ EXPLAIN for: SELECT `users`.* FROM `users`  WHERE `users`.`id` = 1
 
 1 row in set (0.00 sec)
 
-EXPLAIN for: SELECT `articles`.* FROM `articles`  WHERE `articles`.`user_id` IN (1)
-+----+-------------+----------+------+---------------+
-| id | select_type | table    | type | possible_keys |
-+----+-------------+----------+------+---------------+
-|  1 | SIMPLE      | articles | ALL  | NULL          |
-+----+-------------+----------+------+---------------+
+EXPLAIN for: SELECT `orders`.* FROM `orders`  WHERE `orders`.`customer_id` IN (1)
++----+-------------+--------+------+---------------+
+| id | select_type | table  | type | possible_keys |
++----+-------------+--------+------+---------------+
+|  1 | SIMPLE      | orders | ALL  | NULL          |
++----+-------------+--------+------+---------------+
 +------+---------+------+------+-------------+
 | key  | key_len | ref  | rows | Extra       |
 +------+---------+------+------+-------------+
@@ -2074,13 +2294,30 @@ EXPLAIN for: SELECT `articles`.* FROM `articles`  WHERE `articles`.`user_id` IN 
 1 row in set (0.00 sec)
 ```
 
-<a class="anchor" id="interpreting-explain"></a>
+and may yield this for PostgreSQL:
 
-### 对 `EXPLAIN` 命令输出结果的解释
+```
+  Customer Load (0.3ms)  SELECT "customers".* FROM "customers" WHERE "customers"."id" = $1  [["id", 1]]
+  Order Load (0.3ms)  SELECT "orders".* FROM "orders" WHERE "orders"."customer_id" = $1  [["customer_id", 1]]
+=> EXPLAIN for: SELECT "customers".* FROM "customers" WHERE "customers"."id" = $1 [["id", 1]]
+                                    QUERY PLAN
+----------------------------------------------------------------------------------
+ Index Scan using customers_pkey on customers  (cost=0.15..8.17 rows=1 width=164)
+   Index Cond: (id = '1'::bigint)
+(2 rows)
+```
 
-对 `EXPLAIN` 命令输出结果的解释超出了本文的范畴。下面提供了一些有用链接：
+[`explain`]: https://api.rubyonrails.org/classes/ActiveRecord/Relation.html#method-i-explain
 
-*   SQLite3：[对查询计划的解释](http://www.sqlite.org/eqp.html)
-*   MySQL：[EXPLAIN 输出格式](http://dev.mysql.com/doc/refman/5.7/en/explain-output.html)
-*   MariaDB：[EXPLAIN](https://mariadb.com/kb/en/mariadb/explain/)
-*   PostgreSQL：[使用 EXPLAIN](http://www.postgresql.org/docs/current/static/using-explain.html)
+### Interpreting EXPLAIN
+
+Interpretation of the output of EXPLAIN is beyond the scope of this guide. The
+following pointers may be helpful:
+
+* SQLite3: [EXPLAIN QUERY PLAN](https://www.sqlite.org/eqp.html)
+
+* MySQL: [EXPLAIN Output Format](https://dev.mysql.com/doc/refman/en/explain-output.html)
+
+* MariaDB: [EXPLAIN](https://mariadb.com/kb/en/mariadb/explain/)
+
+* PostgreSQL: [Using EXPLAIN](https://www.postgresql.org/docs/current/static/using-explain.html)

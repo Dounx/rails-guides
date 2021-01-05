@@ -1,33 +1,33 @@
-# Ruby on Rails 指南指导方针
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-本文说明编写 Ruby on Rails 指南的指导方针。本文也遵守这一方针，本身就是个示例。
+Ruby on Rails Guides Guidelines
+===============================
 
-读完本文后，您将学到：
+This guide documents guidelines for writing Ruby on Rails Guides. This guide follows itself in a graceful loop, serving itself as an example.
 
-*   Rails 文档使用的约定；
-*   如何在本地生成指南。
+After reading this guide, you will know:
 
------------------------------------------------------------------------------
+* About the conventions to be used in Rails documentation.
+* How to generate guides locally.
 
-<a class="anchor" id="markdown"></a>
+--------------------------------------------------------------------------------
 
-## Markdown
+Markdown
+-------
 
-指南使用 [GitHub Flavored Markdown](https://help.github.com/articles/github-flavored-markdown) 编写。Markdown 有[完整的文档](http://daringfireball.net/projects/markdown/syntax)，还有[速查表](http://daringfireball.net/projects/markdown/basics)。
+Guides are written in [GitHub Flavored Markdown](https://help.github.com/articles/github-flavored-markdown). There is comprehensive [documentation for Markdown](https://daringfireball.net/projects/markdown/syntax), as well as a [cheatsheet](https://daringfireball.net/projects/markdown/basics).
 
-<a class="anchor" id="prologue"></a>
+Prologue
+--------
 
-## 序言
+Each guide should start with motivational text at the top (that's the little introduction in the blue area). The prologue should tell the reader what the guide is about, and what they will learn. As an example, see the [Routing Guide](routing.html).
 
-每篇文章的开头要有介绍性文字（蓝色区域中的简短介绍）。序言应该告诉读者文章的主旨，以及能让读者学到什么。可以以[Rails 路由全解](routing.html)为例。
+Headings
+------
 
-<a class="anchor" id="headings"></a>
+The title of every guide uses an `h1` heading; guide sections use `h2` headings; subsections use `h3` headings; etc. Note that the generated HTML output will use heading tags starting with `<h2>`.
 
-## 标题
-
-每篇文章的标题使用 `h1` 标签，文章中的小节使用 `h2` 标签，子节使用 `h3` 标签，以此类推。注意，生成的 HTML 从 `<h2>` 标签开始。
-
-```md
+```
 Guide Title
 ===========
 
@@ -37,142 +37,138 @@ Section
 ### Sub Section
 ```
 
-标题中除了介词、连词、冠词和“to be”这种形式的动词之外，每个词的首字母大写：
+When writing headings, capitalize all words except for prepositions, conjunctions, internal articles, and forms of the verb "to be":
 
-```md
+```
+#### Assertions and Testing Jobs inside Components
 #### Middleware Stack is an Array
 #### When are Objects Saved?
 ```
 
-行内格式与正文一样：
+Use the same inline formatting as regular text:
 
-```md
+```
 ##### The `:content_type` Option
 ```
 
-<a class="anchor" id="linking-to-the-api"></a>
+Linking to the API
+------------------
 
-## 指向 API 的链接
+Links to the API (`api.rubyonrails.org`) are processed by the guides generator in the following manner:
 
-指南生成程序使用下述方式处理指向 API（`api.rubyonrails.org`）的链接。
-
-包含版本号的链接原封不动。例如，下述链接不做修改：
-
-```
-http://api.rubyonrails.org/v5.0.1/classes/ActiveRecord/Attributes/ClassMethods.html
-```
-
-请在发布记中使用这种链接，因为不管生成哪个版本的指南，发布记中的链接不应该变。
-
-如果链接中没有版本号，而且生成的是最新开发版的指南，域名会替换成 `edgeapi.rubyonrails.org`。例如：
+Links that include a release tag are left untouched. For example
 
 ```
-http://api.rubyonrails.org/classes/ActionDispatch/Response.html
+https://api.rubyonrails.org/v5.0.1/classes/ActiveRecord/Attributes/ClassMethods.html
 ```
 
-会变成：
+is not modified.
+
+Please use these in release notes, since they should point to the corresponding version no matter the target being generated.
+
+If the link does not include a release tag and edge guides are being generated, the domain is replaced by `edgeapi.rubyonrails.org`. For example,
 
 ```
-http://edgeapi.rubyonrails.org/classes/ActionDispatch/Response.html
+https://api.rubyonrails.org/classes/ActionDispatch/Response.html
 ```
 
-如果链接中没有版本号，而生成的是某个版本的指南，会在链接中插入版本号。例如，生成 v5.1.0 的指南时，下述链接：
+becomes
 
 ```
-http://api.rubyonrails.org/classes/ActionDispatch/Response.html
+https://edgeapi.rubyonrails.org/classes/ActionDispatch/Response.html
 ```
 
-会变成：
+If the link does not include a release tag and release guides are being generated, the Rails version is injected. For example, if we are generating the guides for v5.1.0 the link
 
 ```
-http://api.rubyonrails.org/v5.1.0/classes/ActionDispatch/Response.html
+https://api.rubyonrails.org/classes/ActionDispatch/Response.html
 ```
 
-请勿直接链接到 `edgeapi.rubyonrails.org`。
+becomes
 
-<a class="anchor" id="ruby-on-rails-guides-guidelines-api-documentation-guidelines"></a>
+```
+https://api.rubyonrails.org/v5.1.0/classes/ActionDispatch/Response.html
+```
 
-## API 文档指导方针
+Please don't link to `edgeapi.rubyonrails.org` manually.
 
-指南和 API 应该连贯一致。尤其是[API 文档指导方针](api_documentation_guidelines.html)中的下述几节，同样适用于指南：
 
-*   [用词](api_documentation_guidelines.html#wording)
-*   [英语](api_documentation_guidelines.html#english)
-*   [示例代码](api_documentation_guidelines.html#example-code)
-*   [文件名](api_documentation_guidelines.html#file-names)
-*   [字体](api_documentation_guidelines.html#fonts)
+API Documentation Guidelines
+----------------------------
 
-<a class="anchor" id="html-guides"></a>
+The guides and the API should be coherent and consistent where appropriate. In particular, these sections of the [API Documentation Guidelines](api_documentation_guidelines.html) also apply to the guides:
 
-## HTML 版指南
+* [Wording](api_documentation_guidelines.html#wording)
+* [English](api_documentation_guidelines.html#english)
+* [Example Code](api_documentation_guidelines.html#example-code)
+* [Filenames](api_documentation_guidelines.html#file-names)
+* [Fonts](api_documentation_guidelines.html#fonts)
 
-在生成指南之前，先确保你的系统中安装了 Bundler 的最新版。写作本文时，要在你的设备中安装 Bundler 1.3.5 或以上版本。
+HTML Guides
+-----------
 
-安装最新版 Bundler 的方法是，执行 `gem install bundler` 命令。
+Before generating the guides, make sure that you have the latest version of
+Bundler installed on your system. You can find the latest Bundler version
+[here](https://rubygems.org/gems/bundler). As of this writing, it's v1.17.1.
 
-<a class="anchor" id="html-guides-generation"></a>
+To install the latest version of Bundler, run `gem install bundler`.
 
-### 生成
+### Generation
 
-若想生成全部指南，进入 `guides` 目录，执行 `bundle install` 命令之后再执行：
+To generate all the guides, just `cd` into the `guides` directory, run `bundle install`, and execute:
 
-```sh
+```bash
 $ bundle exec rake guides:generate
 ```
 
-或者
+or
 
-```sh
+```bash
 $ bundle exec rake guides:generate:html
 ```
 
-得到的 HTML 文件在 `./output` 目录中。
+Resulting HTML files can be found in the `./output` directory.
 
-如果只想处理 `my_guide.md`，使用 `ONLY` 环境变量：
+To process `my_guide.md` and nothing else use the `ONLY` environment variable:
 
-```sh
+```bash
 $ touch my_guide.md
 $ bundle exec rake guides:generate ONLY=my_guide
 ```
 
-默认情况下，没有改动的文章不会处理，因此实际使用中很少用到 `ONLY`。
+By default, guides that have not been modified are not processed, so `ONLY` is rarely needed in practice.
 
-如果想强制处理所有文章，传入 `ALL=1`。
+To force processing all the guides, pass `ALL=1`.
 
-如果想生成英语之外的指南，可以把译文放在 `source` 中的子目录里（如 `source/es`），然后使用 `GUIDES_LANGUAGE` 环境变量：
+If you want to generate guides in a language other than English, you can keep them in a separate directory under `source` (e.g. `source/es`) and use the `GUIDES_LANGUAGE` environment variable:
 
-```sh
+```bash
 $ bundle exec rake guides:generate GUIDES_LANGUAGE=es
 ```
 
-如果想查看可用于配置生成脚本的全部环境变量，只需执行：
+If you want to see all the environment variables you can use to configure the generation script just run:
 
-```sh
+```bash
 $ rake
 ```
 
-<a class="anchor" id="validation"></a>
+### Validation
 
-### 验证
+Please validate the generated HTML with:
 
-请使用下述命令验证生成的 HTML：
-
-```sh
+```bash
 $ bundle exec rake guides:validate
 ```
 
-尤其要注意，ID 是从标题的内容中生成的，往往会重复。生成指南时请设定 `WARNINGS=1`，监测重复的 ID。提醒消息中有建议的解决方案。
+Particularly, titles get an ID generated from their content and this often leads to duplicates.
 
-<a class="anchor" id="kindle-guides"></a>
+Kindle Guides
+-------------
 
-## Kindle 版指南
+### Generation
 
-<a class="anchor" id="kindle-guides-generation"></a>
+To generate guides for the Kindle, use the following rake task:
 
-### 生成
-
-如果想生成 Kindle 版指南，使用下述 Rake 任务：
-
-```sh
+```bash
 $ bundle exec rake guides:generate:kindle
 ```

@@ -1,73 +1,75 @@
-# Rails 应用测试指南
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-本文介绍 Rails 内建对测试的支持。
+Testing Rails Applications
+==========================
 
-读完本文后，您将学到：
+This guide covers built-in mechanisms in Rails for testing your application.
 
-*   Rails 测试术语；
-*   如何为应用编写单元测试、功能测试、集成测试和系统测试；
-*   其他常用的测试方法和插件。
+After reading this guide, you will know:
 
------------------------------------------------------------------------------
+* Rails testing terminology.
+* How to write unit, functional, integration, and system tests for your application.
+* Other popular testing approaches and plugins.
 
-<a class="anchor" id="why-write-tests-for-your-rails-applications-questionmark"></a>
+--------------------------------------------------------------------------------
 
-## 为什么要为 Rails 应用编写测试？
+Why Write Tests for your Rails Applications?
+--------------------------------------------
 
-在 Rails 中编写测试非常简单，生成模型和控制器时，已经生成了测试代码骨架。
+Rails makes it super easy to write your tests. It starts by producing skeleton test code while you are creating your models and controllers.
 
-即便是大范围重构后，只需运行测试就能确保实现了所需的功能。
+By running your Rails tests you can ensure your code adheres to the desired functionality even after some major code refactoring.
 
-Rails 测试还可以模拟浏览器请求，无需打开浏览器就能测试应用的响应。
+Rails tests can also simulate browser requests and thus you can test your application's response without having to test it through your browser.
 
-<a class="anchor" id="introduction-to-testing"></a>
+Introduction to Testing
+-----------------------
 
-## 测试简介
+Testing support was woven into the Rails fabric from the beginning. It wasn't an "oh! let's bolt on support for running tests because they're new and cool" epiphany.
 
-测试是 Rails 应用的重要组成部分，不是为了尝鲜和好奇而编写的。
+### Rails Sets up for Testing from the Word Go
 
-<a class="anchor" id="rails-sets-up-for-testing-from-the-word-go"></a>
+Rails creates a `test` directory for you as soon as you create a Rails project using `rails new` _application_name_. If you list the contents of this directory then you shall see:
 
-### Rails 内建对测试的支持
-
-使用 `rails new application_name` 命令创建一个 Rails 项目时，Rails 会生成 `test` 目录。如果列出这个目录里的内容，你会看到下述目录和文件：
-
-```sh
+```bash
 $ ls -F test
-controllers/           helpers/               mailers/               system/                test_helper.rb
-fixtures/              integration/           models/                application_system_test_case.rb
+application_system_test_case.rb  controllers/                     helpers/                         mailers/                         system/
+channels/                        fixtures/                        integration/                     models/                          test_helper.rb
 ```
 
-`helpers` 目录存放视图辅助方法的测试，`mailers` 目录存放邮件程序的测试，`models` 目录存放模型的测试，`controllers` 目录存放控制器的测试，`integration` 目录存放涉及多个控制器交互的测试。此外，还有一个目录用于存放邮件程序的测试，以及一个目录用于存放辅助方法的测试。
+The `helpers`, `mailers`, and `models` directories are meant to hold tests for view helpers, mailers, and models, respectively. The `channels` directory is meant to hold tests for Action Cable connection and channels. The `controllers` directory is meant to hold tests for controllers, routes, and views. The `integration` directory is meant to hold tests for interactions between controllers.
 
-`system` 目录存放系统测试，在浏览器中全面测试应用。系统测试模拟用户的交互，还能测试 JavaScript。系统测试源自 Capybara，在浏览器中测试应用。
+The system test directory holds system tests, which are used for full browser
+testing of your application. System tests allow you to test your application
+the way your users experience it and help you test your JavaScript as well.
+System tests inherit from Capybara and perform in browser tests for your
+application.
 
-测试数据使用固件（fixture）组织，存放在 `fixtures` 目录中。
+Fixtures are a way of organizing test data; they reside in the `fixtures` directory.
 
-如果先期生成了作业测试，还会创建 `jobs` 目录。
+A `jobs` directory will also be created when an associated test is first generated.
 
-`test_helper.rb` 文件存储测试的默认配置。
+The `test_helper.rb` file holds the default configuration for your tests.
 
-`application_system_test_case.rb` 文件存储系统测试的默认配置。
-
-<a class="anchor" id="the-test-environment"></a>
-
-### 测试环境
-
-默认情况下，Rails 应用有三个环境：开发环境、测试环境和生产环境。
-
-各个环境的配置通过类似的方式修改。这里，如果想配置测试环境，可以修改 `config/environments/test.rb` 文件中的选项。
-
-NOTE: 运行测试时，`RAILS_ENV` 环境变量的值是 `test`。
+The `application_system_test_case.rb` holds the default configuration for your system
+tests.
 
 
-<a class="anchor" id="rails-meets-minitest"></a>
+### The Test Environment
 
-### 使用 Minitest 测试 Rails 应用
+By default, every Rails application has three environments: development, test, and production.
 
-还记得我们在[Rails 入门](getting_started.html)用过的 `rails generate model` 命令吗？我们使用这个命令生成了第一个模型，这个命令会生成很多内容，其中就包括在 `test` 目录中创建的测试：
+Each environment's configuration can be modified similarly. In this case, we can modify our test environment by changing the options found in `config/environments/test.rb`.
 
-```ruby
+NOTE: Your tests are run under `RAILS_ENV=test`.
+
+### Rails meets Minitest
+
+If you remember, we used the `bin/rails generate model` command in the
+[Getting Started with Rails](getting_started.html) guide. We created our first
+model, and among other things it created test stubs in the `test` directory:
+
+```bash
 $ bin/rails generate model article title:string body:text
 ...
 create  app/models/article.rb
@@ -76,10 +78,10 @@ create  test/fixtures/articles.yml
 ...
 ```
 
-默认在 `test/models/article_test.rb` 文件中生成的测试如下：
+The default test stub in `test/models/article_test.rb` looks like this:
 
 ```ruby
-require 'test_helper'
+require "test_helper"
 
 class ArticleTest < ActiveSupport::TestCase
   # test "the truth" do
@@ -88,23 +90,24 @@ class ArticleTest < ActiveSupport::TestCase
 end
 ```
 
-下面逐行说明这段代码，让你初步了解 Rails 测试代码和相关的术语。
+A line by line examination of this file will help get you oriented to Rails testing code and terminology.
 
 ```ruby
-require 'test_helper'
+require "test_helper"
 ```
 
-这行代码引入 `test_helper.rb` 文件，即加载默认的测试配置。我们编写的所有测试都会引入这个文件，因此这个文件中定义的代码在所有测试中都可用。
+By requiring this file, `test_helper.rb` the default configuration to run our tests is loaded. We will include this with all the tests we write, so any methods added to this file are available to all our tests.
 
 ```ruby
 class ArticleTest < ActiveSupport::TestCase
 ```
 
-`ArticleTest` 类定义一个测试用例（test case），它继承自 `ActiveSupport::TestCase`，因此继承了后者的全部方法。本文后面会介绍其中几个。
+The `ArticleTest` class defines a _test case_ because it inherits from `ActiveSupport::TestCase`. `ArticleTest` thus has all the methods available from `ActiveSupport::TestCase`. Later in this guide, we'll see some of the methods it gives us.
 
-在继承自 `Minitest::Test`（`ActiveSupport::TestCase` 的超类）的类中定义的方法，只要名称以 `test_` 开头（区分大小写），就是一个“测试”。因此，名为 `test_password` 和 `test_valid_password` 的方法是有效的测试，运行测试用例时会自动运行。
+Any method defined within a class inherited from `Minitest::Test`
+(which is the superclass of `ActiveSupport::TestCase`) that begins with `test_` is simply called a test. So, methods defined as `test_password` and `test_valid_password` are legal test names and are run automatically when the test case is run.
 
-此外，Rails 定义了 `test` 方法，它接受一个测试名称和一个块。`test` 方法在测试名称前面加上 `test_`，生成常规的 `Minitest::Unit` 测试。因此，我们无需费心为方法命名，可以像下面这样写：
+Rails also adds a `test` method that takes a test name and a block. It generates a normal `Minitest::Unit` test with method names prefixed with `test_`. So you don't have to worry about naming the methods, and you can write something like:
 
 ```ruby
 test "the truth" do
@@ -112,7 +115,7 @@ test "the truth" do
 end
 ```
 
-这段代码几乎与下述代码一样：
+Which is approximately the same as writing this:
 
 ```ruby
 def test_the_truth
@@ -120,31 +123,28 @@ def test_the_truth
 end
 ```
 
-虽然可以像普通的方法那样定义测试，但是使用 `test` 宏能指定更易读的测试名称。
+Although you can still use regular method definitions, using the `test` macro allows for a more readable test name.
 
-NOTE: 生成方法名时，空格会替换成下划线。不过，结果无需是有效的 Ruby 标识符，名称中可以包含标点符号等。这是因为，严格来说，在 Ruby 中任何字符串都可以作为方法的名称。这样，可能需要使用 `define_method` 和 `send` 才能让方法其作用，不过在名称形式上的限制较少。
+NOTE: The method name is generated by replacing spaces with underscores. The result does not need to be a valid Ruby identifier though, the name may contain punctuation characters etc. That's because in Ruby technically any string may be a method name. This may require use of `define_method` and `send` calls to function properly, but formally there's little restriction on the name.
 
-
-接下来是我们遇到的第一个断言（assertion）：
+Next, let's look at our first assertion:
 
 ```ruby
 assert true
 ```
 
-断言求值对象（或表达式），然后与预期结果比较。例如，断言可以检查：
+An assertion is a line of code that evaluates an object (or expression) for expected results. For example, an assertion can check:
 
-*   两个值是否相等
-*   对象是否为 `nil`
-*   一行代码是否抛出异常
-*   用户的密码长度是否超过 5 个字符
+* does this value = that value?
+* is this object nil?
+* does this line of code throw an exception?
+* is the user's password greater than 5 characters?
 
-一个测试中可以有一个或多个断言，对断言的数量没有限制。只有全部断言都成功，测试才能通过。
+Every test may contain one or more assertions, with no restriction as to how many assertions are allowed. Only when all the assertions are successful will the test pass.
 
-<a class="anchor" id="your-first-failing-test"></a>
+#### Your first failing test
 
-#### 第一个失败测试
-
-为了了解失败测试是如何报告的，下面在 `article_test.rb` 测试用例中添加一个失败测试：
+To see how a test failure is reported, you can add a failing test to the `article_test.rb` test case.
 
 ```ruby
 test "should not save article without title" do
@@ -153,9 +153,9 @@ test "should not save article without title" do
 end
 ```
 
-然后运行这个新增的测试（其中，6 是测试定义所在的行号）：
+Let us run this newly added test (where `6` is the number of line where the test is defined).
 
-```sh
+```bash
 $ bin/rails test test/models/article_test.rb:6
 Run options: --seed 44656
 
@@ -168,16 +168,17 @@ ArticleTest#test_should_not_save_article_without_title [/path/to/blog/test/model
 Expected true to be nil or false
 
 
-bin/rails test test/models/article_test.rb:6
+rails test test/models/article_test.rb:6
 
 
 
 Finished in 0.023918s, 41.8090 runs/s, 41.8090 assertions/s.
 
 1 runs, 1 assertions, 1 failures, 0 errors, 0 skips
+
 ```
 
-输出中的 F 表示失败（failure）。可以看到，`Failure` 下面显示了相应的路径和失败测试的名称。下面几行是堆栈跟踪，以及传入断言的具体值和预期值。默认的断言消息足够用于定位错误了。如果想让断言失败消息提供更多的信息，可以使用每个断言都有的可选参数定制消息，如下所示：
+In the output, `F` denotes a failure. You can see the corresponding trace shown under `Failure` along with the name of the failing test. The next few lines contain the stack trace followed by a message that mentions the actual value and the expected value by the assertion. The default assertion messages provide just enough information to help pinpoint the error. To make the assertion failure message more readable, every assertion provides an optional message parameter, as shown here:
 
 ```ruby
 test "should not save article without title" do
@@ -186,15 +187,15 @@ test "should not save article without title" do
 end
 ```
 
-现在运行测试会看到更加友好的断言消息：
+Running this test shows the friendlier assertion message:
 
-```ruby
+```
 Failure:
 ArticleTest#test_should_not_save_article_without_title [/path/to/blog/test/models/article_test.rb:6]:
 Saved the article without a title
 ```
 
-为了让测试通过，我们可以为 `title` 字段添加一个模型层验证：
+Now to get this test to pass we can add a model level validation for the _title_ field.
 
 ```ruby
 class Article < ApplicationRecord
@@ -202,9 +203,9 @@ class Article < ApplicationRecord
 end
 ```
 
-现在测试应该能通过了。再次运行测试，确认一下：
+Now the test should pass. Let us verify by running the test again:
 
-```ruby
+```bash
 $ bin/rails test test/models/article_test.rb:6
 Run options: --seed 31252
 
@@ -217,25 +218,27 @@ Finished in 0.027476s, 36.3952 runs/s, 36.3952 assertions/s.
 1 runs, 1 assertions, 0 failures, 0 errors, 0 skips
 ```
 
-你可能注意到了，我们先编写一个测试检查所需的功能，它失败了，然后我们编写代码，添加功能，最后确认测试能通过。这种开发软件的方式叫做[测试驱动开发](http://c2.com/cgi/wiki?TestDrivenDevelopment)（Test-Driven Development，TDD）。
+Now, if you noticed, we first wrote a test which fails for a desired
+functionality, then we wrote some code which adds the functionality and finally
+we ensured that our test passes. This approach to software development is
+referred to as
+[_Test-Driven Development_ (TDD)](http://c2.com/cgi/wiki?TestDrivenDevelopment).
 
-<a class="anchor" id="what-an-error-looks-like"></a>
+#### What an Error Looks Like
 
-#### 失败的样子
-
-为了查看错误是如何报告的，下面编写一个包含错误的测试：
+To see how an error gets reported, here's a test containing an error:
 
 ```ruby
 test "should report error" do
-  # 测试用例中没有定义 some_undefined_variable
+  # some_undefined_variable is not defined elsewhere in the test case
   some_undefined_variable
   assert true
 end
 ```
 
-然后运行测试，你会看到更多输出：
+Now you can see even more output in the console from running the tests:
 
-```sh
+```bash
 $ bin/rails test test/models/article_test.rb
 Run options: --seed 1808
 
@@ -245,11 +248,11 @@ Run options: --seed 1808
 
 Error:
 ArticleTest#test_should_report_error:
-NameError: undefined local variable or method `some_undefined_variable' for #<ArticleTest:0x007fee3aa71798>
-    test/models/article_test.rb:11:in `block in <class:ArticleTest>'
+NameError: undefined local variable or method 'some_undefined_variable' for #<ArticleTest:0x007fee3aa71798>
+    test/models/article_test.rb:11:in 'block in <class:ArticleTest>'
 
 
-bin/rails test test/models/article_test.rb:9
+rails test test/models/article_test.rb:9
 
 
 
@@ -258,122 +261,131 @@ Finished in 0.040609s, 49.2500 runs/s, 24.6250 assertions/s.
 2 runs, 1 assertions, 0 failures, 1 errors, 0 skips
 ```
 
-注意输出中的“E”，它表示测试有错误（error）。
+Notice the 'E' in the output. It denotes a test with error.
 
-NOTE: 执行各个测试方法时，只要遇到错误或断言失败，就立即停止，然后接着运行测试组件中的下一个测试方法。测试方法以随机顺序执行。测试顺序可以使用 [`config.active_support.test_order` 选项](configuring.html#configuring-active-support)配置。
+NOTE: The execution of each test method stops as soon as any error or an
+assertion failure is encountered, and the test suite continues with the next
+method. All test methods are executed in random order. The
+[`config.active_support.test_order` option](configuring.html#configuring-active-support)
+can be used to configure test order.
 
+When a test fails you are presented with the corresponding backtrace. By default
+Rails filters that backtrace and will only print lines relevant to your
+application. This eliminates the framework noise and helps to focus on your
+code. However there are situations when you want to see the full
+backtrace. Set the `-b` (or `--backtrace`) argument to enable this behavior:
 
-测试失败时会显示相应的回溯信息。默认情况下，Rails 会过滤回溯信息，只打印与应用有关的内容。这样不会被框架相关的内容搅乱，有助于集中精力排查代码中的错误。不过，有时需要查看完整的回溯信息。此时，只需设定 `-b`（或 `--backtrace`）参数就能启用这一行为：
-
-```sh
+```bash
 $ bin/rails test -b test/models/article_test.rb
 ```
 
-若想让这个测试通过，可以使用 `assert_raises` 修改，如下：
+If we want this test to pass we can modify it to use `assert_raises` like so:
 
 ```ruby
 test "should report error" do
-  # 测试用例中没有定义 some_undefined_variable
+  # some_undefined_variable is not defined elsewhere in the test case
   assert_raises(NameError) do
     some_undefined_variable
   end
 end
 ```
 
-现在这个测试应该能通过了。
+This test should now pass.
 
-<a class="anchor" id="available-assertions"></a>
+### Available Assertions
 
-### 可用的断言
+By now you've caught a glimpse of some of the assertions that are available. Assertions are the worker bees of testing. They are the ones that actually perform the checks to ensure that things are going as planned.
 
-我们大致了解了几个可用的断言。断言是测试的核心所在，是真正执行检查、确保功能符合预期的执行者。
+Here's an extract of the assertions you can use with
+[`Minitest`](https://github.com/seattlerb/minitest), the default testing library
+used by Rails. The `[msg]` parameter is an optional string message you can
+specify to make your test failure messages clearer.
 
-下面摘录部分可以在 [Minitest](https://github.com/seattlerb/minitest)（Rails 默认使用的测试库）中使用的断言。`[msg]` 参数是可选的消息字符串，能让测试失败消息更明确。
+| Assertion                                                        | Purpose |
+| ---------------------------------------------------------------- | ------- |
+| `assert( test, [msg] )`                                          | Ensures that `test` is true.|
+| `assert_not( test, [msg] )`                                      | Ensures that `test` is false.|
+| `assert_equal( expected, actual, [msg] )`                        | Ensures that `expected == actual` is true.|
+| `assert_not_equal( expected, actual, [msg] )`                    | Ensures that `expected != actual` is true.|
+| `assert_same( expected, actual, [msg] )`                         | Ensures that `expected.equal?(actual)` is true.|
+| `assert_not_same( expected, actual, [msg] )`                     | Ensures that `expected.equal?(actual)` is false.|
+| `assert_nil( obj, [msg] )`                                       | Ensures that `obj.nil?` is true.|
+| `assert_not_nil( obj, [msg] )`                                   | Ensures that `obj.nil?` is false.|
+| `assert_empty( obj, [msg] )`                                     | Ensures that `obj` is `empty?`.|
+| `assert_not_empty( obj, [msg] )`                                 | Ensures that `obj` is not `empty?`.|
+| `assert_match( regexp, string, [msg] )`                          | Ensures that a string matches the regular expression.|
+| `assert_no_match( regexp, string, [msg] )`                       | Ensures that a string doesn't match the regular expression.|
+| `assert_includes( collection, obj, [msg] )`                      | Ensures that `obj` is in `collection`.|
+| `assert_not_includes( collection, obj, [msg] )`                  | Ensures that `obj` is not in `collection`.|
+| `assert_in_delta( expected, actual, [delta], [msg] )`            | Ensures that the numbers `expected` and `actual` are within `delta` of each other.|
+| `assert_not_in_delta( expected, actual, [delta], [msg] )`        | Ensures that the numbers `expected` and `actual` are not within `delta` of each other.|
+| `assert_in_epsilon ( expected, actual, [epsilon], [msg] )`       | Ensures that the numbers `expected` and `actual` have a relative error less than `epsilon`.|
+| `assert_not_in_epsilon ( expected, actual, [epsilon], [msg] )`   | Ensures that the numbers `expected` and `actual` have a relative error not less than `epsilon`.|
+| `assert_throws( symbol, [msg] ) { block }`                       | Ensures that the given block throws the symbol.|
+| `assert_raises( exception1, exception2, ... ) { block }`         | Ensures that the given block raises one of the given exceptions.|
+| `assert_instance_of( class, obj, [msg] )`                        | Ensures that `obj` is an instance of `class`.|
+| `assert_not_instance_of( class, obj, [msg] )`                    | Ensures that `obj` is not an instance of `class`.|
+| `assert_kind_of( class, obj, [msg] )`                            | Ensures that `obj` is an instance of `class` or is descending from it.|
+| `assert_not_kind_of( class, obj, [msg] )`                        | Ensures that `obj` is not an instance of `class` and is not descending from it.|
+| `assert_respond_to( obj, symbol, [msg] )`                        | Ensures that `obj` responds to `symbol`.|
+| `assert_not_respond_to( obj, symbol, [msg] )`                    | Ensures that `obj` does not respond to `symbol`.|
+| `assert_operator( obj1, operator, [obj2], [msg] )`               | Ensures that `obj1.operator(obj2)` is true.|
+| `assert_not_operator( obj1, operator, [obj2], [msg] )`           | Ensures that `obj1.operator(obj2)` is false.|
+| `assert_predicate ( obj, predicate, [msg] )`                     | Ensures that `obj.predicate` is true, e.g. `assert_predicate str, :empty?`|
+| `assert_not_predicate ( obj, predicate, [msg] )`                 | Ensures that `obj.predicate` is false, e.g. `assert_not_predicate str, :empty?`|
+| `flunk( [msg] )`                                                 | Ensures failure. This is useful to explicitly mark a test that isn't finished yet.|
 
-| 断言 | 作用  |
-|---|---|
-| `assert( test, [msg] )` | 确保 `test` 是真值。  |
-| `assert_not( test, [msg] )` | 确保 `test` 是假值。  |
-| `assert_equal( expected, actual, [msg] )` | 确保 `expected == actual` 成立。  |
-| `assert_not_equal( expected, actual, [msg] )` | 确保 `expected != actual` 成立。  |
-| `assert_same( expected, actual, [msg] )` | 确保 `expected.equal?(actual)` 成立。  |
-| `assert_not_same( expected, actual, [msg] )` | 确保 `expected.equal?(actual)` 不成立。  |
-| `assert_nil( obj, [msg] )` | 确保 `obj.nil?` 成立。  |
-| `assert_not_nil( obj, [msg] )` | 确保 `obj.nil?` 不成立。  |
-| `assert_empty( obj, [msg] )` | 确保 `obj` 是空的。  |
-| `assert_not_empty( obj, [msg] )` | 确保 `obj` 不是空的。  |
-| `assert_match( regexp, string, [msg] )` | 确保字符串匹配正则表达式。  |
-| `assert_no_match( regexp, string, [msg] )` | 确保字符串不匹配正则表达式。  |
-| `assert_includes( collection, obj, [msg] )` | 确保 `obj` 在 `collection` 中。  |
-| `assert_not_includes( collection, obj, [msg] )` | 确保 `obj` 不在 `collection` 中。  |
-| `assert_in_delta( expected, actual, [delta], [msg] )` | 确保 `expected` 和 `actual` 的差值在 `delta` 的范围内。  |
-| `assert_not_in_delta( expected, actual, [delta], [msg] )` | 确保 `expected` 和 `actual` 的差值不在 `delta` 的范围内。  |
-| `assert_throws( symbol, [msg] ) { block }` | 确保指定的块会抛出指定符号表示的异常。  |
-| `assert_raises( exception1, exception2, &#8230;&#8203; ) { block }` | 确保指定块会抛出指定异常中的一个。  |
-| `assert_instance_of( class, obj, [msg] )` | 确保 `obj` 是 `class` 的实例。  |
-| `assert_not_instance_of( class, obj, [msg] )` | 确保 `obj` 不是 `class` 的实例。  |
-| `assert_kind_of( class, obj, [msg] )` | 确保 `obj` 是 `class` 或其后代的实例。  |
-| `assert_not_kind_of( class, obj, [msg] )` | 确保 `obj` 不是 `class` 或其后代的实例。  |
-| `assert_respond_to( obj, symbol, [msg] )` | 确保 `obj` 能响应 `symbol` 对应的方法。  |
-| `assert_not_respond_to( obj, symbol, [msg] )` | 确保 `obj` 不能响应 `symbol` 对应的方法。  |
-| `assert_operator( obj1, operator, [obj2], [msg] )` | 确保 `obj1.operator(obj2)` 成立。  |
-| `assert_not_operator( obj1, operator, [obj2], [msg] )` | 确保 `obj1.operator(obj2)` 不成立。  |
-| `assert_predicate( obj, predicate, [msg] )` | 确保 `obj.predicate` 为真，例如 `assert_predicate str, :empty?`。  |
-| `assert_not_predicate( obj, predicate, [msg] )` | 确保 `obj.predicate` 为假，例如 `assert_not_predicate str, :empty?`。  |
-| `flunk( [msg] )` | 确保失败。可以用这个断言明确标记未完成的测试。  |
+The above are a subset of assertions that minitest supports. For an exhaustive &
+more up-to-date list, please check
+[Minitest API documentation](http://docs.seattlerb.org/minitest/), specifically
+[`Minitest::Assertions`](http://docs.seattlerb.org/minitest/Minitest/Assertions.html).
 
-以上是 Minitest 支持的部分断言，完整且最新的列表参见 [Minitest API 文档](http://docs.seattlerb.org/minitest/)，尤其是 [`Minitest::Assertions` 模块的文档](http://docs.seattlerb.org/minitest/Minitest/Assertions.html)。
+Because of the modular nature of the testing framework, it is possible to create your own assertions. In fact, that's exactly what Rails does. It includes some specialized assertions to make your life easier.
 
-Minitest 这个测试框架是模块化的，因此还可以自己创建断言。事实上，Rails 就这么做了。Rails 提供了一些专门的断言，能简化测试。
+NOTE: Creating your own assertions is an advanced topic that we won't cover in this tutorial.
 
-NOTE: 自己创建断言是高级话题，本文不涉及。
+### Rails Specific Assertions
 
+Rails adds some custom assertions of its own to the `minitest` framework:
 
-<a class="anchor" id="rails-specific-assertions"></a>
+| Assertion                                                                         | Purpose |
+| --------------------------------------------------------------------------------- | ------- |
+| [`assert_difference(expressions, difference = 1, message = nil) {...}`](https://api.rubyonrails.org/classes/ActiveSupport/Testing/Assertions.html#method-i-assert_difference) | Test numeric difference between the return value of an expression as a result of what is evaluated in the yielded block.|
+| [`assert_no_difference(expressions, message = nil, &block)`](https://api.rubyonrails.org/classes/ActiveSupport/Testing/Assertions.html#method-i-assert_no_difference) | Asserts that the numeric result of evaluating an expression is not changed before and after invoking the passed in block.|
+| [`assert_changes(expressions, message = nil, from:, to:, &block)`](https://api.rubyonrails.org/classes/ActiveSupport/Testing/Assertions.html#method-i-assert_changes) | Test that the result of evaluating an expression is changed after invoking the passed in block.|
+| [`assert_no_changes(expressions, message = nil, &block)`](https://api.rubyonrails.org/classes/ActiveSupport/Testing/Assertions.html#method-i-assert_no_changes) | Test the result of evaluating an expression is not changed after invoking the passed in block.|
+| [`assert_nothing_raised { block }`](https://api.rubyonrails.org/classes/ActiveSupport/Testing/Assertions.html#method-i-assert_nothing_raised) | Ensures that the given block doesn't raise any exceptions.|
+| [`assert_recognizes(expected_options, path, extras={}, message=nil)`](https://api.rubyonrails.org/classes/ActionDispatch/Assertions/RoutingAssertions.html#method-i-assert_recognizes) | Asserts that the routing of the given path was handled correctly and that the parsed options (given in the expected_options hash) match path. Basically, it asserts that Rails recognizes the route given by expected_options.|
+| [`assert_generates(expected_path, options, defaults={}, extras = {}, message=nil)`](https://api.rubyonrails.org/classes/ActionDispatch/Assertions/RoutingAssertions.html#method-i-assert_generates) | Asserts that the provided options can be used to generate the provided path. This is the inverse of assert_recognizes. The extras parameter is used to tell the request the names and values of additional request parameters that would be in a query string. The message parameter allows you to specify a custom error message for assertion failures.|
+| [`assert_response(type, message = nil)`](https://api.rubyonrails.org/classes/ActionDispatch/Assertions/ResponseAssertions.html#method-i-assert_response) | Asserts that the response comes with a specific status code. You can specify `:success` to indicate 200-299, `:redirect` to indicate 300-399, `:missing` to indicate 404, or `:error` to match the 500-599 range. You can also pass an explicit status number or its symbolic equivalent. For more information, see [full list of status codes](http://rubydoc.info/github/rack/rack/master/Rack/Utils#HTTP_STATUS_CODES-constant) and how their [mapping](https://rubydoc.info/github/rack/rack/master/Rack/Utils#SYMBOL_TO_STATUS_CODE-constant) works.|
+| [`assert_redirected_to(options = {}, message=nil)`](https://api.rubyonrails.org/classes/ActionDispatch/Assertions/ResponseAssertions.html#method-i-assert_redirected_to) | Asserts that the response is a redirect to a URL matching the given options. You can also pass named routes such as `assert_redirected_to root_path` and Active Record objects such as `assert_redirected_to @article`.|
 
-### Rails 专有的断言
+You'll see the usage of some of these assertions in the next chapter.
 
-在 Minitest 框架的基础上，Rails 添加了一些自定义的断言。
+### A Brief Note About Test Cases
 
-| 断言 | 作用  |
-|---|---|
-| `assert_difference(expressions, difference = 1, message = nil) {&#8230;&#8203;}` | 运行代码块前后数量变化了多少（通过 `expression` 表示）。  |
-| `assert_no_difference(expressions, message = nil, &block)` | 运行代码块前后数量没变多少（通过 `expression` 表示）。  |
-| `assert_nothing_raised { block }` | 确保指定的块不会抛出任何异常。  |
-| `assert_recognizes(expected_options, path, extras={}, message=nil)` | 断言正确处理了指定路径，而且解析的参数（通过 `expected_options` 散列指定）与路径匹配。基本上，它断言 Rails 能识别 `expected_options` 指定的路由。  |
-| `assert_generates(expected_path, options, defaults={}, extras = {}, message=nil)` | 断言指定的选项能生成指定的路径。作用与 `assert_recognizes` 相反。`extras` 参数用于构建查询字符串。`message` 参数用于为断言失败定制错误消息。  |
-| `assert_response(type, message = nil)` | 断言响应的状态码。可以指定表示 200-299 的 `:success`，表示 300-399 的 `:redirect`，表示 404 的 `:missing`，或者表示 500-599 的 `:error`。此外，还可以明确指定数字状态码或对应的符号。详情参见[完整的状态码列表](http://rubydoc.info/github/rack/rack/master/Rack/Utils#HTTP_STATUS_CODES-constant)及其[与符号的对应关系](http://rubydoc.info/github/rack/rack/master/Rack/Utils#SYMBOL_TO_STATUS_CODE-constant)。  |
-| `assert_redirected_to(options = {}, message=nil)` | 断言传入的重定向选项匹配最近一个动作中的重定向。重定向参数可以只指定部分，例如 `assert_redirected_to(controller: "weblog")`，也可以完整指定，例如 `redirect_to(controller: "weblog", action: "show")`。此外，还可以传入具名路由，例如 `assert_redirected_to root_path`，以及 Active Record 对象，例如 `assert_redirected_to @article`。  |
+All the basic assertions such as `assert_equal` defined in `Minitest::Assertions` are also available in the classes we use in our own test cases. In fact, Rails provides the following classes for you to inherit from:
 
-在接下来的内容中会用到其中一些断言。
+* [`ActiveSupport::TestCase`](https://api.rubyonrails.org/classes/ActiveSupport/TestCase.html)
+* [`ActionMailer::TestCase`](https://api.rubyonrails.org/classes/ActionMailer/TestCase.html)
+* [`ActionView::TestCase`](https://api.rubyonrails.org/classes/ActionView/TestCase.html)
+* [`ActiveJob::TestCase`](https://api.rubyonrails.org/classes/ActiveJob/TestCase.html)
+* [`ActionDispatch::IntegrationTest`](https://api.rubyonrails.org/classes/ActionDispatch/IntegrationTest.html)
+* [`ActionDispatch::SystemTestCase`](https://api.rubyonrails.org/classes/ActionDispatch/SystemTestCase.html)
+* [`Rails::Generators::TestCase`](https://api.rubyonrails.org/classes/Rails/Generators/TestCase.html)
 
-<a class="anchor" id="a-brief-note-about-test-cases"></a>
+Each of these classes include `Minitest::Assertions`, allowing us to use all of the basic assertions in our tests.
 
-### 关于测试用例的简要说明
+NOTE: For more information on `Minitest`, refer to [its
+documentation](http://docs.seattlerb.org/minitest).
 
-`Minitest::Assertions` 模块定义的所有基本断言，例如 `assert_equal`，都可以在我们编写的测试用例中使用。Rails 提供了下述几个类供你继承：
+### The Rails Test Runner
 
-*   [`ActiveSupport::TestCase`](http://api.rubyonrails.org/classes/ActiveSupport/TestCase.html)
-*   [`ActionMailer::TestCase`](http://api.rubyonrails.org/classes/ActionMailer/TestCase.html)
-*   [`ActionView::TestCase`](http://api.rubyonrails.org/classes/ActionView/TestCase.html)
-*   [`ActionDispatch::IntegrationTest`](http://api.rubyonrails.org/classes/ActionDispatch/IntegrationTest.html)
-*   [`ActiveJob::TestCase`](http://api.rubyonrails.org/classes/ActiveJob/TestCase.html)
-*   [`ActionDispatch::SystemTestCase`](http://api.rubyonrails.org/classes/ActionDispatch/SystemTestCase.html)
+We can run all of our tests at once by using the `bin/rails test` command.
 
-这些类都引入了 `Minitest::Assertions`，因此可以在测试中使用所有基本断言。
+Or we can run a single test file by passing the `bin/rails test` command the filename containing the test cases.
 
-NOTE: Minitest 的详情参见[文档](http://docs.seattlerb.org/minitest)。
-
-
-<a class="anchor" id="the-rails-test-runner"></a>
-
-### Rails 测试运行程序
-
-全部测试可以使用 `bin/rails test` 命令统一运行。
-
-也可以单独运行一个测试，方法是把测试用例所在的文件名传给 `bin/rails test` 命令。
-
-```sh
+```bash
 $ bin/rails test test/models/article_test.rb
 Run options: --seed 1559
 
@@ -386,11 +398,12 @@ Finished in 0.027034s, 73.9810 runs/s, 110.9715 assertions/s.
 2 runs, 3 assertions, 0 failures, 0 errors, 0 skips
 ```
 
-上述命令运行测试用例中的所有测试方法。
+This will run all test methods from the test case.
 
-也可以运行测试用例中特定的测试方法：指定 `-n` 或 `--name` 旗标和测试方法的名称。
+You can also run a particular test method from the test case by providing the
+`-n` or `--name` flag and the test's method name.
 
-```sh
+```bash
 $ bin/rails test test/models/article_test.rb -n test_the_truth
 Run options: -n test_the_truth --seed 43583
 
@@ -403,32 +416,25 @@ Finished tests in 0.009064s, 110.3266 tests/s, 110.3266 assertions/s.
 1 tests, 1 assertions, 0 failures, 0 errors, 0 skips
 ```
 
-也可以运行某一行中的测试，方法是指定行号。
+You can also run a test at a specific line by providing the line number.
 
-```sh
-$ bin/rails test test/models/article_test.rb:6 # 运行某一行中的测试
+```bash
+$ bin/rails test test/models/article_test.rb:6 # run specific test and line
 ```
 
-也可以运行整个目录中的测试，方法是指定目录的路径。
+You can also run an entire directory of tests by providing the path to the directory.
 
-```sh
-$ bin/rails test test/controllers # 运行指定目录中的所有测试
+```bash
+$ bin/rails test test/controllers # run all tests from specific directory
 ```
 
-此外，测试运行程序还有很多功能，例如快速失败、测试运行结束后统一输出，等等。详情参见测试运行程序的文档，如下：
+The test runner also provides a lot of other features like failing fast, deferring test output
+at the end of test run and so on. Check the documentation of the test runner as follows:
 
-```sh
+```bash
 $ bin/rails test -h
-minitest options:
-    -h, --help                       Display this help.
-    -s, --seed SEED                  Sets random seed. Also via env. Eg: SEED=n rake
-    -v, --verbose                    Verbose. Show progress processing files.
-    -n, --name PATTERN               Filter run on /regexp/ or string.
-        --exclude PATTERN            Exclude /regexp/ or string from run.
+Usage: rails test [options] [files or directories]
 
-Known extensions: rails, pride
-
-Usage: bin/rails test [options] [files or directories]
 You can run a single test by appending a line number to a filename:
 
     bin/rails test test/models/user_test.rb:27
@@ -439,57 +445,174 @@ You can run multiple files and directories at the same time:
 
 By default test failures and errors are reported inline during a run.
 
-Rails options:
+minitest options:
+    -h, --help                       Display this help.
+        --no-plugins                 Bypass minitest plugin auto-loading (or set $MT_NO_PLUGINS).
+    -s, --seed SEED                  Sets random seed. Also via env. Eg: SEED=n rake
+    -v, --verbose                    Verbose. Show progress processing files.
+    -n, --name PATTERN               Filter run on /regexp/ or string.
+        --exclude PATTERN            Exclude /regexp/ or string from run.
+
+Known extensions: rails, pride
+    -w, --warnings                   Run with Ruby warnings enabled
     -e, --environment ENV            Run tests in the ENV environment
     -b, --backtrace                  Show the complete backtrace
     -d, --defer-output               Output test failures and errors after the test run
     -f, --fail-fast                  Abort test run on first failure or error
     -c, --[no-]color                 Enable color in the output
+    -p, --pride                      Pride. Show your testing pride!
 ```
 
-<a class="anchor" id="the-test-database"></a>
+Parallel Testing
+----------------
 
-## 测试数据库
+Parallel testing allows you to parallelize your test suite. While forking processes is the
+default method, threading is supported as well. Running tests in parallel reduces the time it
+takes your entire test suite to run.
 
-几乎每个 Rails 应用都经常与数据库交互，因此测试也需要这么做。为了有效编写测试，你要知道如何搭建测试数据库，以及如何使用示例数据填充。
+### Parallel Testing with Processes
 
-默认情况下，每个 Rails 应用都有三个环境：开发环境、测试环境和生产环境。各个环境中的数据库在 `config/database.yml` 文件中配置。
+The default parallelization method is to fork processes using Ruby's DRb system. The processes
+are forked based on the number of workers provided. The default number is the actual core count
+on the machine you are on, but can be changed by the number passed to the parallelize method.
 
-为测试专门提供一个数据库方便我们单独设置和与测试数据交互。这样，我们可以放心地处理测试数据，不必担心会破坏开发数据库或生产数据库中的数据。
+To enable parallelization add the following to your `test_helper.rb`:
 
-<a class="anchor" id="maintaining-the-test-database-schema"></a>
+```ruby
+class ActiveSupport::TestCase
+  parallelize(workers: 2)
+end
+```
 
-### 维护测试数据库的模式
+The number of workers passed is the number of times the process will be forked. You may want to
+parallelize your local test suite differently from your CI, so an environment variable is provided
+to be able to easily change the number of workers a test run should use:
 
-为了能运行测试，测试数据库要有应用当前的数据库结构。测试辅助方法会检查测试数据库中是否有尚未运行的迁移。如果有，会尝试把 `db/schema.rb` 或 `db/structure.sql` 载入数据库。之后，如果迁移仍处于待运行状态，会抛出异常。通常，这表明数据库模式没有完全迁移。在开发数据库中运行迁移（`bin/rails db:migrate`）能更新模式。
+```bash
+$ PARALLEL_WORKERS=15 bin/rails test
+```
 
-NOTE: 如果修改了现有的迁移，要重建测试数据库。方法是执行 `bin/rails db:test:prepare` 命令。
+When parallelizing tests, Active Record automatically handles creating a database and loading the schema into the database for each
+process. The databases will be suffixed with the number corresponding to the worker. For example, if you
+have 2 workers the tests will create `test-database-0` and `test-database-1` respectively.
+
+If the number of workers passed is 1 or fewer the processes will not be forked and the tests will not
+be parallelized and the tests will use the original `test-database` database.
+
+Two hooks are provided, one runs when the process is forked, and one runs before the forked process is closed.
+These can be useful if your app uses multiple databases or perform other tasks that depend on the number of
+workers.
+
+The `parallelize_setup` method is called right after the processes are forked. The `parallelize_teardown` method
+is called right before the processes are closed.
+
+```ruby
+class ActiveSupport::TestCase
+  parallelize_setup do |worker|
+    # setup databases
+  end
+
+  parallelize_teardown do |worker|
+    # cleanup databases
+  end
+
+  parallelize(workers: :number_of_processors)
+end
+```
+
+These methods are not needed or available when using parallel testing with threads.
+
+### Parallel Testing with Threads
+
+If you prefer using threads or are using JRuby, a threaded parallelization option is provided. The threaded
+parallelizer is backed by Minitest's `Parallel::Executor`.
+
+To change the parallelization method to use threads over forks put the following in your `test_helper.rb`
+
+```ruby
+class ActiveSupport::TestCase
+  parallelize(workers: :number_of_processors, with: :threads)
+end
+```
+
+Rails applications generated from JRuby or TruffleRuby will automatically include the `with: :threads` option.
+
+The number of workers passed to `parallelize` determines the number of threads the tests will use. You may
+want to parallelize your local test suite differently from your CI, so an environment variable is provided
+to be able to easily change the number of workers a test run should use:
+
+```bash
+$ PARALLEL_WORKERS=15 bin/rails test
+```
+
+### Testing Parallel Transactions
+
+Rails automatically wraps any test case in a database transaction that is rolled
+back after the test completes.  This makes test cases independent of each other
+and changes to the database are only visible within a single test.
+
+When you want to test code that runs parallel transactions in threads,
+transactions can block each other because they are already nested under the test
+transaction.
+
+You can disable transactions in a test case class by setting
+`self.use_transactional_tests = false`:
+
+```ruby
+class WorkerTest < ActiveSupport::TestCase
+  self.use_transactional_tests = false
+
+  test "parallel transactions" do
+    # start some threads that create transactions
+  end
+end
+```
+
+NOTE: With disabled transactional tests, you have to clean up any data tests
+create as changes are not automatically rolled back after the test completes.
+
+The Test Database
+-----------------
+
+Just about every Rails application interacts heavily with a database and, as a result, your tests will need a database to interact with as well. To write efficient tests, you'll need to understand how to set up this database and populate it with sample data.
+
+By default, every Rails application has three environments: development, test, and production. The database for each one of them is configured in `config/database.yml`.
+
+A dedicated test database allows you to set up and interact with test data in isolation. This way your tests can mangle test data with confidence, without worrying about the data in the development or production databases.
 
 
-<a class="anchor" id="the-low-down-on-fixtures"></a>
+### Maintaining the test database schema
 
-### 固件详解
+In order to run your tests, your test database will need to have the current
+structure. The test helper checks whether your test database has any pending
+migrations. It will try to load your `db/schema.rb` or `db/structure.sql`
+into the test database. If migrations are still pending, an error will be
+raised. Usually this indicates that your schema is not fully migrated. Running
+the migrations against the development database (`bin/rails db:migrate`) will
+bring the schema up to date.
 
-好的测试应该具有提供测试数据的方式。在 Rails 中，测试数据由固件（fixture）提供。关于固件的全面说明，参见 [API 文档](http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html)。
+NOTE: If there were modifications to existing migrations, the test database needs to
+be rebuilt. This can be done by executing `bin/rails db:test:prepare`.
 
-<a class="anchor" id="what-are-fixtures-questionmark"></a>
+### The Low-Down on Fixtures
 
-#### 固件是什么？
+For good tests, you'll need to give some thought to setting up test data.
+In Rails, you can handle this by defining and customizing fixtures.
+You can find comprehensive documentation in the [Fixtures API documentation](https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html).
 
-固件代指示例数据，在运行测试之前，使用预先定义好的数据填充测试数据库。固件与所用的数据库没有关系，使用 YAML 格式编写。一个模型有一个固件文件。
+#### What are Fixtures?
 
-NOTE: 固件不是为了创建测试中用到的每一个对象，需要公用的默认数据时才应该使用。
+_Fixtures_ is a fancy word for sample data. Fixtures allow you to populate your testing database with predefined data before your tests run. Fixtures are database independent and written in YAML. There is one file per model.
 
+NOTE: Fixtures are not designed to create every object that your tests need, and are best managed when only used for default data that can be applied to the common case.
 
-固件保存在 `test/fixtures` 目录中。执行 `rails generate model` 命令生成新模型时，Rails 会在这个目录中自动创建固件文件。
-
-<a class="anchor" id="yaml"></a>
+You'll find fixtures under your `test/fixtures` directory. When you run `bin/rails generate model` to create a new model, Rails automatically creates fixture stubs in this directory.
 
 #### YAML
 
-使用 YAML 格式编写的固件可读性高，能更好地表述示例数据。这种固件文件的扩展名是 `.yml`（如 `users.yml`）。
+YAML-formatted fixtures are a human-friendly way to describe your sample data. These types of fixtures have the **.yml** file extension (as in `users.yml`).
 
-下面举个例子：
+Here's a sample YAML fixture file:
 
 ```yaml
 # lo & behold! I am a YAML comment!
@@ -504,9 +627,11 @@ steve:
   profession: guy with keyboard
 ```
 
-每个固件都有名称，后面跟着一个缩进的键值对（以冒号分隔）列表。记录之间往往使用空行分开。在固件中可以使用注释，在行首加上 `#` 符号即可。
+Each fixture is given a name followed by an indented list of colon-separated key/value pairs. Records are typically separated by a blank line. You can place comments in a fixture file by using the # character in the first column.
 
-如果涉及到[关联](association_basics.html)，定义一个指向其他固件的引用即可。例如，下面的固件针对 `belongs_to/has_many` 关联：
+If you are working with [associations](/association_basics.html), you can
+define a reference node between two different fixtures. Here's an example with
+a `belongs_to`/`has_many` association:
 
 ```yaml
 # In fixtures/categories.yml
@@ -520,16 +645,13 @@ first:
   category: about
 ```
 
-注意，在 `fixtures/articles.yml` 文件中，`first` 文章的 `category` 是 `about`，这告诉 Rails，要加载 `fixtures/categories.yml` 文件中的 `about` 分类。
+Notice the `category` key of the `first` article found in `fixtures/articles.yml` has a value of `about`. This tells Rails to load the category `about` found in `fixtures/categories.yml`.
 
-NOTE: 在固件中创建关联时，引用的是另一个固件的名称，而不是 `id` 属性。Rails 会自动分配主键。关于这种关联行为的详情，参阅[固件的 API 文档](http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html)。
+NOTE: For associations to reference one another by name, you can use the fixture name instead of specifying the `id:` attribute on the associated fixtures. Rails will auto assign a primary key to be consistent between runs. For more information on this association behavior please read the [Fixtures API documentation](https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html).
 
+#### ERB'in It Up
 
-<a class="anchor" id="erb-in-it-up"></a>
-
-#### 使用 ERB 增强固件
-
-ERB 用于在模板中嵌入 Ruby 代码。Rails 加载 YAML 格式的固件时，会先使用 ERB 进行预处理，因此可使用 Ruby 代码协助生成示例数据。例如，下面的代码会生成一千个用户：
+ERB allows you to embed Ruby code within templates. The YAML fixture format is pre-processed with ERB when Rails loads fixtures. This allows you to use Ruby to help you generate some sample data. For example, the following code generates a thousand users:
 
 ```erb
 <% 1000.times do |n| %>
@@ -539,75 +661,73 @@ user_<%= n %>:
 <% end %>
 ```
 
-<a class="anchor" id="fixtures-in-action"></a>
+#### Fixtures in Action
 
-#### 固件实战
+Rails automatically loads all fixtures from the `test/fixtures` directory by
+default. Loading involves three steps:
 
-默认情况下，Rails 会自动加载 `test/fixtures` 目录中的所有固件。加载的过程分为三步：
+1. Remove any existing data from the table corresponding to the fixture
+2. Load the fixture data into the table
+3. Dump the fixture data into a method in case you want to access it directly
 
-1.  从数据表中删除所有和固件对应的数据；
-1.  把固件载入数据表；
-1.  把固件中的数据转储成方法，以便直接访问。
+TIP: In order to remove existing data from the database, Rails tries to disable referential integrity triggers (like foreign keys and check constraints). If you are getting annoying permission errors on running tests, make sure the database user has privilege to disable these triggers in testing environment. (In PostgreSQL, only superusers can disable all triggers. Read more about PostgreSQL permissions [here](http://blog.endpoint.com/2012/10/postgres-system-triggers-error.html)).
 
-TIP: 为了从数据库中删除现有数据，Rails 会尝试禁用引用完整性触发器（如外键和约束检查）。运行测试时，如果见到烦人的权限错误，确保数据库用户有权在测试环境中禁用这些触发器。（对 PostgreSQL 来说，只有超级用户能禁用全部触发器。关于 PostgreSQL 权限的详细说明参阅[这篇文章](http://blog.endpoint.com/2012/10/postgres-system-triggers-error.html)。）
+#### Fixtures are Active Record objects
 
-
-<a class="anchor" id="fixtures-are-active-record-objects"></a>
-
-#### 固件是 Active Record 对象
-
-固件是 Active Record 实例。如前一节的第 3 点所述，在测试用例中可以直接访问这个对象，因为固件中的数据会转储成测试用例作用域中的方法。例如：
+Fixtures are instances of Active Record. As mentioned in point #3 above, you can access the object directly because it is automatically available as a method whose scope is local of the test case. For example:
 
 ```ruby
-# 返回 david 固件对应的 User 对象
+# this will return the User object for the fixture named david
 users(:david)
 
-# 返回 david 的 id 属性
+# this will return the property for david called id
 users(:david).id
 
-# 还可以调用 User 类的方法
+# one can also access methods available on the User class
 david = users(:david)
 david.call(david.partner)
 ```
 
-如果想一次获取多个固件，可以传入一个固件名称列表。例如：
+To get multiple fixtures at once, you can pass in a list of fixture names. For example:
 
 ```ruby
-# 返回一个数组，包含 david 和 steve 两个固件
+# this will return an array containing the fixtures david and steve
 users(:david, :steve)
 ```
 
-<a class="anchor" id="model-testing"></a>
 
-## 模型测试
+Model Testing
+-------------
 
-模型测试用于测试应用中的各个模型。
+Model tests are used to test the various models of your application.
 
-Rails 模型测试存储在 `test/models` 目录中。Rails 提供了一个生成器，可用它生成模型测试骨架。
+Rails model tests are stored under the `test/models` directory. Rails provides
+a generator to create a model test skeleton for you.
 
-```sh
+```bash
 $ bin/rails generate test_unit:model article title:string body:text
 create  test/models/article_test.rb
 create  test/fixtures/articles.yml
 ```
 
-模型测试没有专门的超类（如 `ActionMailer::TestCase`），而是继承自 [`ActiveSupport::TestCase`](http://api.rubyonrails.org/classes/ActiveSupport/TestCase.html)。
+Model tests don't have their own superclass like `ActionMailer::TestCase` instead they inherit from [`ActiveSupport::TestCase`](https://api.rubyonrails.org/classes/ActiveSupport/TestCase.html).
 
-<a class="anchor" id="system-testing"></a>
+System Testing
+--------------
 
-## 系统测试
+System tests allow you to test user interactions with your application, running tests
+in either a real or a headless browser. System tests use Capybara under the hood.
 
-系统测试用于测试用户与应用的交互，可以在真正的浏览器中运行，也可以在无界面浏览器中运行。系统测试建立在 Capybara 之上。
+For creating Rails system tests, you use the `test/system` directory in your
+application. Rails provides a generator to create a system test skeleton for you.
 
-系统测试存放在应用的 `test/system` 目录中。Rails 为创建系统测试骨架提供了一个生成器：
-
-```sh
+```bash
 $ bin/rails generate system_test users
       invoke test_unit
       create test/system/users_test.rb
 ```
 
-下面是一个新生成的系统测试：
+Here's what a freshly generated system test looks like:
 
 ```ruby
 require "application_system_test_case"
@@ -621,17 +741,23 @@ class UsersTest < ApplicationSystemTestCase
 end
 ```
 
-默认情况下，系统测试使用 Selenium 驱动在 Chrome 浏览器中运行，界面尺寸为 1400x1400。下一节说明如何修改默认设置。
+By default, system tests are run with the Selenium driver, using the Chrome
+browser, and a screen size of 1400x1400. The next section explains how to
+change the default settings.
 
-<a class="anchor" id="changing-the-default-settings"></a>
+### Changing the default settings
 
-### 修改默认设置
+Rails makes changing the default settings for system tests very simple. All
+the setup is abstracted away so you can focus on writing your tests.
 
-修改系统测试的默认设置十分简单。所有配置都做了抽象，你只需关注测试本身。
+When you generate a new application or scaffold, an `application_system_test_case.rb` file
+is created in the test directory. This is where all the configuration for your
+system tests should live.
 
-创建新应用或生成脚手架时，会在 `test` 目录中创建 `application_system_test_case.rb` 文件。系统测试的配置都在这个文件中。
-
-如果想修改默认设置，只需修改系统测试使用的驱动。假如你想把 Selenium 驱动换成 Poltergeist。首先，在 `Gemfile` 中添加 Poltergeist gem。然后，在 `application_system_test_case.rb` 文件中这么做：
+If you want to change the default settings you can change what the system
+tests are "driven by". Say you want to change the driver from Selenium to
+Poltergeist. First add the `poltergeist` gem to your `Gemfile`. Then in your
+`application_system_test_case.rb` file do the following:
 
 ```ruby
 require "test_helper"
@@ -642,7 +768,11 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
 end
 ```
 
-驱动名称是 `driven_by` 必须的参数。`driven_by` 接受的可选参数有：`:using`，指定使用的浏览器（仅供 Selenium 使用）；`:screen_size`，修改截图的尺寸；`:options`，设定驱动支持的选项。
+The driver name is a required argument for `driven_by`. The optional arguments
+that can be passed to `driven_by` are `:using` for the browser (this will only
+be used by Selenium), `:screen_size` to change the size of the screen for
+screenshots, and `:options` which can be used to set options supported by the
+driver.
 
 ```ruby
 require "test_helper"
@@ -652,40 +782,59 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
 end
 ```
 
-如果所需的 Capybara 配置比 Rails 提供的多，可以把额外配置放在 `application_system_test_case.rb` 文件中。
+If you want to use a headless browser, you could use Headless Chrome or Headless Firefox by adding
+`headless_chrome` or `headless_firefox` in the `:using` argument.
 
-其他设置参见 [Capybara 的文档](https://github.com/teamcapybara/capybara#setup)。
+```ruby
+require "test_helper"
 
-<a class="anchor" id="screenshot-helper"></a>
+class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
+  driven_by :selenium, using: :headless_chrome
+end
+```
 
-### 截图辅助方法
+If your Capybara configuration requires more setup than provided by Rails, this
+additional configuration could be added into the `application_system_test_case.rb`
+file.
 
-`ScreenshotHelper` 用于截取测试的截图。这有助于查看测试失败时的界面，或者以后通过截图调试。
+Please see [Capybara's documentation](https://github.com/teamcapybara/capybara#setup)
+for additional settings.
 
-这个模块提供了两个方法：`take_screenshot` 和 `take_failed_screenshot`。Rails 在 `after_teardown` 中调用了 `take_failed_screenshot`。
+### Screenshot Helper
 
-`take_screenshot` 辅助方法可以放在测试的任何位置，用于捕获浏览器的截图。
+The `ScreenshotHelper` is a helper designed to capture screenshots of your tests.
+This can be helpful for viewing the browser at the point a test failed, or
+to view screenshots later for debugging.
 
-<a class="anchor" id="implementing-a-system-test"></a>
+Two methods are provided: `take_screenshot` and `take_failed_screenshot`.
+`take_failed_screenshot` is automatically included in `before_teardown` inside
+Rails.
 
-### 编写系统测试
+The `take_screenshot` helper method can be included anywhere in your tests to
+take a screenshot of the browser.
 
-下面我们为前面开发的博客应用添加一个系统测试。这个系统测试访问首页，然后新建一篇博客文章。
+### Implementing a System Test
 
-如果使用的是脚手架生成器，已经自动创建了系统测试骨架。否则，先生成系统测试骨架：
+Now we're going to add a system test to our blog application. We'll demonstrate
+writing a system test by visiting the index page and creating a new blog article.
 
-```sh
+If you used the scaffold generator, a system test skeleton was automatically
+created for you. If you didn't use the scaffold generator, start by creating a
+system test skeleton.
+
+```bash
 $ bin/rails generate system_test articles
 ```
 
-这个命令会为你创建一个测试文件，在命令行中的输出如下：
+It should have created a test file placeholder for us. With the output of the
+previous command you should see:
 
 ```
-invoke  test_unit
-create    test/system/articles_test.rb
+      invoke  test_unit
+      create    test/system/articles_test.rb
 ```
 
-打开那个文件，编写第一个断言：
+Now let's open that file and write our first assertion:
 
 ```ruby
 require "application_system_test_case"
@@ -698,21 +847,21 @@ class ArticlesTest < ApplicationSystemTestCase
 end
 ```
 
-如果这个测试在文章索引页面发现有一级标题，便能通过。
+The test should see that there is an `h1` on the articles index page and pass.
 
-运行系统测试：
+Run the system tests.
 
-```sh
+```bash
 $ bin/rails test:system
 ```
 
-NOTE: 如果只运行 `bin/rails test`，系统测试不会运行。若想运行系统测试，必须使用 `bin/rails test:system`。
+NOTE: By default, running `bin/rails test` won't run your system tests.
+Make sure to run `bin/rails test:system` to actually run them.
+You can also run `bin/rails test:all` to run all tests, including system tests.
 
-<a class="anchor" id="creating-articles-system-test"></a>
+#### Creating Articles System Test
 
-#### 编写新建文章的系统测试
-
-下面测试在博客中新建文章的流程。
+Now let's test the flow for creating a new article in our blog.
 
 ```ruby
 test "creating an article" do
@@ -729,38 +878,73 @@ test "creating an article" do
 end
 ```
 
-首先，调用 `visit` 访问 `articles_path`，进入文章索引页面。
+The first step is to call `visit articles_path`. This will take the test to the
+articles index page.
 
-然后，`click_on "New Article"` 在索引页面上找到“New Article”按钮，转到 `/articles/new` 页面。
+Then the `click_on "New Article"` will find the "New Article" button on the
+index page. This will redirect the browser to `/articles/new`.
 
-接着，测试在标题和正文框中填入指定的文本。填完之后，点击“Create Article”，发送 POST 请求，在数据库中新建一篇文章。
+Then the test will fill in the title and body of the article with the specified
+text. Once the fields are filled in, "Create Article" is clicked on which will
+send a POST request to create the new article in the database.
 
-此时会重定向回到文章索引页面，我们再断言页面中有那篇文章的标题。
+We will be redirected back to the articles index page and there we assert
+that the text from the new article's title is on the articles index page.
 
-<a class="anchor" id="implementing-a-system-test-taking-it-further"></a>
+#### Testing for multiple screen sizes
+If you want to test for mobile sizes on top of testing for desktop,
+you can create another class that inherits from SystemTestCase and use in your
+test suite. In this example a file called `mobile_system_test_case.rb` is created
+in the `/test` directory with the following configuration.
 
-#### 继续测试
+```ruby
+require "test_helper"
 
-系统测试与集成测试类似，可以测试用户与控制器、模型和视图的交互，但是系统测试更强健，能模拟用户使用应用的真实过程。你可以继续测试，测试用户在应用中可能执行的任何操作，例如发表评论、删除文章、发布草稿，等等。
+class MobileSystemTestCase < ActionDispatch::SystemTestCase
+  driven_by :selenium, using: :chrome, screen_size: [375, 667]
+end
+```
+To use this configuration, create a test inside `test/system` that inherits from `MobileSystemTestCase`.
+Now you can test your app using multiple different configurations.
 
-<a class="anchor" id="integration-testing"></a>
+```ruby
+require "mobile_system_test_case"
 
-## 集成测试
+class PostsTest < MobileSystemTestCase
 
-集成测试用于测试应用中不同部分之间的交互，一般用于测试应用中重要的工作流程。
+  test "visiting the index" do
+    visit posts_url
+    assert_selector "h1", text: "Posts"
+  end
+end
+```
 
-集成测试存储在 `test/integration` 目录中。Rails 提供了一个生成器，使用它可以生成集成测试骨架。
+#### Taking it further
 
-```sh
+The beauty of system testing is that it is similar to integration testing in
+that it tests the user's interaction with your controller, model, and view, but
+system testing is much more robust and actually tests your application as if
+a real user were using it. Going forward, you can test anything that the user
+themselves would do in your application such as commenting, deleting articles,
+publishing draft articles, etc.
+
+Integration Testing
+-------------------
+
+Integration tests are used to test how various parts of your application interact. They are generally used to test important workflows within our application.
+
+For creating Rails integration tests, we use the `test/integration` directory for our application. Rails provides a generator to create an integration test skeleton for us.
+
+```bash
 $ bin/rails generate integration_test user_flows
       exists  test/integration/
       create  test/integration/user_flows_test.rb
 ```
 
-上述命令生成的集成测试如下：
+Here's what a freshly generated integration test looks like:
 
 ```ruby
-require 'test_helper'
+require "test_helper"
 
 class UserFlowsTest < ActionDispatch::IntegrationTest
   # test "the truth" do
@@ -769,43 +953,40 @@ class UserFlowsTest < ActionDispatch::IntegrationTest
 end
 ```
 
-这个测试继承自 `ActionDispatch::IntegrationTest` 类，因此可以在集成测试中使用一些额外的辅助方法。
+Here the test is inheriting from `ActionDispatch::IntegrationTest`. This makes some additional helpers available for us to use in our integration tests.
 
-<a class="anchor" id="helpers-available-for-integration-tests"></a>
+### Helpers Available for Integration Tests
 
-### 集成测试可用的辅助方法
+In addition to the standard testing helpers, inheriting from `ActionDispatch::IntegrationTest` comes with some additional helpers available when writing integration tests. Let's get briefly introduced to the three categories of helpers we get to choose from.
 
-除了标准的测试辅助方法之外，由于集成测试继承自 `ActionDispatch::IntegrationTest`，因此在集成测试中还可使用一些额外的辅助方法。下面简要介绍三类辅助方法。
+For dealing with the integration test runner, see [`ActionDispatch::Integration::Runner`](https://api.rubyonrails.org/classes/ActionDispatch/Integration/Runner.html).
 
-集成测试运行程序的说明参阅 [`ActionDispatch::Integration::Runner` 模块的文档](http://api.rubyonrails.org/classes/ActionDispatch/Integration/Runner.html)。
+When performing requests, we will have [`ActionDispatch::Integration::RequestHelpers`](https://api.rubyonrails.org/classes/ActionDispatch/Integration/RequestHelpers.html) available for our use.
 
-执行请求的方法参见 [`ActionDispatch::Integration::RequestHelpers` 模块的文档](http://api.rubyonrails.org/classes/ActionDispatch/Integration/RequestHelpers.html)。
+If we need to modify the session, or state of our integration test, take a look at [`ActionDispatch::Integration::Session`](https://api.rubyonrails.org/classes/ActionDispatch/Integration/Session.html) to help.
 
-如果需要修改会话或集成测试的状态，参阅 [`ActionDispatch::Integration::Session` 类的文档](http://api.rubyonrails.org/classes/ActionDispatch/Integration/Session.html)。
+### Implementing an integration test
 
-<a class="anchor" id="implementing-an-integration-test"></a>
+Let's add an integration test to our blog application. We'll start with a basic workflow of creating a new blog article, to verify that everything is working properly.
 
-### 编写一个集成测试
+We'll start by generating our integration test skeleton:
 
-下面为博客应用添加一个集成测试。我们将执行基本的工作流程，新建一篇博客文章，确认一切都能正常运作。
-
-首先，生成集成测试骨架：
-
-```sh
+```bash
 $ bin/rails generate integration_test blog_flow
 ```
 
-这个命令会创建一个测试文件。在上述命令的输出中应该看到：
+It should have created a test file placeholder for us. With the output of the
+previous command we should see:
 
 ```
-invoke  test_unit
-create    test/integration/blog_flow_test.rb
+      invoke  test_unit
+      create    test/integration/blog_flow_test.rb
 ```
 
-打开那个文件，编写第一个断言：
+Now let's open that file and write our first assertion:
 
 ```ruby
-require 'test_helper'
+require "test_helper"
 
 class BlogFlowTest < ActionDispatch::IntegrationTest
   test "can see the welcome page" do
@@ -815,15 +996,13 @@ class BlogFlowTest < ActionDispatch::IntegrationTest
 end
 ```
 
-`assert_select` 用于查询请求得到的 HTML，[测试视图](#testing-views)说明。我们使用它测试请求的响应：断言响应的内容中有关键的 HTML 元素。
+We will take a look at `assert_select` to query the resulting HTML of a request in the "Testing Views" section below. It is used for testing the response of our request by asserting the presence of key HTML elements and their content.
 
-访问根路径时，应该使用 `welcome/index.html.erb` 渲染视图。因此，这个断言应该通过。
+When we visit our root path, we should see `welcome/index.html.erb` rendered for the view. So this assertion should pass.
 
-<a class="anchor" id="creating-articles-integration"></a>
+#### Creating articles integration
 
-#### 测试发布文章的流程
-
-下面测试在博客中新建文章以及查看结果的功能。
+How about testing our ability to create a new article in our blog and see the resulting article.
 
 ```ruby
 test "can create an article" do
@@ -839,11 +1018,11 @@ test "can create an article" do
 end
 ```
 
-我们来分析一下这段测试。
+Let's break this test down so we can understand it.
 
-首先，我们调用 `Articles` 控制器的 `new` 动作。应该得到成功的响应。
+We start by calling the `:new` action on our Articles controller. This response should be successful.
 
-然后，我们向 `Articles` 控制器的 `create` 动作发送 `POST` 请求：
+After this we make a post request to the `:create` action of our Articles controller:
 
 ```ruby
 post "/articles",
@@ -852,40 +1031,35 @@ assert_response :redirect
 follow_redirect!
 ```
 
-请求后面两行的作用是处理创建文章后的重定向。
+The two lines following the request are to handle the redirect we setup when creating a new article.
 
-NOTE: 重定向后如果还想发送请求，别忘了调用 `follow_redirect!`。
+NOTE: Don't forget to call `follow_redirect!` if you plan to make subsequent requests after a redirect is made.
+
+Finally we can assert that our response was successful and our new article is readable on the page.
+
+#### Taking it further
+
+We were able to successfully test a very small workflow for visiting our blog and creating a new article. If we wanted to take this further we could add tests for commenting, removing articles, or editing comments. Integration tests are a great place to experiment with all kinds of use cases for our applications.
 
 
-最后，我们断言得到的是成功的响应，而且页面中显示了新建的文章。
+Functional Tests for Your Controllers
+-------------------------------------
 
-<a class="anchor" id="taking-it-further"></a>
+In Rails, testing the various actions of a controller is a form of writing functional tests. Remember your controllers handle the incoming web requests to your application and eventually respond with a rendered view. When writing functional tests, you are testing how your actions handle the requests and the expected result or response, in some cases an HTML view.
 
-#### 更进一步
+### What to include in your Functional Tests
 
-我们刚刚测试了访问博客和新建文章功能，这只是工作流程的一小部分。如果想更进一步，还可以测试评论、删除文章或编辑评论。集成测试就是用来检查应用的各种使用场景的。
+You should test for things such as:
 
-<a class="anchor" id="functional-tests-for-your-controllers"></a>
+* was the web request successful?
+* was the user redirected to the right page?
+* was the user successfully authenticated?
+* was the appropriate message displayed to the user in the view?
+* was the correct information displayed in the response?
 
-## 为控制器编写功能测试
+The easiest way to see functional tests in action is to generate a controller using the scaffold generator:
 
-在 Rails 中，测试控制器各动作需要编写功能测试（functional test）。控制器负责处理应用收到的请求，然后使用视图渲染响应。功能测试用于检查动作对请求的处理，以及得到的结果或响应（某些情况下是 HTML 视图）。
-
-<a class="anchor" id="what-to-include-in-your-functional-tests"></a>
-
-### 功能测试要测试什么
-
-应该测试以下内容：
-
-*   请求是否成功；
-*   是否重定向到正确的页面；
-*   用户是否通过身份验证；
-*   是否把正确的对象传给渲染响应的模板；
-*   是否在视图中显示相应的消息；
-
-如果想看一下真实的功能测试，最简单的方法是使用脚手架生成器生成一个控制器：
-
-```sh
+```bash
 $ bin/rails generate scaffold_controller article title:string body:text
 ...
 create  app/controllers/articles_controller.rb
@@ -895,19 +1069,21 @@ create    test/controllers/articles_controller_test.rb
 ...
 ```
 
-上述命令会为 `Articles` 资源生成控制器和测试。你可以看一下 `test/controllers` 目录中的 `articles_controller_test.rb` 文件。
+This will generate the controller code and tests for an `Article` resource.
+You can take a look at the file `articles_controller_test.rb` in the `test/controllers` directory.
 
-如果已经有了控制器，只想为默认的七个动作生成测试代码的话，可以使用下述命令：
+If you already have a controller and just want to generate the test scaffold code for
+each of the seven default actions, you can use the following command:
 
-```sh
+```bash
 $ bin/rails generate test_unit:scaffold article
 ...
 invoke  test_unit
-create test/controllers/articles_controller_test.rb
+create    test/controllers/articles_controller_test.rb
 ...
 ```
 
-下面分析一个功能测试：`articles_controller_test.rb` 文件中的 `test_should_get_index`。
+Let's take a look at one such test, `test_should_get_index` from the file `articles_controller_test.rb`.
 
 ```ruby
 # articles_controller_test.rb
@@ -919,101 +1095,102 @@ class ArticlesControllerTest < ActionDispatch::IntegrationTest
 end
 ```
 
-在 `test_should_get_index` 测试中，Rails 模拟了一个发给 `index` 动作的请求，确保请求成功，而且生成了正确的响应主体。
+In the `test_should_get_index` test, Rails simulates a request on the action called `index`, making sure the request was successful
+and also ensuring that the right response body has been generated.
 
-`get` 方法发起请求，并把结果传入响应中。这个方法可接受 6 个参数：
+The `get` method kicks off the web request and populates the results into the `@response`. It can accept up to 6 arguments:
 
-*   所请求控制器的动作，可使用字符串或符号。
-*   `params`：一个选项散列，指定传入动作的请求参数（例如，查询字符串参数或文章变量）。
-*   `headers`：设定随请求发送的首部。
-*   `env`：按需定制请求环境。
-*   `xhr`：指明是不是 Ajax 请求；设为 `true` 表示是 Ajax 请求。
-*   `as`：使用其他内容类型编码请求；默认支持 `:json`。
+* The URI of the controller action you are requesting.
+  This can be in the form of a string or a route helper (e.g. `articles_url`).
+* `params`: option with a hash of request parameters to pass into the action
+  (e.g. query string parameters or article variables).
+* `headers`: for setting the headers that will be passed with the request.
+* `env`: for customizing the request environment as needed.
+* `xhr`: whether the request is Ajax request or not. Can be set to true for marking the request as Ajax.
+* `as`: for encoding the request with different content type.
 
-所有关键字参数都是可选的。
+All of these keyword arguments are optional.
 
-举个例子。调用 `:show` 动作，把 `params` 中的 `id` 设为 12，并且设定 `HTTP_REFERER` 首部：
-
-```ruby
-get :show, params: { id: 12 }, headers: { "HTTP_REFERER" => "http://example.com/home" }
-```
-
-再举个例子。调用 `:update` 动作，把 `params` 中的 `id` 设为 12，并且指明是 Ajax 请求：
+Example: Calling the `:show` action for the first `Article`, passing in an `HTTP_REFERER` header:
 
 ```ruby
-patch update_url, params: { id: 12 }, xhr: true
+get article_url(Article.first), headers: { "HTTP_REFERER" => "http://example.com/home" }
 ```
 
-NOTE: 如果现在运行 `articles_controller_test.rb` 文件中的 `test_should_create_article` 测试，它会失败，因为前文添加了模型层验证。
+Another example: Calling the `:update` action for the last `Article`, passing in new text for the `title` in `params`, as an Ajax request:
 
+```ruby
+patch article_url(Article.last), params: { article: { title: "updated" } }, xhr: true
+```
 
-我们来修改 `articles_controller_test.rb` 文件中的 `test_should_create_article` 测试，让所有测试都通过：
+One more example: Calling the `:create` action to create a new article, passing in
+text for the `title` in `params`, as JSON request:
+
+```ruby
+post articles_path, params: { article: { title: "Ahoy!" } }, as: :json
+```
+
+NOTE: If you try running `test_should_create_article` test from `articles_controller_test.rb` it will fail on account of the newly added model level validation and rightly so.
+
+Let us modify `test_should_create_article` test in `articles_controller_test.rb` so that all our test pass:
 
 ```ruby
 test "should create article" do
-  assert_difference('Article.count') do
-    post articles_url, params: { article: { body: 'Rails is awesome!', title: 'Hello Rails' } }
+  assert_difference("Article.count") do
+    post articles_url, params: { article: { body: "Rails is awesome!", title: "Hello Rails" } }
   end
 
   assert_redirected_to article_path(Article.last)
 end
 ```
 
-现在你可以运行所有测试，应该都能通过。
+Now you can try running all the tests and they should pass.
 
-NOTE: 如果你按照 [基本身份验证](getting_started.html#basic-authentication)的操作做了，要在 `setup` 块中添加下述代码，这样测试才能全部通过：
+NOTE: If you followed the steps in the [Basic Authentication](getting_started.html#basic-authentication) section, you'll need to add authorization to every request header to get all the tests passing:
 
 ```ruby
-request.headers['Authorization'] = ActionController::HttpAuthentication::Basic.
-  encode_credentials('dhh', 'secret')
+post articles_url, params: { article: { body: "Rails is awesome!", title: "Hello Rails" } }, headers: { Authorization: ActionController::HttpAuthentication::Basic.encode_credentials("dhh", "secret") }
 ```
 
+### Available Request Types for Functional Tests
 
-<a class="anchor" id="available-request-types-for-functional-tests"></a>
+If you're familiar with the HTTP protocol, you'll know that `get` is a type of request. There are 6 request types supported in Rails functional tests:
 
-### 功能测试中可用的请求类型
+* `get`
+* `post`
+* `patch`
+* `put`
+* `head`
+* `delete`
 
-如果熟悉 HTTP 协议就会知道，`get` 是请求的一种类型。在 Rails 功能测试中可以使用 6 种请求：
+All of request types have equivalent methods that you can use. In a typical C.R.U.D. application you'll be using `get`, `post`, `put`, and `delete` more often.
 
-*   `get`
-*   `post`
-*   `patch`
-*   `put`
-*   `head`
-*   `delete`
+NOTE: Functional tests do not verify whether the specified request type is accepted by the action, we're more concerned with the result. Request tests exist for this use case to make your tests more purposeful.
 
-这几种请求都有相应的方法可用。在常规的 CRUD 应用中，最常使用 `get`、`post`、`put` 和 `delete`。
+### Testing XHR (AJAX) requests
 
-NOTE: 功能测试不检测动作是否能接受指定类型的请求，而是关注请求的结果。如果想做这样的测试，应该使用请求测试（request test）。
-
-
-<a class="anchor" id="testing-xhr-ajax-requests"></a>
-
-### 测试 XHR（Ajax）请求
-
-如果想测试 Ajax 请求，要在 `get`、`post`、`patch`、`put` 或 `delete` 方法中设定 `xhr: true` 选项。例如：
+To test AJAX requests, you can specify the `xhr: true` option to `get`, `post`,
+`patch`, `put`, and `delete` methods. For example:
 
 ```ruby
 test "ajax request" do
   article = articles(:one)
   get article_url(article), xhr: true
 
-  assert_equal 'hello world', @response.body
-  assert_equal "text/javascript", @response.content_type
+  assert_equal "hello world", @response.body
+  assert_equal "text/javascript", @response.media_type
 end
 ```
 
-<a class="anchor" id="the-three-hashes-of-the-apocalypse"></a>
+### The Three Hashes of the Apocalypse
 
-### 可用的三个散列
+After a request has been made and processed, you will have 3 Hash objects ready for use:
 
-请求发送并处理之后，有三个散列对象可供我们使用：
+* `cookies` - Any cookies that are set
+* `flash` - Any objects living in the flash
+* `session` - Any object living in session variables
 
-*   `cookies`：设定的 cookie
-*   `flash`：闪现消息中的对象
-*   `session`：会话中的对象
-
-和普通的散列对象一样，可以使用字符串形式的键获取相应的值。此外，也可以使用符号形式的键。例如：
+As is the case with normal Hash objects, you can access the values by referencing the keys by string. You can also reference them by symbol name. For example:
 
 ```ruby
 flash["gordon"]               flash[:gordon]
@@ -1021,15 +1198,14 @@ session["shmession"]          session[:shmession]
 cookies["are_good_for_u"]     cookies[:are_good_for_u]
 ```
 
-<a class="anchor" id="instance-variables-available"></a>
+### Instance Variables Available
 
-### 可用的实例变量
+You also have access to three instance variables in your functional tests, after a request is made:
 
-在功能测试中，发送请求之后还可以使用下面三个实例变量：
+* `@controller` - The controller processing the request
+* `@request` - The request object
+* `@response` - The response object
 
-*   `@controller`：处理请求的控制器
-*   `@request`：请求对象
-*   `@response`：响应对象
 
 ```ruby
 class ArticlesControllerTest < ActionDispatch::IntegrationTest
@@ -1043,44 +1219,44 @@ class ArticlesControllerTest < ActionDispatch::IntegrationTest
 end
 ```
 
-<a class="anchor" id="setting-headers-and-cgi-variables"></a>
+### Setting Headers and CGI variables
 
-### 设定首部和 CGI 变量
-
-[HTTP 首部](http://tools.ietf.org/search/rfc2616#section-5.3) 和 [CGI 变量](http://tools.ietf.org/search/rfc3875#section-4.1)可以通过 `headers` 参数传入：
+[HTTP headers](https://tools.ietf.org/search/rfc2616#section-5.3)
+and
+[CGI variables](https://tools.ietf.org/search/rfc3875#section-4.1)
+can be passed as headers:
 
 ```ruby
-# 设定一个 HTTP 首部
-get articles_url, headers: { "Content-Type": "text/plain" } # 模拟有自定义首部的请求
+# setting an HTTP Header
+get articles_url, headers: { "Content-Type": "text/plain" } # simulate the request with custom header
 
-# 设定一个 CGI 变量
-get articles_url, headers: { "HTTP_REFERER": "http://example.com/home" } # 模拟有自定义环境变量的请求
+# setting a CGI variable
+get articles_url, headers: { "HTTP_REFERER": "http://example.com/home" } # simulate the request with custom env variable
 ```
 
-<a class="anchor" id="testing-flash-notices"></a>
+### Testing `flash` notices
 
-### 测试闪现消息
+If you remember from earlier, one of the Three Hashes of the Apocalypse was `flash`.
 
-你可能还记得，在功能测试中可用的三个散列中有一个是 `flash`。
+We want to add a `flash` message to our blog application whenever someone
+successfully creates a new Article.
 
-我们想在这个博客应用中添加一个闪现消息，在成功发布新文章之后显示。
-
-首先，在 `test_should_create_article` 测试中添加一个断言：
+Let's start by adding this assertion to our `test_should_create_article` test:
 
 ```ruby
 test "should create article" do
-  assert_difference('Article.count') do
-    post article_url, params: { article: { title: 'Some title' } }
+  assert_difference("Article.count") do
+    post articles_url, params: { article: { title: "Some title" } }
   end
 
   assert_redirected_to article_path(Article.last)
-  assert_equal 'Article was successfully created.', flash[:notice]
+  assert_equal "Article was successfully created.", flash[:notice]
 end
 ```
 
-现在运行测试，应该会看到有一个测试失败：
+If we run our test now, we should see a failure:
 
-```sh
+```bash
 $ bin/rails test test/controllers/articles_controller_test.rb -n test_should_create_article
 Run options: -n test_should_create_article --seed 32266
 
@@ -1101,24 +1277,24 @@ ArticlesControllerTest#test_should_create_article [/test/controllers/articles_co
 1 runs, 4 assertions, 1 failures, 0 errors, 0 skips
 ```
 
-接下来，在控制器中添加闪现消息。现在，`create` 控制器应该是下面这样：
+Let's implement the flash message now in our controller. Our `:create` action should now look like this:
 
 ```ruby
 def create
   @article = Article.new(article_params)
 
   if @article.save
-    flash[:notice] = 'Article was successfully created.'
+    flash[:notice] = "Article was successfully created."
     redirect_to @article
   else
-    render 'new'
+    render "new"
   end
 end
 ```
 
-再运行测试，应该能通过：
+Now if we run our tests, we should see it pass:
 
-```sh
+```bash
 $ bin/rails test test/controllers/articles_controller_test.rb -n test_should_create_article
 Run options: -n test_should_create_article --seed 18981
 
@@ -1131,13 +1307,11 @@ Finished in 0.081972s, 12.1993 runs/s, 48.7972 assertions/s.
 1 runs, 4 assertions, 0 failures, 0 errors, 0 skips
 ```
 
-<a class="anchor" id="putting-it-together"></a>
+### Putting it together
 
-### 测试其他动作
+At this point our Articles controller tests the `:index` as well as `:new` and `:create` actions. What about dealing with existing data?
 
-至此，我们测试了 `Articles` 控制器的 `index`、`new` 和 `create` 三个动作。那么，怎么处理现有数据呢？
-
-下面为 `show` 动作编写一个测试：
+Let's write a test for the `:show` action:
 
 ```ruby
 test "should show article" do
@@ -1147,14 +1321,14 @@ test "should show article" do
 end
 ```
 
-还记得前文对固件的讨论吗？我们可以使用 `articles()` 方法访问 `Articles` 固件。
+Remember from our discussion earlier on fixtures, the `articles()` method will give us access to our Articles fixtures.
 
-怎么删除现有的文章呢？
+How about deleting an existing Article?
 
 ```ruby
 test "should destroy article" do
   article = articles(:one)
-  assert_difference('Article.count', -1) do
+  assert_difference("Article.count", -1) do
     delete article_url(article)
   end
 
@@ -1162,7 +1336,7 @@ test "should destroy article" do
 end
 ```
 
-我们还可以为更新现有文章这一操作编写一个测试。
+We can also add a test for updating an existing Article.
 
 ```ruby
 test "should update article" do
@@ -1171,39 +1345,39 @@ test "should update article" do
   patch article_url(article), params: { article: { title: "updated" } }
 
   assert_redirected_to article_path(article)
-  # 重新加载关联，获取最新的数据，然后断定标题更新了
+  # Reload association to fetch updated data and assert that title is updated.
   article.reload
   assert_equal "updated", article.title
 end
 ```
 
-可以看到，这三个测试中开始有重复了：都访问了同一个文章固件数据。为了避免自我重复，我们可以使用 `ActiveSupport::Callbacks` 提供的 `setup` 和 `teardown` 方法清理。
+Notice we're starting to see some duplication in these three tests, they both access the same Article fixture data. We can D.R.Y. this up by using the `setup` and `teardown` methods provided by `ActiveSupport::Callbacks`.
 
-清理后的测试如下。为了行为简洁，我们暂且不管其他测试。
+Our test should now look something as what follows. Disregard the other tests for now, we're leaving them out for brevity.
 
 ```ruby
-require 'test_helper'
+require "test_helper"
 
 class ArticlesControllerTest < ActionDispatch::IntegrationTest
-  # 在各个测试之前调用
+  # called before every single test
   setup do
     @article = articles(:one)
   end
 
-  # 在各个测试之后调用
+  # called after every single test
   teardown do
-    # 如果控制器使用缓存，最好在后面重设
+    # when controller is using cache it may be a good idea to reset it afterwards
     Rails.cache.clear
   end
 
   test "should show article" do
-    # 复用 setup 中定义的 @article 实例变量
+    # Reuse the @article instance variable from setup
     get article_url(@article)
     assert_response :success
   end
 
   test "should destroy article" do
-    assert_difference('Article.count', -1) do
+    assert_difference("Article.count", -1) do
       delete article_url(@article)
     end
 
@@ -1214,20 +1388,19 @@ class ArticlesControllerTest < ActionDispatch::IntegrationTest
     patch article_url(@article), params: { article: { title: "updated" } }
 
     assert_redirected_to article_path(@article)
-    # 重新加载关联，获取最新的数据，然后断定标题更新了
+    # Reload association to fetch updated data and assert that title is updated.
     @article.reload
     assert_equal "updated", @article.title
   end
 end
 ```
 
-与 Rails 中的其他回调一样，`setup` 和 `teardown` 也接受块、lambda 或符号形式的方法名。
+Similar to other callbacks in Rails, the `setup` and `teardown` methods can also be used by passing a block, lambda, or method name as a symbol to call.
 
-<a class="anchor" id="test-helpers"></a>
+### Test helpers
 
-### 测试辅助方法
-
-为了避免代码重复，可以自定义测试辅助方法。下面实现用于登录的辅助方法：
+To avoid code duplication, you can add your own test helpers.
+Sign in helper can be a good example:
 
 ```ruby
 # test/test_helper.rb
@@ -1244,12 +1417,12 @@ end
 ```
 
 ```ruby
-require 'test_helper'
+require "test_helper"
 
 class ProfileControllerTest < ActionDispatch::IntegrationTest
 
   test "should show profile" do
-    # 辅助方法在任何控制器测试用例中都可用
+    # helper is now reusable from any controller test case
     sign_in_as users(:david)
 
     get profile_url
@@ -1258,48 +1431,97 @@ class ProfileControllerTest < ActionDispatch::IntegrationTest
 end
 ```
 
-<a class="anchor" id="testing-routes"></a>
+#### Using Separate Files
 
-## 测试路由
-
-与 Rails 应用中其他各方面内容一样，路由也可以测试。路由测试存放在 `test/controllers/` 目录中，或者与控制器测试写在一起。
-
-NOTE: 应用的路由复杂也不怕，Rails 提供了很多有用的测试辅助方法。
-
-
-关于 Rails 中可用的路由断言，参见 [`ActionDispatch::Assertions::RoutingAssertions` 模块的 API 文档](http://api.rubyonrails.org/classes/ActionDispatch/Assertions/RoutingAssertions.html)。
-
-<a class="anchor" id="testing-views"></a>
-
-## 测试视图
-
-测试请求的响应中是否出现关键的 HTML 元素和相应的内容是测试应用视图的一种常见方式。与路由测试一样，视图测试放在 `test/controllers/` 目录中，或者直接写在控制器测试中。`assert_select` 方法用于查询响应中的 HTML 元素，其句法简单而强大。
-
-`assert_select` 有两种形式。
-
-`assert_select(selector, [equality], [message])` 测试 `selector` 选中的元素是否符合 `equality` 指定的条件。`selector` 可以是 CSS 选择符表达式（字符串），或者是有代入值的表达式。
-
-`assert_select(element, selector, [equality], [message])` 测试 `selector` 选中的元素和 `element`（`Nokogiri::XML::Node` 或 `Nokogiri::XML::NodeSet` 实例）及其子代是否符合 `equality` 指定的条件。
-
-例如，可以使用下面的断言检测 `title` 元素的内容：
+If you find your helpers are cluttering `test_helper.rb`, you can extract them into separate files.
+One good place to store them is `test/lib` or `test/test_helpers`.
 
 ```ruby
-assert_select 'title', "Welcome to Rails Testing Guide"
-```
-
-`assert_select` 的代码块还可嵌套使用。
-
-在下述示例中，内层的 `assert_select` 会在外层块选中的元素集合中查询 `li.menu_item`：
-
-```ruby
-assert_select 'ul.navigation' do
-  assert_select 'li.menu_item'
+# test/test_helpers/multiple_assertions.rb
+module MultipleAssertions
+  def assert_multiple_of_forty_two(number)
+    assert (number % 42 == 0), 'expected #{number} to be a multiple of 42'
+  end
 end
 ```
 
-除此之外，还可以遍历外层 `assert_select` 选中的元素集合，这样就可以在集合的每个元素上运行内层 `assert_select` 了。
+These helpers can then be explicitly required as needed and included as needed
 
-假如响应中有两个有序列表，每个列表中都有 4 个列表项，那么下面这两个测试都会通过：
+```ruby
+require "test_helper"
+require "test_helpers/multiple_assertions"
+
+class NumberTest < ActiveSupport::TestCase
+  include MultipleAssertions
+
+  test "420 is a multiple of forty two" do
+    assert_multiple_of_forty_two 420
+  end
+end
+```
+
+or they can continue to be included directly into the relevant parent classes
+
+```ruby
+# test/test_helper.rb
+require "test_helpers/sign_in_helper"
+
+class ActionDispatch::IntegrationTest
+  include SignInHelper
+end
+```
+
+#### Eagerly Requiring Helpers
+
+You may find it convenient to eagerly require helpers in `test_helper.rb` so your test files have implicit access to them. This can be accomplished using globbing, as follows
+
+```ruby
+# test/test_helper.rb
+Dir[Rails.root.join("test", "test_helpers", "**", "*.rb")].each { |file| require file }
+```
+
+This has the downside of increasing the boot-up time, as opposed to manually requiring only the necessary files in your individual tests.
+
+Testing Routes
+--------------
+
+Like everything else in your Rails application, you can test your routes. Route tests reside in `test/controllers/` or are part of controller tests.
+
+NOTE: If your application has complex routes, Rails provides a number of useful helpers to test them.
+
+For more information on routing assertions available in Rails, see the API documentation for [`ActionDispatch::Assertions::RoutingAssertions`](https://api.rubyonrails.org/classes/ActionDispatch/Assertions/RoutingAssertions.html).
+
+Testing Views
+-------------
+
+Testing the response to your request by asserting the presence of key HTML elements and their content is a common way to test the views of your application. Like route tests, view tests reside in `test/controllers/` or are part of controller tests. The `assert_select` method allows you to query HTML elements of the response by using a simple yet powerful syntax.
+
+There are two forms of `assert_select`:
+
+`assert_select(selector, [equality], [message])` ensures that the equality condition is met on the selected elements through the selector. The selector may be a CSS selector expression (String) or an expression with substitution values.
+
+`assert_select(element, selector, [equality], [message])` ensures that the equality condition is met on all the selected elements through the selector starting from the _element_ (instance of `Nokogiri::XML::Node` or `Nokogiri::XML::NodeSet`) and its descendants.
+
+For example, you could verify the contents on the title element in your response with:
+
+```ruby
+assert_select "title", "Welcome to Rails Testing Guide"
+```
+
+You can also use nested `assert_select` blocks for deeper investigation.
+
+In the following example, the inner `assert_select` for `li.menu_item` runs
+within the collection of elements selected by the outer block:
+
+```ruby
+assert_select "ul.navigation" do
+  assert_select "li.menu_item"
+end
+```
+
+A collection of selected elements may be iterated through so that `assert_select` may be called separately for each element.
+
+For example if the response contains two ordered lists, each with four nested list elements then the following tests will both pass.
 
 ```ruby
 assert_select "ol" do |elements|
@@ -1313,50 +1535,50 @@ assert_select "ol" do
 end
 ```
 
-`assert_select` 断言很强大，高级用法请参阅[文档](https://github.com/rails/rails-dom-testing/blob/master/lib/rails/dom/testing/assertions/selector_assertions.rb)。
+This assertion is quite powerful. For more advanced usage, refer to its [documentation](https://github.com/rails/rails-dom-testing/blob/master/lib/rails/dom/testing/assertions/selector_assertions.rb).
 
-<a class="anchor" id="additional-view-based-assertions"></a>
+#### Additional View-Based Assertions
 
-### 其他视图相关的断言
+There are more assertions that are primarily used in testing views:
 
-还有一些断言经常在视图测试中使用：
+| Assertion                                                 | Purpose |
+| --------------------------------------------------------- | ------- |
+| `assert_select_email`                                     | Allows you to make assertions on the body of an e-mail. |
+| `assert_select_encoded`                                   | Allows you to make assertions on encoded HTML. It does this by un-encoding the contents of each element and then calling the block with all the un-encoded elements.|
+| `css_select(selector)` or `css_select(element, selector)` | Returns an array of all the elements selected by the _selector_. In the second variant it first matches the base _element_ and tries to match the _selector_ expression on any of its children. If there are no matches both variants return an empty array.|
 
-| 断言 | 作用  |
-|---|---|
-| `assert_select_email` | 检查电子邮件的正文。  |
-| `assert_select_encoded` | 检查编码后的 HTML。先解码各元素的内容，然后在代码块中处理解码后的各个元素。  |
-| `css_select(selector)` 或 `css_select(element, selector)` | 返回由 `selector` 选中的所有元素组成的数组。在后一种用法中，首先会找到 `element`，然后在其中执行 `selector` 表达式查找元素，如果没有匹配的元素，两种用法都返回空数组。  |
-
-下面是 `assert_select_email` 断言的用法举例：
+Here's an example of using `assert_select_email`:
 
 ```ruby
 assert_select_email do
-  assert_select 'small', 'Please click the "Unsubscribe" link if you want to opt-out.'
+  assert_select "small", "Please click the 'Unsubscribe' link if you want to opt-out."
 end
 ```
 
-<a class="anchor" id="testing-helpers"></a>
+Testing Helpers
+---------------
 
-## 测试辅助方法
+A helper is just a simple module where you can define methods which are
+available in your views.
 
-辅助方法是简单的模块，其中定义的方法可在视图中使用。
+In order to test helpers, all you need to do is check that the output of the
+helper method matches what you'd expect. Tests related to the helpers are
+located under the `test/helpers` directory.
 
-针对辅助方法的测试，只需检测辅助方法的输出和预期值是否一致。相应的测试文件保存在 `test/helpers` 目录中。
-
-假设我们定义了下述辅助方法：
+Given we have the following helper:
 
 ```ruby
-module UserHelper
+module UsersHelper
   def link_to_user(user)
     link_to "#{user.first_name} #{user.last_name}", user
   end
 end
 ```
 
-我们可以像下面这样测试它的输出：
+We can test the output of this method like this:
 
 ```ruby
-class UserHelperTest < ActionView::TestCase
+class UsersHelperTest < ActionView::TestCase
   test "should return the user's full name" do
     user = users(:david)
 
@@ -1365,80 +1587,75 @@ class UserHelperTest < ActionView::TestCase
 end
 ```
 
-而且，因为测试类继承自 `ActionView::TestCase`，所以在测试中可以使用 Rails 内置的辅助方法，例如 `link_to` 和 `pluralize`。
+Moreover, since the test class extends from `ActionView::TestCase`, you have
+access to Rails' helper methods such as `link_to` or `pluralize`.
 
-<a class="anchor" id="testing-your-mailers"></a>
+Testing Your Mailers
+--------------------
 
-## 测试邮件程序
+Testing mailer classes requires some specific tools to do a thorough job.
 
-测试邮件程序需要一些特殊的工具才能完成。
+### Keeping the Postman in Check
 
-<a class="anchor" id="keeping-the-postman-in-check"></a>
+Your mailer classes - like every other part of your Rails application - should be tested to ensure that they are working as expected.
 
-### 确保邮件程序在管控内
+The goals of testing your mailer classes are to ensure that:
 
-和 Rails 应用的其他组件一样，邮件程序也应该测试，确保能正常工作。
+* emails are being processed (created and sent)
+* the email content is correct (subject, sender, body, etc)
+* the right emails are being sent at the right times
 
-测试邮件程序的目的是：
+#### From All Sides
 
-*   确保处理了电子邮件（创建及发送）
-*   确保邮件内容正确（主题、发件人、正文等）
-*   确保在正确的时间发送正确的邮件
+There are two aspects of testing your mailer, the unit tests and the functional tests. In the unit tests, you run the mailer in isolation with tightly controlled inputs and compare the output to a known value (a fixture.) In the functional tests you don't so much test the minute details produced by the mailer; instead, we test that our controllers and models are using the mailer in the right way. You test to prove that the right email was sent at the right time.
 
-<a class="anchor" id="from-all-sides"></a>
+### Unit Testing
 
-#### 要全面测试
+In order to test that your mailer is working as expected, you can use unit tests to compare the actual results of the mailer with pre-written examples of what should be produced.
 
-针对邮件程序的测试分为两部分：单元测试和功能测试。在单元测试中，单独运行邮件程序，严格控制输入，然后和已知值（固件）对比。在功能测试中，不用这么细致的测试，只要确保控制器和模型正确地使用邮件程序，在正确的时间发送正确的邮件。
+#### Revenge of the Fixtures
 
-<a class="anchor" id="unit-testing"></a>
+For the purposes of unit testing a mailer, fixtures are used to provide an example of how the output _should_ look. Because these are example emails, and not Active Record data like the other fixtures, they are kept in their own subdirectory apart from the other fixtures. The name of the directory within `test/fixtures` directly corresponds to the name of the mailer. So, for a mailer named `UserMailer`, the fixtures should reside in `test/fixtures/user_mailer` directory.
 
-### 单元测试
+If you generated your mailer, the generator does not create stub fixtures for the mailers actions. You'll have to create those files yourself as described above.
 
-为了测试邮件程序是否能正常使用，可以把邮件程序真正得到的结果和预先写好的值进行比较。
+#### The Basic Test Case
 
-<a class="anchor" id="revenge-of-the-fixtures"></a>
-
-#### 固件的另一个用途
-
-在单元测试中，固件用于设定期望得到的值。因为这些固件是示例邮件，不是 Active Record 数据，所以要和其他固件分开，放在单独的子目录中。这个子目录位于 `test/fixtures` 目录中，其名称与邮件程序对应。例如，邮件程序 `UserMailer` 使用的固件保存在 `test/fixtures/user_mailer` 目录中。
-
-生成邮件程序时，生成器会为其中每个动作生成相应的固件。如果没使用生成器，要手动创建这些文件。
-
-<a class="anchor" id="the-basic-test-case"></a>
-
-#### 基本的测试用例
-
-下面的单元测试针对 `UserMailer` 的 `invite` 动作，这个动作的作用是向朋友发送邀请。这段代码改进了生成器为 `invite` 动作生成的测试。
+Here's a unit test to test a mailer named `UserMailer` whose action `invite` is used to send an invitation to a friend. It is an adapted version of the base test created by the generator for an `invite` action.
 
 ```ruby
-require 'test_helper'
+require "test_helper"
 
 class UserMailerTest < ActionMailer::TestCase
   test "invite" do
-    # 创建邮件，将其存储起来，供后面的断言使用
-    email = UserMailer.create_invite('me@example.com',
-                                     'friend@example.com', Time.now)
+    # Create the email and store it for further assertions
+    email = UserMailer.create_invite("me@example.com",
+                                     "friend@example.com", Time.now)
 
-    # 发送邮件，测试有没有入队
+    # Send the email, then test that it got queued
     assert_emails 1 do
       email.deliver_now
     end
 
-    # 测试发送的邮件中有没有预期的内容
-    assert_equal ['me@example.com'], email.from
-    assert_equal ['friend@example.com'], email.to
-    assert_equal 'You have been invited by me@example.com', email.subject
-    assert_equal read_fixture('invite').join, email.body.to_s
+    # Test the body of the sent email contains what we expect it to
+    assert_equal ["me@example.com"], email.from
+    assert_equal ["friend@example.com"], email.to
+    assert_equal "You have been invited by me@example.com", email.subject
+    assert_equal read_fixture("invite").join, email.body.to_s
   end
 end
 ```
 
-在这个测试中，我们发送了一封邮件，并把返回对象赋值给 `email` 变量。首先，我们确保邮件已经发送了；随后，确保邮件中包含预期的内容。`read_fixture` 这个辅助方法的作用是从指定的文件中读取内容。
+In the test we create the email and store the returned object in the `email`
+variable. We then ensure that it was sent (the first assert), then, in the
+second batch of assertions, we ensure that the email does indeed contain what we
+expect. The helper `read_fixture` is used to read in the content from this file.
 
-NOTE: 仅当邮件内容只有一种格式时（HTML 或纯文本）才可使用 `email.body.to_s`。如果邮件程序提供了两种格式，可以使用 `email.text_part.body.to_s` 和 `email.html_part.body.to_s` 分别测试。
+NOTE: `email.body.to_s` is present when there's only one (HTML or text) part present.
+If the mailer provides both, you can test your fixture against specific parts
+with `email.text_part.body.to_s` or `email.html_part.body.to_s`.
 
-`invite` 固件的内容如下：
+Here's the content of the `invite` fixture:
 
 ```
 Hi friend@example.com,
@@ -1448,74 +1665,102 @@ You have been invited.
 Cheers!
 ```
 
-现在我们稍微深入一点地介绍针对邮件程序的测试。在 `config/environments/test.rb` 文件中，有这么一行设置：`ActionMailer::Base.delivery_method = :test`。这行设置把发送邮件的方法设为 `:test`，所以邮件并不会真的发送出去（避免测试时骚扰用户），而是添加到一个数组中（`ActionMailer::Base.deliveries`）。
+This is the right time to understand a little more about writing tests for your
+mailers. The line `ActionMailer::Base.delivery_method = :test` in
+`config/environments/test.rb` sets the delivery method to test mode so that
+email will not actually be delivered (useful to avoid spamming your users while
+testing) but instead it will be appended to an array
+(`ActionMailer::Base.deliveries`).
 
-NOTE: `ActionMailer::Base.deliveries` 数组只会在 `ActionMailer::TestCase` 和 `ActionDispatch::IntegrationTest` 测试中自动重设，如果想在这些测试之外使用空数组，可以手动重设：`ActionMailer::Base.deliveries.clear`。
+NOTE: The `ActionMailer::Base.deliveries` array is only reset automatically in
+`ActionMailer::TestCase` and `ActionDispatch::IntegrationTest` tests.
+If you want to have a clean slate outside these test cases, you can reset it
+manually with: `ActionMailer::Base.deliveries.clear`
 
+### Functional and System Testing
 
-<a class="anchor" id="functional-testing"></a>
-
-### 功能测试
-
-邮件程序的功能测试不只是测试邮件正文和收件人等是否正确这么简单。在针对邮件程序的功能测试中，要调用发送邮件的方法，检查相应的邮件是否出现在发送列表中。你可以尽情放心地假定发送邮件的方法本身能顺利完成工作。你需要重点关注的是应用自身的业务逻辑，确保能在预期的时间发出邮件。例如，可以使用下面的代码测试邀请朋友的操作是否发出了正确的邮件：
+Unit testing allows us to test the attributes of the email while functional and system testing allows us to test whether user interactions appropriately trigger the email to be delivered. For example, you can check that the invite friend operation is sending an email appropriately:
 
 ```ruby
-require 'test_helper'
+# Integration Test
+require "test_helper"
 
-class UserControllerTest < ActionDispatch::IntegrationTest
+class UsersControllerTest < ActionDispatch::IntegrationTest
   test "invite friend" do
-    assert_difference 'ActionMailer::Base.deliveries.size', +1 do
-      post invite_friend_url, params: { email: 'friend@example.com' }
+    # Asserts the difference in the ActionMailer::Base.deliveries
+    assert_emails 1 do
+      post invite_friend_url, params: { email: "friend@example.com" }
     end
-    invite_email = ActionMailer::Base.deliveries.last
-
-    assert_equal "You have been invited by me@example.com", invite_email.subject
-    assert_equal 'friend@example.com', invite_email.to[0]
-    assert_match(/Hi friend@example.com/, invite_email.body.to_s)
   end
 end
 ```
 
-<a class="anchor" id="testing-jobs"></a>
+```ruby
+# System Test
+require "test_helper"
 
-## 测试作业
+class UsersTest < ActionDispatch::SystemTestCase
+  driven_by :selenium, using: :headless_chrome
 
-因为自定义的作业在应用的不同层排队，所以我们既要测试作业本身（入队后的行为），也要测试是否正确入队了。
+  test "inviting a friend" do
+    visit invite_users_url
+    fill_in "Email", with: "friend@example.com"
+    assert_emails 1 do
+      click_on "Invite"
+    end
+  end
+end
+```
 
-<a class="anchor" id="a-basic-test-case"></a>
+NOTE: The `assert_emails` method is not tied to a particular deliver method and will work with emails delivered with either the `deliver_now` or `deliver_later` method. If we explicitly want to assert that the email has been enqueued we can use the `assert_enqueued_emails` method. More information can be found in the  [documentation here](https://api.rubyonrails.org/classes/ActionMailer/TestHelper.html).
 
-### 一个基本的测试用例
+Testing Jobs
+------------
 
-默认情况下，生成作业时也会生成相应的测试，存储在 `test/jobs` 目录中。下面是付款作业的测试示例：
+Since your custom jobs can be queued at different levels inside your application,
+you'll need to test both the jobs themselves (their behavior when they get enqueued)
+and that other entities correctly enqueue them.
+
+### A Basic Test Case
+
+By default, when you generate a job, an associated test will be generated as well
+under the `test/jobs` directory. Here's an example test with a billing job:
 
 ```ruby
-require 'test_helper'
+require "test_helper"
 
 class BillingJobTest < ActiveJob::TestCase
-  test 'that account is charged' do
+  test "that account is charged" do
     BillingJob.perform_now(account, product)
     assert account.reload.charged_for?(product)
   end
 end
 ```
 
-这个测试相当简单，只是断言作业能做预期的事情。
+This test is pretty simple and only asserts that the job got the work done
+as expected.
 
-默认情况下，`ActiveJob::TestCase` 把队列适配器设为 `:test`，因此作业是内联执行的。此外，在运行任何测试之前，它会清理之前执行的和入队的作业，因此我们可以放心假定在当前测试的作用域中没有已经执行的作业。
+By default, `ActiveJob::TestCase` will set the queue adapter to `:test` so that
+your jobs are performed inline. It will also ensure that all previously performed
+and enqueued jobs are cleared before any test run so you can safely assume that
+no jobs have already been executed in the scope of each test.
 
-<a class="anchor" id="custom-assertions-and-testing-jobs-inside-other-components"></a>
+### Custom Assertions and Testing Jobs inside Other Components
 
-### 自定义断言和测试其他组件中的作业
+Active Job ships with a bunch of custom assertions that can be used to lessen the verbosity of tests. For a full list of available assertions, see the API documentation for [`ActiveJob::TestHelper`](https://api.rubyonrails.org/classes/ActiveJob/TestHelper.html).
 
-Active Job 自带了很多自定义的断言，可以简化测试。可用的断言列表参见 [`ActiveJob::TestHelper` 模块的 API 文档](http://api.rubyonrails.org/classes/ActiveJob/TestHelper.html)。
-
-不管作业是在哪里调用的（例如在控制器中），最好都要测试作业能正确入队或执行。这时就体现了 Active Job 提供的自定义断言的用处。例如，在模型中：
+It's a good practice to ensure that your jobs correctly get enqueued or performed
+wherever you invoke them (e.g. inside your controllers). This is precisely where
+the custom assertions provided by Active Job are pretty useful. For instance,
+within a model:
 
 ```ruby
-require 'test_helper'
+require "test_helper"
 
-class ProductTest < ActiveJob::TestCase
-  test 'billing job scheduling' do
+class ProductTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
+
+  test "billing job scheduling" do
     assert_enqueued_with(job: BillingJob) do
       product.charge(account)
     end
@@ -1523,27 +1768,158 @@ class ProductTest < ActiveJob::TestCase
 end
 ```
 
-<a class="anchor" id="additional-testing-resources"></a>
+Testing Action Cable
+--------------------
 
-## 其他测试资源
+Since Action Cable is used at different levels inside your application,
+you'll need to test both the channels, connection classes themselves, and that other
+entities broadcast correct messages.
 
-<a class="anchor" id="testing-time-dependent-code"></a>
+### Connection Test Case
 
-### 测试与时间有关的代码
+By default, when you generate new Rails application with Action Cable, a test for the base connection class (`ApplicationCable::Connection`) is generated as well under `test/channels/application_cable` directory.
 
-Rails 提供了一些内置的辅助方法，便于我们测试与时间有关的代码。
-
-下述示例用到了 [`travel_to`](http://api.rubyonrails.org/classes/ActiveSupport/Testing/TimeHelpers.html#method-i-travel_to) 辅助方法：
+Connection tests aim to check whether a connection's identifiers get assigned properly
+or that any improper connection requests are rejected. Here is an example:
 
 ```ruby
-# 假设用户在注册一个月内可以获取礼品
-user = User.create(name: 'Gaurish', activation_date: Date.new(2004, 10, 24))
-assert_not user.applicable_for_gifting?
-travel_to Date.new(2004, 11, 24) do
-  assert_equal Date.new(2004, 10, 24), user.activation_date # 在 travel_to 块中， `Date.current` 是拟件
-  assert user.applicable_for_gifting?
+class ApplicationCable::ConnectionTest < ActionCable::Connection::TestCase
+  test "connects with params" do
+    # Simulate a connection opening by calling the `connect` method
+    connect params: { user_id: 42 }
+
+    # You can access the Connection object via `connection` in tests
+    assert_equal connection.user_id, "42"
+  end
+
+  test "rejects connection without params" do
+    # Use `assert_reject_connection` matcher to verify that
+    # connection is rejected
+    assert_reject_connection { connect }
+  end
 end
-assert_equal Date.new(2004, 10, 24), user.activation_date # 改动只在 travel_to 块中可见
 ```
 
-可用的时间辅助方法详情参见 [`ActiveSupport::Testing::TimeHelpers` 模块的 API 文档](http://api.rubyonrails.org/classes/ActiveSupport/Testing/TimeHelpers.html)。
+You can also specify request cookies the same way you do in integration tests:
+
+```ruby
+test "connects with cookies" do
+  cookies.signed[:user_id] = "42"
+
+  connect
+
+  assert_equal connection.user_id, "42"
+end
+```
+
+See the API documentation for [`ActionCable::Connection::TestCase`](https://api.rubyonrails.org/classes/ActionCable/Connection/TestCase.html) for more information.
+
+### Channel Test Case
+
+By default, when you generate a channel, an associated test will be generated as well
+under the `test/channels` directory. Here's an example test with a chat channel:
+
+```ruby
+require "test_helper"
+
+class ChatChannelTest < ActionCable::Channel::TestCase
+  test "subscribes and stream for room" do
+    # Simulate a subscription creation by calling `subscribe`
+    subscribe room: "15"
+
+    # You can access the Channel object via `subscription` in tests
+    assert subscription.confirmed?
+    assert_has_stream "chat_15"
+  end
+end
+```
+
+This test is pretty simple and only asserts that the channel subscribes the connection to a particular stream.
+
+You can also specify the underlying connection identifiers. Here's an example test with a web notifications channel:
+
+```ruby
+require "test_helper"
+
+class WebNotificationsChannelTest < ActionCable::Channel::TestCase
+  test "subscribes and stream for user" do
+    stub_connection current_user: users(:john)
+
+    subscribe
+
+    assert_has_stream_for users(:john)
+  end
+end
+```
+
+See the API documentation for [`ActionCable::Channel::TestCase`](https://api.rubyonrails.org/classes/ActionCable/Channel/TestCase.html) for more information.
+
+### Custom Assertions And Testing Broadcasts Inside Other Components
+
+Action Cable ships with a bunch of custom assertions that can be used to lessen the verbosity of tests. For a full list of available assertions, see the API documentation for [`ActionCable::TestHelper`](https://api.rubyonrails.org/classes/ActionCable/TestHelper.html).
+
+It's a good practice to ensure that the correct message has been broadcasted inside other components (e.g. inside your controllers). This is precisely where
+the custom assertions provided by Action Cable are pretty useful. For instance,
+within a model:
+
+```ruby
+require "test_helper"
+
+class ProductTest < ActionCable::TestCase
+  test "broadcast status after charge" do
+    assert_broadcast_on("products:#{product.id}", type: "charged") do
+      product.charge(account)
+    end
+  end
+end
+```
+
+If you want to test the broadcasting made with `Channel.broadcast_to`, you should use
+`Channel.broadcasting_for` to generate an underlying stream name:
+
+```ruby
+# app/jobs/chat_relay_job.rb
+class ChatRelayJob < ApplicationJob
+  def perform_later(room, message)
+    ChatChannel.broadcast_to room, text: message
+  end
+end
+
+# test/jobs/chat_relay_job_test.rb
+require "test_helper"
+
+class ChatRelayJobTest < ActiveJob::TestCase
+  include ActionCable::TestHelper
+
+  test "broadcast message to room" do
+    room = rooms(:all)
+
+    assert_broadcast_on(ChatChannel.broadcasting_for(room), text: "Hi!") do
+      ChatRelayJob.perform_now(room, "Hi!")
+    end
+  end
+end
+```
+
+Additional Testing Resources
+----------------------------
+
+### Testing Time-Dependent Code
+
+Rails provides built-in helper methods that enable you to assert that your time-sensitive code works as expected.
+
+Here is an example using the [`travel_to`](https://api.rubyonrails.org/classes/ActiveSupport/Testing/TimeHelpers.html#method-i-travel_to) helper:
+
+```ruby
+# Lets say that a user is eligible for gifting a month after they register.
+user = User.create(name: "Gaurish", activation_date: Date.new(2004, 10, 24))
+assert_not user.applicable_for_gifting?
+travel_to Date.new(2004, 11, 24) do
+  assert_equal Date.new(2004, 10, 24), user.activation_date # inside the `travel_to` block `Date.current` is mocked
+  assert user.applicable_for_gifting?
+end
+assert_equal Date.new(2004, 10, 24), user.activation_date # The change was visible only inside the `travel_to` block.
+```
+
+Please see [`ActiveSupport::Testing::TimeHelpers` API Documentation](https://api.rubyonrails.org/classes/ActiveSupport/Testing/TimeHelpers.html)
+for in-depth information about the available time helpers.

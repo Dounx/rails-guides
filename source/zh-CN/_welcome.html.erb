@@ -2,24 +2,27 @@
 
 <% if @edge %>
 <p>
-  These are <b>Edge Guides</b>, based on the current <a href="https://github.com/rails/rails/tree/<%= @version %>">master</a> branch.
+  这是<b>预览版本指南</b>，基于 <a href="https://github.com/rails/rails/tree/<%= @edge %>">master@<%= @edge[0, 7] %></a>。
 </p>
 <p>
-  If you are looking for the ones for the stable version, please check
-  <a href="http://guides.rubyonrails.org">http://guides.rubyonrails.org</a> instead.
+  如果你在查找稳定版本，请查看 <a href="https://guides.rubyonrails.org">https://guides.rubyonrails.org</a>。
 </p>
 <% else %>
 <p>
-  这是 Rails 5.1 的最新指南，基于 <a href="https://github.com/rails/rails/tree/<%= @version %>"><%= @version %></a>。
+  这是 Rails 6.0 的最新指南，基于 <a href="https://github.com/rails/rails/tree/<%= @version %>"><%= @version %></a>。
   这份指南旨在使您立即获得 Rails 的生产力，并帮助您了解所有组件如何组合在一起。
 </p>
 <% end %>
 <p>
 早前版本的指南：
-<a href="http://guides.rubyonrails.org/v5.0/">Rails 5.0</a>（<a href="./v5.0/">中文</a>），
-<a href="http://guides.rubyonrails.org/v4.2/">Rails 4.2</a>，
-<a href="http://guides.rubyonrails.org/v4.1/">Rails 4.1</a>（<a href="./v4.1/">中文</a>），
-<a href="http://guides.rubyonrails.org/v4.0/">Rails 4.0</a>，
-<a href="http://guides.rubyonrails.org/v3.2/">Rails 3.2</a>，和
-<a href="http://guides.rubyonrails.org/v2.3/">Rails 2.3</a>。
+<a href="https://guides.rubyonrails.org/v5.2/">Rails 5.2</a>，
+<a href="https://guides.rubyonrails.org/v5.1/">Rails 5.1</a>，
+<a href="https://guides.rubyonrails.org/v5.0/">Rails 5.0</a>，
+<a href="https://guides.rubyonrails.org/v4.2/">Rails 4.2</a>，
+<a href="https://guides.rubyonrails.org/v4.1/">Rails 4.1</a>，
+<a href="https://guides.rubyonrails.org/v4.0/">Rails 4.0</a>，
+<a href="https://guides.rubyonrails.org/v3.2/">Rails 3.2</a>，
+<a href="https://guides.rubyonrails.org/v3.1/">Rails 3.1</a>，
+<a href="https://guides.rubyonrails.org/v3.0/">Rails 3.0</a>，和
+<a href="https://guides.rubyonrails.org/v2.3/">Rails 2.3</a>。
 </p>

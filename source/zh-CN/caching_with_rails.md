@@ -1,66 +1,82 @@
-# Rails 缓存概览
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-本文简述如何使用缓存提升 Rails 应用的速度。
+Caching with Rails: An Overview
+===============================
 
-缓存是指存储请求-响应循环中生成的内容，在类似请求的响应中复用。
+This guide is an introduction to speeding up your Rails application with caching.
 
-通常，缓存是提升应用性能最有效的方式。通过缓存，在单个服务器中使用单个数据库的网站可以承受数千个用户并发访问。
+Caching means to store content generated during the request-response cycle and
+to reuse it when responding to similar requests.
 
-Rails 自带了一些缓存功能。本文说明它们的适用范围和作用。掌握这些技术之后，你的 Rails 应用能承受大量访问，而不必花大量时间生成响应，或者支付高昂的服务器账单。
+Caching is often the most effective way to boost an application's performance.
+Through caching, web sites running on a single server with a single database
+can sustain a load of thousands of concurrent users.
 
-读完本文后，您将学到：
+Rails provides a set of caching features out of the box. This guide will teach
+you the scope and purpose of each one of them. Master these techniques and your
+Rails applications can serve millions of views without exorbitant response times
+or server bills.
 
-*   片段缓存和俄罗斯套娃缓存；
-*   如何管理缓存依赖；
-*   不同的缓存存储器；
-*   对条件 GET 请求的支持。
+After reading this guide, you will know:
 
------------------------------------------------------------------------------
+* Fragment and Russian doll caching.
+* How to manage the caching dependencies.
+* Alternative cache stores.
+* Conditional GET support.
 
-<a class="anchor" id="basic-caching"></a>
+--------------------------------------------------------------------------------
 
-## 基本缓存
+Basic Caching
+-------------
 
-本节简介三种缓存技术：页面缓存（page caching）、动作缓存（action caching）和片段缓存（fragment caching）。Rails 默认提供了片段缓存。如果想使用页面缓存或动作缓存，要把 `actionpack-page_caching` 或 `actionpack-action_caching` 添加到 `Gemfile` 中。
+This is an introduction to three types of caching techniques: page, action and
+fragment caching. By default Rails provides fragment caching. In order to use
+page and action caching you will need to add `actionpack-page_caching` and
+`actionpack-action_caching` to your `Gemfile`.
 
-默认情况下，缓存只在生产环境启用。如果想在本地启用缓存，要在相应的 `config/environments/*.rb` 文件中把 `config.action_controller.perform_caching` 设为 `true`。
+By default, caching is only enabled in your production environment. To play
+around with caching locally you'll want to enable caching in your local
+environment by setting `config.action_controller.perform_caching` to `true` in
+the relevant `config/environments/*.rb` file:
 
 ```ruby
 config.action_controller.perform_caching = true
 ```
 
-NOTE: 修改 `config.action_controller.perform_caching` 的值只对 Action Controller 组件提供的缓存有影响。例如，对低层缓存没影响，[下文详述](#low-level-caching)。
+NOTE: Changing the value of `config.action_controller.perform_caching` will
+only have an effect on the caching provided by the Action Controller component.
+For instance, it will not impact low-level caching, that we address
+[below](#low-level-caching).
 
+### Page Caching
 
-<a class="anchor" id="page-caching"></a>
+Page caching is a Rails mechanism which allows the request for a generated page
+to be fulfilled by the web server (i.e. Apache or NGINX) without having to go
+through the entire Rails stack. While this is super fast it can't be applied to
+every situation (such as pages that need authentication). Also, because the
+web server is serving a file directly from the filesystem you will need to
+implement cache expiration.
 
-### 页面缓存
+INFO: Page Caching has been removed from Rails 4. See the [actionpack-page_caching gem](https://github.com/rails/actionpack-page_caching).
 
-页面缓存时 Rails 提供的一种缓存机制，让 Web 服务器（如 Apache 和 NGINX）直接伺服生成的页面，而不经由 Rails 栈处理。虽然这种缓存的速度超快，但是不适用于所有情况（例如需要验证身份的页面）。此外，因为 Web 服务器直接从文件系统中伺服文件，所以你要自行实现缓存失效机制。
+### Action Caching
 
-TIP: Rails 4 删除了页面缓存。参见 [actionpack-page_caching gem](https://github.com/rails/actionpack-page_caching)。
+Page Caching cannot be used for actions that have before filters - for example, pages that require authentication. This is where Action Caching comes in. Action Caching works like Page Caching except the incoming web request hits the Rails stack so that before filters can be run on it before the cache is served. This allows authentication and other restrictions to be run while still serving the result of the output from a cached copy.
 
+INFO: Action Caching has been removed from Rails 4. See the [actionpack-action_caching gem](https://github.com/rails/actionpack-action_caching). See [DHH's key-based cache expiration overview](https://signalvnoise.com/posts/3113-how-key-based-cache-expiration-works) for the newly-preferred method.
 
-<a class="anchor" id="action-caching"></a>
+### Fragment Caching
 
-### 动作缓存
+Dynamic web applications usually build pages with a variety of components not
+all of which have the same caching characteristics. When different parts of the
+page need to be cached and expired separately you can use Fragment Caching.
 
-有前置过滤器的动作不能使用页面缓存，例如需要验证身份的页面。此时，应该使用动作缓存。动作缓存的工作原理与页面缓存类似，不过入站请求会经过 Rails 栈处理，以便运行前置过滤器，然后再伺服缓存。这样，可以做身份验证和其他限制，同时还能从缓存的副本中伺服结果。
+Fragment Caching allows a fragment of view logic to be wrapped in a cache block and served out of the cache store when the next request comes in.
 
-TIP: Rails 4 删除了动作缓存。参见 [actionpack-action_caching gem](https://github.com/rails/actionpack-action_caching)。最新推荐的做法参见 DHH 写的“[How key-based cache expiration works](https://signalvnoise.com/posts/3113-how-key-based-cache-expiration-works)”一文。
+For example, if you wanted to cache each product on a page, you could use this
+code:
 
-
-<a class="anchor" id="fragment-caching"></a>
-
-### 片段缓存
-
-动态 Web 应用一般使用不同的组件构建页面，不是所有组件都能使用同一种缓存机制。如果页面的不同部分需要使用不同的缓存机制，在不同的条件下失效，可以使用片段缓存。
-
-片段缓存把视图逻辑的一部分放在 `cache` 块中，下次请求使用缓存存储器中的副本伺服。
-
-例如，如果想缓存页面中的各个商品，可以使用下述代码：
-
-```erb
+```html+erb
 <% @products.each do |product| %>
   <% cache product do %>
     <%= render product %>
@@ -68,19 +84,26 @@ TIP: Rails 4 删除了动作缓存。参见 [actionpack-action_caching gem](http
 <% end %>
 ```
 
-首次访问这个页面时，Rails 会创建一个具有唯一键的缓存条目。缓存键类似下面这种：
+When your application receives its first request to this page, Rails will write
+a new cache entry with a unique key. A key looks something like this:
 
 ```
-views/products/1-201505056193031061005000/bea67108094918eeba42cd4a6e786901
+views/products/index:bea67108094918eeba42cd4a6e786901/products/1
 ```
 
-中间的数字是 `product_id` 加上商品记录的 `updated_at` 属性中存储的时间戳。Rails 使用时间戳确保不伺服过期的数据。如果 `updated_at` 的值变了，Rails 会生成一个新键，然后在那个键上写入一个新缓存，旧键上的旧缓存不再使用。这叫基于键的失效方式。
+The string of characters in the middle is a template tree digest. It is a hash
+digest computed based on the contents of the view fragment you are caching. If
+you change the view fragment (e.g., the HTML changes), the digest will change,
+expiring the existing file.
 
-视图片段有变化时（例如视图的 HTML 有变），缓存的片段也失效。缓存键末尾那个字符串是模板树摘要，是基于缓存的视图片段的内容计算的 MD5 哈希值。如果视图片段有变化，MD5 哈希值就变了，因此现有文件失效。
+A cache version, derived from the product record, is stored in the cache entry.
+When the product is touched, the cache version changes, and any cached fragments
+that contain the previous version are ignored.
 
-TIP: Memcached 等缓存存储器会自动删除旧的缓存文件。
+TIP: Cache stores like Memcached will automatically delete old cache files.
 
-如果想在特定条件下缓存一个片段，可以使用 `cache_if` 或 `cache_unless`：
+If you want to cache a fragment under certain conditions, you can use
+`cache_if` or `cache_unless`:
 
 ```erb
 <% cache_if admin?, product do %>
@@ -88,29 +111,35 @@ TIP: Memcached 等缓存存储器会自动删除旧的缓存文件。
 <% end %>
 ```
 
-<a class="anchor" id="collection-caching"></a>
+#### Collection caching
 
-#### 集合缓存
+The `render` helper can also cache individual templates rendered for a collection.
+It can even one up the previous example with `each` by reading all cache
+templates at once instead of one by one. This is done by passing `cached: true` when rendering the collection:
 
-`render` 辅助方法还能缓存渲染集合的单个模板。这甚至比使用 `each` 的前述示例更好，因为是一次性读取所有缓存模板的，而不是一次读取一个。若想缓存集合，渲染集合时传入 `cached: true` 选项：
-
-```erb
+```html+erb
 <%= render partial: 'products/product', collection: @products, cached: true %>
 ```
 
-上述代码中所有的缓存模板一次性获取，速度更快。此外，尚未缓存的模板也会写入缓存，在下次渲染时获取。
+All cached templates from previous renders will be fetched at once with much
+greater speed. Additionally, the templates that haven't yet been cached will be
+written to cache and multi fetched on the next render.
 
-<a class="anchor" id="russian-doll-caching"></a>
 
-### 俄罗斯套娃缓存
+### Russian Doll Caching
 
-有时，可能想把缓存的片段嵌套在其他缓存的片段里。这叫俄罗斯套娃缓存（Russian doll caching）。
+You may want to nest cached fragments inside other cached fragments. This is
+called Russian doll caching.
 
-俄罗斯套娃缓存的优点是，更新单个商品后，重新生成外层片段时，其他内存片段可以复用。
+The advantage of Russian doll caching is that if a single product is updated,
+all the other inner fragments can be reused when regenerating the outer
+fragment.
 
-前一节说过，如果缓存的文件对应的记录的 `updated_at` 属性值变了，缓存的文件失效。但是，内层嵌套的片段不失效。
+As explained in the previous section, a cached file will expire if the value of
+`updated_at` changes for a record on which the cached file directly depends.
+However, this will not expire any cache the fragment is nested within.
 
-对下面的视图来说：
+For example, take the following view:
 
 ```erb
 <% cache product do %>
@@ -118,7 +147,7 @@ TIP: Memcached 等缓存存储器会自动删除旧的缓存文件。
 <% end %>
 ```
 
-而它渲染这个视图：
+Which in turn renders this view:
 
 ```erb
 <% cache game do %>
@@ -126,7 +155,11 @@ TIP: Memcached 等缓存存储器会自动删除旧的缓存文件。
 <% end %>
 ```
 
-如果游戏的任何一个属性变了，`updated_at` 的值会设为当前时间，因此缓存失效。然而，商品对象的 `updated_at` 属性不变，因此它的缓存不失效，从而导致应用伺服过期的数据。为了解决这个问题，可以使用 `touch` 方法把模型绑在一起：
+If any attribute of game is changed, the `updated_at` value will be set to the
+current time, thereby expiring the cache. However, because `updated_at`
+will not be changed for the product object, that cache will not be expired and
+your app will serve stale data. To fix this, we tie the models together with
+the `touch` method:
 
 ```ruby
 class Product < ApplicationRecord
@@ -138,19 +171,40 @@ class Game < ApplicationRecord
 end
 ```
 
-把 `touch` 设为 `true` 后，导致游戏的 `updated_at` 变化的操作，也会修改关联的商品的 `updated_at` 属性，从而让缓存失效。
+With `touch` set to `true`, any action which changes `updated_at` for a game
+record will also change it for the associated product, thereby expiring the
+cache.
 
-<a class="anchor" id="managing-dependencies"></a>
+### Shared Partial Caching
 
-### 管理依赖
+It is possible to share partials and associated caching between files with different mime types. For example shared partial caching allows template writers to share a partial between HTML and JavaScript files. When templates are collected in the template resolver file paths they only include the template language extension and not the mime type. Because of this templates can be used for multiple mime types. Both HTML and JavaScript requests will respond to the following code:
 
-为了正确地让缓存失效，要正确地定义缓存依赖。Rails 足够智能，能处理常见的情况，无需自己指定。但是有时需要处理自定义的辅助方法（以此为例），因此要自行定义。
+```ruby
+render(partial: 'hotels/hotel', collection: @hotels, cached: true)
+```
 
-<a class="anchor" id="implicit-dependencies"></a>
+Will load a file named `hotels/hotel.erb`.
 
-#### 隐式依赖
+Another option is to include the full filename of the partial to render.
 
-多数模板依赖可以从模板中的 `render` 调用中推导出来。下面举例说明 `ActionView::Digestor` 知道如何解码的 `render` 调用：
+```ruby
+render(partial: 'hotels/hotel.html.erb', collection: @hotels, cached: true)
+```
+
+Will load a file named `hotels/hotel.html.erb` in any file mime type, for example you could include this partial in a JavaScript file.
+
+### Managing dependencies
+
+In order to correctly invalidate the cache, you need to properly define the
+caching dependencies. Rails is clever enough to handle common cases so you don't
+have to specify anything. However, sometimes, when you're dealing with custom
+helpers for instance, you need to explicitly define them.
+
+#### Implicit dependencies
+
+Most template dependencies can be derived from calls to `render` in the template
+itself. Here are some examples of render calls that `ActionView::Digestor` knows
+how to decode:
 
 ```ruby
 render partial: "comments/comment", collection: commentable.comments
@@ -158,244 +212,373 @@ render "comments/comments"
 render 'comments/comments'
 render('comments/comments')
 
-render "header" => render("comments/header")
+render "header" translates to render("comments/header")
 
-render(@topic)         => render("topics/topic")
-render(topics)         => render("topics/topic")
-render(message.topics) => render("topics/topic")
+render(@topic)         translates to render("topics/topic")
+render(topics)         translates to render("topics/topic")
+render(message.topics) translates to render("topics/topic")
 ```
 
-而另一方面，有些调用要做修改方能让缓存正确工作。例如，如果传入自定义的集合，要把下述代码：
+On the other hand, some calls need to be changed to make caching work properly.
+For instance, if you're passing a custom collection, you'll need to change:
 
 ```ruby
 render @project.documents.where(published: true)
 ```
 
-改为：
+to:
 
 ```ruby
 render partial: "documents/document", collection: @project.documents.where(published: true)
 ```
 
-<a class="anchor" id="explicit-dependencies"></a>
+#### Explicit dependencies
 
-#### 显式依赖
+Sometimes you'll have template dependencies that can't be derived at all. This
+is typically the case when rendering happens in helpers. Here's an example:
 
-有时，模板依赖推导不出来。在辅助方法中渲染时经常是这样。下面举个例子：
-
-```erb
+```html+erb
 <%= render_sortable_todolists @project.todolists %>
 ```
 
-此时，要使用一种特殊的注释格式：
+You'll need to use a special comment format to call those out:
 
-```erb
+```html+erb
 <%# Template Dependency: todolists/todolist %>
 <%= render_sortable_todolists @project.todolists %>
 ```
 
-某些情况下，例如设置单表继承，可能要显式定义一堆依赖。此时无需写出每个模板，可以使用通配符匹配一个目录中的全部模板：
+In some cases, like a single table inheritance setup, you might have a bunch of
+explicit dependencies. Instead of writing every template out, you can use a
+wildcard to match any template in a directory:
 
-```erb
+```html+erb
 <%# Template Dependency: events/* %>
 <%= render_categorizable_events @person.events %>
 ```
 
-对集合缓存来说，如果局部模板不是以干净的缓存调用开头，依然可以使用集合缓存，不过要在模板中的任意位置添加一种格式特殊的注释，如下所示：
+As for collection caching, if the partial template doesn't start with a clean
+cache call, you can still benefit from collection caching by adding a special
+comment format anywhere in the template, like:
 
-```erb
+```html+erb
 <%# Template Collection: notification %>
 <% my_helper_that_calls_cache(some_arg, notification) do %>
   <%= notification.name %>
 <% end %>
 ```
 
-<a class="anchor" id="external-dependencies"></a>
+#### External dependencies
 
-#### 外部依赖
+If you use a helper method, for example, inside a cached block and you then update
+that helper, you'll have to bump the cache as well. It doesn't really matter how
+you do it, but the MD5 of the template file must change. One recommendation is to
+simply be explicit in a comment, like:
 
-如果在缓存的块中使用辅助方法，而后更新了辅助方法，还要更新缓存。具体方法不限，只要能改变模板文件的 MD5 值就行。推荐的方法之一是添加一个注释，如下所示：
-
-```erb
+```html+erb
 <%# Helper Dependency Updated: Jul 28, 2015 at 7pm %>
 <%= some_helper_method(person) %>
 ```
 
-<a class="anchor" id="low-level-caching"></a>
+### Low-Level Caching
 
-### 低层缓存
+Sometimes you need to cache a particular value or query result instead of caching view fragments. Rails' caching mechanism works great for storing __any__ kind of information.
 
-有时需要缓存特定的值或查询结果，而不是缓存视图片段。Rails 的缓存机制能存储任何类型的信息。
+The most efficient way to implement low-level caching is using the `Rails.cache.fetch` method. This method does both reading and writing to the cache. When passed only a single argument, the key is fetched and value from the cache is returned. If a block is passed, that block will be executed in the event of a cache miss. The return value of the block will be written to the cache under the given cache key, and that return value will be returned. In case of cache hit, the cached value will be returned without executing the block.
 
-实现低层缓存最有效的方式是使用 `Rails.cache.fetch` 方法。这个方法既能读取也能写入缓存。传入单个参数时，获取指定的键，返回缓存中的值。如果传入块，块中的代码在缓存缺失时执行。块返回的值将写入缓存，存在指定键的名下，然后返回那个返回值。如果命中缓存，直接返回缓存的值，而不执行块中的代码。
-
-下面举个例子。应用中有个 `Product` 模型，它有个实例方法，在竞争网站中查找商品的价格。这个方法返回的数据特别适合使用低层缓存：
+Consider the following example. An application has a `Product` model with an instance method that looks up the product's price on a competing website. The data returned by this method would be perfect for low-level caching:
 
 ```ruby
 class Product < ApplicationRecord
   def competing_price
-    Rails.cache.fetch("#{cache_key}/competing_price", expires_in: 12.hours) do
+    Rails.cache.fetch("#{cache_key_with_version}/competing_price", expires_in: 12.hours) do
       Competitor::API.find_price(id)
     end
   end
 end
 ```
 
-NOTE: 注意，这个示例使用了 `cache_key` 方法，因此得到的缓存键类似这种：`products/233-20140225082222765838000/competing_price`。`cache_key` 方法根据模型的 `id` 和 `updated_at` 属性生成一个字符串。这是常见的约定，有个好处是，商品更新后缓存自动失效。一般来说，使用低层缓存缓存实例层信息时，需要生成缓存键。
+NOTE: Notice that in this example we used the `cache_key_with_version` method, so the resulting cache key will be something like `products/233-20140225082222765838000/competing_price`. `cache_key_with_version` generates a string based on the model's class name, `id`, and `updated_at` attributes. This is a common convention and has the benefit of invalidating the cache whenever the product is updated. In general, when you use low-level caching for instance level information, you need to generate a cache key.
 
+### SQL Caching
 
-<a class="anchor" id="sql-caching"></a>
+Query caching is a Rails feature that caches the result set returned by each
+query. If Rails encounters the same query again for that request, it will use
+the cached result set as opposed to running the query against the database
+again.
 
-### SQL 缓存
-
-查询缓存是 Rails 提供的一个功能，把各个查询的结果集缓存起来。如果在同一个请求中遇到了相同的查询，Rails 会使用缓存的结果集，而不再次到数据库中运行查询。
-
-例如：
+For example:
 
 ```ruby
 class ProductsController < ApplicationController
 
   def index
-    # 运行查找查询
+    # Run a find query
     @products = Product.all
 
     ...
 
-    # 再次运行相同的查询
+    # Run the same query again
     @products = Product.all
   end
 
 end
 ```
 
-再次运行相同的查询时，根本不会发给数据库。首次运行查询得到的结果存储在查询缓存中（内存里），第二次查询从内存中获取。
+The second time the same query is run against the database, it's not actually going to hit the database. The first time the result is returned from the query it is stored in the query cache (in memory) and the second time it's pulled from memory.
 
-然而要知道，查询缓存在动作开头创建，到动作末尾销毁，只在动作的存续时间内存在。如果想持久化存储查询结果，使用低层缓存也能实现。
+However, it's important to note that query caches are created at the start of
+an action and destroyed at the end of that action and thus persist only for the
+duration of the action. If you'd like to store query results in a more
+persistent fashion, you can with low level caching.
 
-<a class="anchor" id="cache-stores"></a>
+Cache Stores
+------------
 
-## 缓存存储器
+Rails provides different stores for the cached data (apart from SQL and page
+caching).
 
-Rails 为存储缓存数据（SQL 缓存和页面缓存除外）提供了不同的存储器。
+### Configuration
 
-<a class="anchor" id="configuration"></a>
-
-### 配置
-
-`config.cache_store` 配置选项用于设定应用的默认缓存存储器。可以设定其他参数，传给缓存存储器的构造方法：
+You can set up your application's default cache store by setting the
+`config.cache_store` configuration option. Other parameters can be passed as
+arguments to the cache store's constructor:
 
 ```ruby
 config.cache_store = :memory_store, { size: 64.megabytes }
 ```
 
-NOTE: 此外，还可以在配置块外部调用 `ActionController::Base.cache_store`。
+NOTE: Alternatively, you can call `ActionController::Base.cache_store` outside of a configuration block.
 
-缓存存储器通过 `Rails.cache` 访问。
+You can access the cache by calling `Rails.cache`.
 
-<a class="anchor" id="activesupport-cache-store"></a>
+### ActiveSupport::Cache::Store
 
-### `ActiveSupport::Cache::Store`
+This class provides the foundation for interacting with the cache in Rails. This is an abstract class and you cannot use it on its own. Rather you must use a concrete implementation of the class tied to a storage engine. Rails ships with several implementations documented below.
 
-这个类是在 Rails 中与缓存交互的基础。这是个抽象类，不能直接使用。你必须根据存储器引擎具体实现这个类。Rails 提供了几个实现，说明如下。
+The main methods to call are `read`, `write`, `delete`, `exist?`, and `fetch`. The fetch method takes a block and will either return an existing value from the cache, or evaluate the block and write the result to the cache if no value exists.
 
-主要调用的方法有 `read`、`write`、`delete`、`exist?` 和 `fetch`。`fetch` 方法接受一个块，返回缓存中现有的值，或者把新值写入缓存。
+There are some common options that can be used by all cache implementations. These can be passed to the constructor or the various methods to interact with entries.
 
-所有缓存实现有些共用的选项，可以传给构造方法，或者传给与缓存条目交互的各个方法。
+* `:namespace` - This option can be used to create a namespace within the cache store. It is especially useful if your application shares a cache with other applications.
 
-*   `:namespace`：在缓存存储器中创建命名空间。如果与其他应用共用同一个缓存存储器，这个选项特别有用。
-*   `:compress`：指定压缩缓存。通过缓慢的网络传输大量缓存时用得着。
-*   `:compress_threshold`：与 `:compress` 选项搭配使用，指定一个阈值，未达到时不压缩缓存。默认为 16 千字节。
-*   `:expires_in`：为缓存条目设定失效时间（秒数），失效后自动从缓存中删除。
-*   `:race_condition_ttl`：与 `:expires_in` 选项搭配使用。避免多个进程同时重新生成相同的缓存条目（也叫 dog pile effect），防止让缓存条目过期时出现条件竞争。这个选项设定在重新生成新值时失效的条目还可以继续使用多久（秒数）。如果使用 `:expires_in` 选项， 最好也设定这个选项。
+* `:compress` - Enabled by default. Compresses cache entries so more data can be stored in the same memory footprint, leading to fewer cache evictions and higher hit rates.
 
-<a class="anchor" id="custom-cache-stores"></a>
+* `:compress_threshold` - Defaults to 1kB. Cache entries larger than this threshold, specified in bytes, are compressed.
 
-#### 自定义缓存存储器
+* `:expires_in` - This option sets an expiration time in seconds for the cache entry, if the cache store supports it, when it will be automatically removed from the cache.
 
-缓存存储器可以自己定义，只需扩展 `ActiveSupport::Cache::Store` 类，实现相应的方法。这样，你可以把任何缓存技术带到你的 Rails 应用中。
+* `:race_condition_ttl` - This option is used in conjunction with the `:expires_in` option. It will prevent race conditions when cache entries expire by preventing multiple processes from simultaneously regenerating the same entry (also known as the dog pile effect). This option sets the number of seconds that an expired entry can be reused while a new value is being regenerated. It's a good practice to set this value if you use the `:expires_in` option.
 
-若想使用自定义的缓存存储器，只需把 `cache_store` 设为自定义类的实例：
+#### Connection Pool Options
+
+By default the `MemCacheStore` and `RedisCacheStore` use a single connection
+per process. This means that if you're using Puma, or another threaded server,
+you can have multiple threads waiting for the connection to become available.
+To increase the number of available connections you can enable connection
+pooling.
+
+First, add the `connection_pool` gem to your Gemfile:
+
+```ruby
+gem 'connection_pool'
+```
+
+Next, pass the `:pool_size` and/or `:pool_timeout` options when configuring the cache store:
+
+```ruby
+config.cache_store = :mem_cache_store, "cache.example.com", { pool_size: 5, pool_timeout: 5 }
+```
+
+* `:pool_size` - This option sets the number of connections per process (defaults to 5).
+
+* `:pool_timeout` - This option sets the number of seconds to wait for a connection (defaults to 5). If no connection is available within the timeout, a `Timeout::Error` will be raised.
+
+#### Custom Cache Stores
+
+You can create your own custom cache store by simply extending
+`ActiveSupport::Cache::Store` and implementing the appropriate methods. This way,
+you can swap in any number of caching technologies into your Rails application.
+
+To use a custom cache store, simply set the cache store to a new instance of your
+custom class.
 
 ```ruby
 config.cache_store = MyCacheStore.new
 ```
 
-<a class="anchor" id="activesupport-cache-memorystore"></a>
+### ActiveSupport::Cache::MemoryStore
 
-### `ActiveSupport::Cache::MemoryStore`
-
-这个缓存存储器把缓存条目放在内存中，与 Ruby 进程放在一起。可以把 `:size` 选项传给构造方法，指定缓存的大小限制（默认为 32Mb）。超过分配的大小后，会清理缓存，把最不常用的条目删除。
+This cache store keeps entries in memory in the same Ruby process. The cache
+store has a bounded size specified by sending the `:size` option to the
+initializer (default is 32Mb). When the cache exceeds the allotted size, a
+cleanup will occur and the least recently used entries will be removed.
 
 ```ruby
 config.cache_store = :memory_store, { size: 64.megabytes }
 ```
 
-如果运行多个 Ruby on Rails 服务器进程（例如使用 Phusion Passenger 或 Puma 集群模式），各个实例之间无法共享缓存数据。这个缓存存储器不适合大型应用使用。不过，适合只有几个服务器进程的低流量小型应用使用，也适合在开发环境和测试环境中使用。
+If you're running multiple Ruby on Rails server processes (which is the case
+if you're using Phusion Passenger or puma clustered mode), then your Rails server
+process instances won't be able to share cache data with each other. This cache
+store is not appropriate for large application deployments. However, it can
+work well for small, low traffic sites with only a couple of server processes,
+as well as development and test environments.
 
-<a class="anchor" id="activesupport-cache-filestore"></a>
+New Rails projects are configured to use this implementation in development environment by default.
 
-### `ActiveSupport::Cache::FileStore`
+NOTE: Since processes will not share cache data when using `:memory_store`,
+it will not be possible to manually read, write, or expire the cache via the Rails console.
 
-这个缓存存储器使用文件系统存储缓存条目。初始化这个存储器时，必须指定存储文件的目录：
+### ActiveSupport::Cache::FileStore
+
+This cache store uses the file system to store entries. The path to the directory where the store files will be stored must be specified when initializing the cache.
 
 ```ruby
 config.cache_store = :file_store, "/path/to/cache/directory"
 ```
 
-使用这个缓存存储器时，在同一台主机中运行的多个服务器进程可以共享缓存。这个缓存存储器适合一到两个主机的中低流量网站使用。运行在不同主机中的多个服务器进程若想共享缓存，可以使用共享的文件系统，但是不建议这么做。
+With this cache store, multiple server processes on the same host can share a
+cache. This cache store is appropriate for low to medium traffic sites that are
+served off one or two hosts. Server processes running on different hosts could
+share a cache by using a shared file system, but that setup is not recommended.
 
-缓存量一直增加，直到填满磁盘，所以建议你定期清理旧缓存条目。
+As the cache will grow until the disk is full, it is recommended to
+periodically clear out old entries.
 
-这是默认的缓存存储器。
+This is the default cache store implementation (at `"#{root}/tmp/cache/"`) if
+no explicit `config.cache_store` is supplied.
 
-<a class="anchor" id="activesupport-cache-memcachestore"></a>
+### ActiveSupport::Cache::MemCacheStore
 
-### `ActiveSupport::Cache::MemCacheStore`
+This cache store uses Danga's `memcached` server to provide a centralized cache for your application. Rails uses the bundled `dalli` gem by default. This is currently the most popular cache store for production websites. It can be used to provide a single, shared cache cluster with very high performance and redundancy.
 
-这个缓存存储器使用 Danga 的 `memcached` 服务器为应用提供中心化缓存。Rails 默认使用自带的 `dalli` gem。这是生产环境的网站目前最常使用的缓存存储器。通过它可以实现单个共享的缓存集群，效率很高，有较好的冗余。
-
-初始化这个缓存存储器时，要指定集群中所有 memcached 服务器的地址。如果不指定，假定 memcached 运行在本地的默认端口上，但是对大型网站来说，这样做并不好。
-
-这个缓存存储器的 `write` 和 `fetch` 方法接受两个额外的选项，以便利用 memcached 的独有特性。指定 `:raw` 时，直接把值发给服务器，不做序列化。值必须是字符串或数字。memcached 的直接操作，如 `increment` 和 `decrement`，只能用于原始值。还可以指定 `:unless_exist` 选项，不让 memcached 覆盖现有条目。
+When initializing the cache, you should specify the addresses for all memcached servers in your cluster, or ensure the `MEMCACHE_SERVERS` environment variable has been set appropriately.
 
 ```ruby
 config.cache_store = :mem_cache_store, "cache-1.example.com", "cache-2.example.com"
 ```
 
-<a class="anchor" id="activesupport-cache-nullstore"></a>
+If neither are specified, it will assume memcached is running on localhost on the default port (`127.0.0.1:11211`), but this is not an ideal setup for larger sites.
 
-### `ActiveSupport::Cache::NullStore`
+```ruby
+config.cache_store = :mem_cache_store # Will fallback to $MEMCACHE_SERVERS, then 127.0.0.1:11211
+```
 
-这个缓存存储器只应该在开发或测试环境中使用，它并不存储任何信息。在开发环境中，如果代码直接与 `Rails.cache` 交互，但是缓存可能对代码的结果有影响，可以使用这个缓存存储器。在这个缓存存储器上调用 `fetch` 和 `read` 方法不返回任何值。
+See the [`Dalli::Client` documentation](https://www.rubydoc.info/github/mperham/dalli/Dalli%2FClient:initialize) for supported address types.
+
+The `write` and `fetch` methods on this cache accept two additional options that take advantage of features specific to memcached. You can specify `:raw` to send a value directly to the server with no serialization. The value must be a string or number. You can use memcached direct operations like `increment` and `decrement` only on raw values. You can also specify `:unless_exist` if you don't want memcached to overwrite an existing entry.
+
+### ActiveSupport::Cache::RedisCacheStore
+
+The Redis cache store takes advantage of Redis support for automatic eviction
+when it reaches max memory, allowing it to behave much like a Memcached cache server.
+
+Deployment note: Redis doesn't expire keys by default, so take care to use a
+dedicated Redis cache server. Don't fill up your persistent-Redis server with
+volatile cache data! Read the
+[Redis cache server setup guide](https://redis.io/topics/lru-cache) in detail.
+
+For a cache-only Redis server, set `maxmemory-policy` to one of the variants of allkeys.
+Redis 4+ supports least-frequently-used eviction (`allkeys-lfu`), an excellent
+default choice. Redis 3 and earlier should use least-recently-used eviction (`allkeys-lru`).
+
+Set cache read and write timeouts relatively low. Regenerating a cached value
+is often faster than waiting more than a second to retrieve it. Both read and
+write timeouts default to 1 second, but may be set lower if your network is
+consistently low-latency.
+
+By default, the cache store will not attempt to reconnect to Redis if the
+connection fails during a request. If you experience frequent disconnects you
+may wish to enable reconnect attempts.
+
+Cache reads and writes never raise exceptions; they just return `nil` instead,
+behaving as if there was nothing in the cache. To gauge whether your cache is
+hitting exceptions, you may provide an `error_handler` to report to an
+exception gathering service. It must accept three keyword arguments: `method`,
+the cache store method that was originally called; `returning`, the value that
+was returned to the user, typically `nil`; and `exception`, the exception that
+was rescued.
+
+To get started, add the redis gem to your Gemfile:
+
+```ruby
+gem 'redis'
+```
+
+You can enable support for the faster [hiredis](https://github.com/redis/hiredis)
+connection library by additionally adding its ruby wrapper to your Gemfile:
+
+```ruby
+gem 'hiredis'
+```
+
+Redis cache store will automatically require & use hiredis if available. No further
+configuration is needed.
+
+Finally, add the configuration in the relevant `config/environments/*.rb` file:
+
+```ruby
+config.cache_store = :redis_cache_store, { url: ENV['REDIS_URL'] }
+```
+
+A more complex, production Redis cache store may look something like this:
+
+```ruby
+cache_servers = %w(redis://cache-01:6379/0 redis://cache-02:6379/0)
+config.cache_store = :redis_cache_store, { url: cache_servers,
+
+  connect_timeout:    30,  # Defaults to 20 seconds
+  read_timeout:       0.2, # Defaults to 1 second
+  write_timeout:      0.2, # Defaults to 1 second
+  reconnect_attempts: 1,   # Defaults to 0
+
+  error_handler: -> (method:, returning:, exception:) {
+    # Report errors to Sentry as warnings
+    Raven.capture_exception exception, level: 'warning',
+      tags: { method: method, returning: returning }
+  }
+}
+```
+
+### ActiveSupport::Cache::NullStore
+
+This cache store implementation is meant to be used only in development or test environments and it never stores anything. This can be very useful in development when you have code that interacts directly with `Rails.cache` but caching may interfere with being able to see the results of code changes. With this cache store, all `fetch` and `read` operations will result in a miss.
 
 ```ruby
 config.cache_store = :null_store
 ```
 
-<a class="anchor" id="cache-keys"></a>
+Cache Keys
+----------
 
-## 缓存键
+The keys used in a cache can be any object that responds to either `cache_key` or
+`to_param`. You can implement the `cache_key` method on your classes if you need
+to generate custom keys. Active Record will generate keys based on the class name
+and record id.
 
-缓存中使用的键可以是能响应 `cache_key` 或 `to_param` 方法的任何对象。如果想定制生成键的方式，可以覆盖 `cache_key` 方法。Active Record 根据类名和记录 ID 生成缓存键。
-
-缓存键的值可以是散列或数组：
+You can use Hashes and Arrays of values as cache keys.
 
 ```ruby
-# 这是一个有效的缓存键
+# This is a legal cache key
 Rails.cache.read(site: "mysite", owners: [owner_1, owner_2])
 ```
 
-`Rails.cache` 使用的键与存储引擎使用的并不相同，存储引擎使用的键可能含有命名空间，或者根据后端的限制做调整。这意味着，使用 `Rails.cache` 存储值时使用的键可能无法用于供 `dalli` gem 获取缓存条目。然而，你也无需担心会超出 memcached 的大小限制，或者违背句法规则。
+The keys you use on `Rails.cache` will not be the same as those actually used with
+the storage engine. They may be modified with a namespace or altered to fit
+technology backend constraints. This means, for instance, that you can't save
+values with `Rails.cache` and then try to pull them out with the `dalli` gem.
+However, you also don't need to worry about exceeding the memcached size limit or
+violating syntax rules.
 
-<a class="anchor" id="conditional-get-support"></a>
+Conditional GET support
+-----------------------
 
-## 对条件 GET 请求的支持
+Conditional GETs are a feature of the HTTP specification that provide a way for web servers to tell browsers that the response to a GET request hasn't changed since the last request and can be safely pulled from the browser cache.
 
-条件 GET 请求是 HTTP 规范的一个特性，以此告诉 Web 浏览器，GET 请求的响应自上次请求之后没有变化，可以放心从浏览器的缓存中读取。
+They work by using the `HTTP_IF_NONE_MATCH` and `HTTP_IF_MODIFIED_SINCE` headers to pass back and forth both a unique content identifier and the timestamp of when the content was last changed. If the browser makes a request where the content identifier (etag) or last modified since timestamp matches the server's version then the server only needs to send back an empty response with a not modified status.
 
-为此，要传递 `HTTP_IF_NONE_MATCH` 和 `HTTP_IF_MODIFIED_SINCE` 首部，其值分别为唯一的内容标识符和上一次改动时的时间戳。浏览器发送的请求，如果内容标识符（etag）或上一次修改的时间戳与服务器中的版本匹配，那么服务器只需返回一个空响应，把状态设为未修改。
-
-服务器（也就是我们自己）要负责查看最后修改时间戳和 `HTTP_IF_NONE_MATCH` 首部，判断要不要返回完整的响应。既然 Rails 支持条件 GET 请求，那么这个任务就非常简单：
+It is the server's (i.e. our) responsibility to look for a last modified timestamp and the if-none-match header and determine whether or not to send back the full response. With conditional-get support in Rails this is a pretty easy task:
 
 ```ruby
 class ProductsController < ApplicationController
@@ -403,22 +586,23 @@ class ProductsController < ApplicationController
   def show
     @product = Product.find(params[:id])
 
-    # 如果根据指定的时间戳和 etag 值判断请求的内容过期了
-    # （即需要重新处理）执行这个块
-    if stale?(last_modified: @product.updated_at.utc, etag: @product.cache_key)
+    # If the request is stale according to the given timestamp and etag value
+    # (i.e. it needs to be processed again) then execute this block
+    if stale?(last_modified: @product.updated_at.utc, etag: @product.cache_key_with_version)
       respond_to do |wants|
-        # ... 正常处理响应
+        # ... normal response processing
       end
     end
 
-    # 如果请求的内容还新鲜（即未修改），无需做任何事
-    # render 默认使用前面 stale? 中的参数做检查，会自动发送 :not_modified 响应
-    # 就这样，工作结束
+    # If the request is fresh (i.e. it's not modified) then you don't need to do
+    # anything. The default render checks for this using the parameters
+    # used in the previous call to stale? and will automatically send a
+    # :not_modified. So that's it, you're done.
   end
 end
 ```
 
-除了散列，还可以传入模型。Rails 会使用 `updated_at` 和 `cache_key` 方法设定 `last_modified` 和 `etag`：
+Instead of an options hash, you can also simply pass in a model. Rails will use the `updated_at` and `cache_key_with_version` methods for setting `last_modified` and `etag`:
 
 ```ruby
 class ProductsController < ApplicationController
@@ -427,20 +611,20 @@ class ProductsController < ApplicationController
 
     if stale?(@product)
       respond_to do |wants|
-        # ... 正常处理响应
+        # ... normal response processing
       end
     end
   end
 end
 ```
 
-如果无需特殊处理响应，而且使用默认的渲染机制（即不使用 `respond_to`，或者不自己调用 `render`），可以使用 `fresh_when` 简化这个过程：
+If you don't have any special response processing and are using the default rendering mechanism (i.e. you're not using `respond_to` or calling render yourself) then you've got an easy helper in `fresh_when`:
 
 ```ruby
 class ProductsController < ApplicationController
 
-  # 如果请求的内容是新鲜的，自动返回 :not_modified
-  # 否则渲染默认的模板（product.*）
+  # This will automatically send back a :not_modified if the request is fresh,
+  # and will render the default template (product.*) if it's stale.
 
   def show
     @product = Product.find(params[:id])
@@ -449,13 +633,19 @@ class ProductsController < ApplicationController
 end
 ```
 
-有时，我们需要缓存响应，例如永不过期的静态页面。为此，可以使用 `http_cache_forever` 辅助方法，让浏览器和代理无限期缓存。
+Sometimes we want to cache response, for example a static page, that never gets
+expired. To achieve this, we can use `http_cache_forever` helper and by doing
+so browser and proxies will cache it indefinitely.
 
-默认情况下，缓存的响应是私有的，只在用户的 Web 浏览器中缓存。如果想让代理缓存响应，设定 `public: true`，让代理把缓存的响应提供给所有用户。
+By default cached responses will be private, cached only on the user's web
+browser. To allow proxies to cache the response, set `public: true` to indicate
+that they can serve the cached response to all users.
 
-使用这个辅助方法时，`last_modified` 首部的值被设为 `Time.new(2011, 1, 1).utc`，`expires` 首部的值被设为 100 年。
+Using this helper, `last_modified` header is set to `Time.new(2011, 1, 1).utc`
+and `expires` header is set to a 100 years.
 
-WARNING: 使用这个方法时要小心，因为浏览器和代理不会作废缓存的响应，除非强制清除浏览器缓存。
+WARNING: Use this method carefully as browser/proxy won't be able to invalidate
+the cached response unless browser cache is forcefully cleared.
 
 ```ruby
 class HomeController < ApplicationController
@@ -467,53 +657,56 @@ class HomeController < ApplicationController
 end
 ```
 
-<a class="anchor" id="strong-v-s-weak-etags"></a>
+### Strong v/s Weak ETags
 
-### 强 Etag 与弱 Etag
+Rails generates weak ETags by default. Weak ETags allow semantically equivalent
+responses to have the same ETags, even if their bodies do not match exactly.
+This is useful when we don't want the page to be regenerated for minor changes in
+response body.
 
-Rails 默认生成弱 ETag。这种 Etag 允许语义等效但主体不完全匹配的响应具有相同的 Etag。如果响应主体有微小改动，而不想重新渲染页面，可以使用这种 Etag。
-
-为了与强 Etag 区别，弱 Etag 前面有 `W/`。
+Weak ETags have a leading `W/` to differentiate them from strong ETags.
 
 ```
-W/"618bbc92e2d35ea1945008b42799b0e7" => 弱 ETag
-"618bbc92e2d35ea1945008b42799b0e7"   => 强 ETag
+  W/"618bbc92e2d35ea1945008b42799b0e7" → Weak ETag
+  "618bbc92e2d35ea1945008b42799b0e7" → Strong ETag
 ```
 
-与弱 Etag 不同，强 Etag 要求响应完全一样，不能有一个字节的差异。在大型视频或 PDF 文件内部做 Range 查询时用得到。有些 CDN，如 Akamai，只支持强 Etag。如果确实想生成强 Etag，可以这么做：
+Unlike weak ETag, strong ETag implies that response should be exactly the same
+and byte by byte identical. Useful when doing Range requests within a
+large video or PDF file. Some CDNs support only strong ETags, like Akamai.
+If you absolutely need to generate a strong ETag, it can be done as follows.
 
 ```ruby
-class ProductsController < ApplicationController
-  def show
-    @product = Product.find(params[:id])
-    fresh_when last_modified: @product.published_at.utc, strong_etag: @product
+  class ProductsController < ApplicationController
+    def show
+      @product = Product.find(params[:id])
+      fresh_when last_modified: @product.published_at.utc, strong_etag: @product
+    end
   end
-end
 ```
 
-也可以直接在响应上设定强 Etag：
+You can also set the strong ETag directly on the response.
 
 ```ruby
-response.strong_etag = response.body
-# => "618bbc92e2d35ea1945008b42799b0e7"
+  response.strong_etag = response.body # => "618bbc92e2d35ea1945008b42799b0e7"
 ```
 
-<a class="anchor" id="caching-in-development"></a>
+Caching in Development
+----------------------
 
-## 在开发环境中测试缓存
+It's common to want to test the caching strategy of your application
+in development mode. Rails provides the rails command `dev:cache` to
+easily toggle caching on/off.
 
-我们经常需要在开发模式中测试应用采用的缓存策略。Rails 提供的 Rake 任务 `dev:cache` 能轻易启停缓存。
-
-```sh
+```bash
 $ bin/rails dev:cache
 Development mode is now being cached.
 $ bin/rails dev:cache
 Development mode is no longer being cached.
 ```
 
-<a class="anchor" id="references"></a>
+References
+----------
 
-## 参考资源
-
-*   [DHH 写的文章：How key-based cache expiration works](https://signalvnoise.com/posts/3113-how-key-based-cache-expiration-works)
-*   [Railscast 中介绍缓存摘要的视频](http://railscasts.com/episodes/387-cache-digests)
+* [DHH's article on key-based expiration](https://signalvnoise.com/posts/3113-how-key-based-cache-expiration-works)
+* [Ryan Bates' Railscast on cache digests](http://railscasts.com/episodes/387-cache-digests)

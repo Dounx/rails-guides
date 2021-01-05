@@ -1,59 +1,80 @@
-# Ruby on Rails 的维护方针
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-对 Rails 框架的支持分为四种：新功能、缺陷修正、安全问题和严重安全问题。各自的处理方式如下，所有版本号都使用 `X.Y.Z` 格式。
+Maintenance Policy for Ruby on Rails
+====================================
 
------------------------------------------------------------------------------
+Support of the Rails framework is divided into four groups: New features, bug
+fixes, security issues, and severe security issues. They are handled as
+follows, all versions, except for security releases, in `X.Y.Z`, format.
 
-Rails 遵照[语义版本](http://semver.org/)更替版本号：
+--------------------------------------------------------------------------------
 
-**补丁版 Z**
+Rails follows a shifted version of [semver](https://semver.org/):
 
-只修正缺陷，不改变 API，也不新增功能。安全修正可能例外。
+**Patch `Z`**
 
-**小版本 Y**
+Only bug fixes, no API changes, no new features.
+Except as necessary for security fixes.
 
-新增功能，可能改变 API（相当于语义版本中的大版本）。重大改变在之前的小版本或大版本中带有弃用提示。
+**Minor `Y`**
 
-**大版本 X**
+New features, may contain API changes (Serve as major versions of Semver).
+Breaking changes are paired with deprecation notices in the previous minor
+or major release.
 
-新增功能，可能改变 API。Rails 的大版本和小版本之间的区别是对重大改变的处理方式不同，有时也有例外。
+**Major `X`**
 
-<a class="anchor" id="new-features"></a>
+New features, will likely contain API changes. The difference between Rails'
+minor and major releases is the magnitude of breaking changes, and usually
+reserved for special occasions.
 
-## 新功能
+New Features
+------------
 
-新功能只添加到 master 分支，不会包含在补丁版中。
+New features are only added to the master branch and will not be made available
+in point releases.
 
-<a class="anchor" id="bug-fixes"></a>
+Bug Fixes
+---------
 
-## 缺陷修正
+Only the latest release series will receive bug fixes. When enough bugs are
+fixed and its deemed worthy to release a new gem, this is the branch it happens
+from.
 
-只有最新的发布系列接收缺陷修正。如果修正的缺陷足够多，值得发布新的 gem，从这个分支中获取代码。
+In special situations, where someone from the Core Team agrees to support more series,
+they are included in the list of supported series.
 
-如果核心团队中有人同意支持更多的发布系列，也会包含在支持的系列中——这是特殊情况。
+**Currently included series:** `6.1.Z`.
 
-目前支持的系列：`5.1.Z`。
+Security Issues
+---------------
 
-<a class="anchor" id="security-issues"></a>
+The current release series and the next most recent one will receive patches
+and new versions in case of a security issue.
 
-## 安全问题
+These releases are created by taking the last released version, applying the
+security patches, and releasing. Those patches are then applied to the end of
+the x-y-stable branch. For example, a theoretical 1.2.2.1 security release would
+be built from 1.2.2, and then added to the end of 1-2-stable. This means that
+security releases are easy to upgrade to if you're running the latest version
+of Rails.
 
-发现安全问题时，当前发布系列和下一个最新版接收补丁和新版本。
+**Currently included series:** `6.1.Z`, `6.0.Z`, `5.2.Z`.
 
-新版代码从最近的发布版中获取，应用安全补丁之后发布。然后把安全补丁应用到 x-y-stable 分支。例如，1.2.3 安全发布在 1.2.2 版的基础上得来，然后再把安全补丁应用到 1-2-stable 分支。因此，如果你使用 Rails 的最新版，很容易升级安全修正版。
+Severe Security Issues
+----------------------
 
-目前支持的系列：`5.1.Z`、`5.0.Z`。
+For severe security issues all releases in the current major series, and also the
+last release in the previous major series will receive patches and new versions. The
+classification of the security issue is judged by the core team.
 
-<a class="anchor" id="severe-security-issues"></a>
+**Currently included series:** `6.1.Z`, `6.0.Z`, `5.2.Z`.
 
-## 严重安全问题
+Unsupported Release Series
+--------------------------
 
-发现严重安全问题时，会发布新版，最近的主发布系列也会接收补丁和新版。安全问题由核心团队甄别分类。
-
-目前支持的系列：`5.1.Z`、`5.0.Z`、`4.2.Z`。
-
-<a class="anchor" id="unsupported-release-series"></a>
-
-## 不支持的发布系列
-
-如果一个发布系列不再得到支持，你要自己负责处理缺陷和安全问题。我们可能会逆向移植，把修正代码发布到 Git 仓库中，但是不会发布新版本。如果你不想自己维护，应该升级到我们支持的版本。
+When a release series is no longer supported, it's your own responsibility to
+deal with bugs and security issues. We may provide backports of the fixes and
+publish them to git, however there will be no new versions released. If you are
+not comfortable maintaining your own versions, you should upgrade to a
+supported version.

@@ -1,166 +1,246 @@
-# Asset Pipeline
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-本文介绍 Asset Pipeline。
+The Asset Pipeline
+==================
 
-读完本文后，您将学到：
+This guide covers the asset pipeline.
 
-*   Asset Pipeline 是什么，有什么用处；
-*   如何合理组织应用的静态资源文件；
-*   使用 Asset Pipeline 的好处；
-*   如何为 Asset Pipeline 添加预处理器；
-*   如何用 gem 打包静态资源文件。
+After reading this guide, you will know:
 
------------------------------------------------------------------------------
+* What the asset pipeline is and what it does.
+* How to properly organize your application assets.
+* The benefits of the asset pipeline.
+* How to add a pre-processor to the pipeline.
+* How to package assets with a gem.
 
-<a class="anchor" id="what-is-the-asset-pipeline"></a>
+--------------------------------------------------------------------------------
 
-## Asset Pipeline 是什么
+What is the Asset Pipeline?
+---------------------------
 
-Asset Pipeline 提供了用于连接、简化或压缩 JavaScript 和 CSS 静态资源文件的框架。有了 Asset Pipeline，我们还可以使用其他语言和预处理器，例如 CoffeeScript、Sass 和 ERB，编写这些静态资源文件。应用中的静态资源文件还可以自动与其他 gem 中的静态资源文件合并。例如，与 `jquery-rails` gem 中包含的 `jquery.js` 文件合并，从而使 Rails 能够支持 AJAX 特性。
+The asset pipeline provides a framework to concatenate and minify or compress
+JavaScript and CSS assets. It also adds the ability to write these assets in
+other languages and pre-processors such as CoffeeScript, Sass, and ERB.
+It allows assets in your application to be automatically combined with assets
+from other gems.
 
-Asset Pipeline 是通过 [sprockets-rails](https://github.com/rails/sprockets-rails) gem 实现的，Rails 默认启用了这个 gem。在新建 Rails 应用时，通过 `--skip-sprockets` 选项可以禁用这个 gem。
+The asset pipeline is implemented by the
+[sprockets-rails](https://github.com/rails/sprockets-rails) gem,
+and is enabled by default. You can disable it while creating a new application by
+passing the `--skip-sprockets` option.
 
-```sh
+```bash
 $ rails new appname --skip-sprockets
 ```
 
-在新建 Rails 应用时，Rails 自动在 Gemfile 中添加了 `sass-rails`、`coffee-rails` 和 `uglifier` gem，Sprockets 通过这些 gem 来压缩静态资源文件：
+Rails automatically adds the [`sass-rails`](https://github.com/rails/sass-rails)
+gem to your `Gemfile`, which is used by Sprockets for
+[Sass](https://sass-lang.com) compilation:
 
 ```ruby
 gem 'sass-rails'
-gem 'uglifier'
-gem 'coffee-rails'
 ```
 
-使用 `--skip-sprockets` 选项时，Rails 不会在 Gemfile 中添加这些 gem。因此，之后如果想要启用 Asset Pipeline，就需要手动在 Gemfile 中添加这些 gem。此外，使用 `--skip-sprockets` 选项时生成的 `config/application.rb` 也略有不同，用于加载 `sprockets/railtie` 的代码被注释掉了，因此要启用 Asset Pipeline，还需要取消注释：
+Using the `--skip-sprockets` option will prevent Rails from adding
+this gem, so if you later want to enable the asset pipeline
+you will have to add it to your `Gemfile` manually. Also,
+creating an application with the `--skip-sprockets` option will generate
+a slightly different `config/application.rb` file, with a require statement
+for the sprockets railtie that is commented-out. You will have to remove
+the comment operator on that line to later enable the asset pipeline:
 
 ```ruby
 # require "sprockets/railtie"
 ```
 
-在 `production.rb` 配置文件中，通过 `config.assets.css_compressor` 和 `config.assets.js_compressor` 选项可以分别为 CSS 和 JavaScript 静态资源文件设置压缩方式：
+To set asset compression methods, set the appropriate configuration options
+in `production.rb` - `config.assets.css_compressor` for your CSS and
+`config.assets.js_compressor` for your JavaScript:
 
 ```ruby
 config.assets.css_compressor = :yui
 config.assets.js_compressor = :uglifier
 ```
 
-NOTE: 如果 Gemfile 中包含 `sass-rails` gem，Rails 就会自动使用这个 gem 压缩 CSS 静态资源文件，而无需设置 `config.assets.css_compressor` 选项。
+NOTE: The `sass-rails` gem is automatically used for CSS compression if included
+in the `Gemfile` and no `config.assets.css_compressor` option is set.
 
-<a class="anchor" id="main-features"></a>
 
-### 主要特性
+### Main Features
 
-Asset Pipeline 的特性之一是连接静态资源文件，目的是减少渲染网页时浏览器发起的请求次数。Web 浏览器能够同时发起的请求次数是有限的，因此更少的请求次数可能意味着更快的应用加载速度。
+The first feature of the pipeline is to concatenate assets, which can reduce the
+number of requests that a browser makes to render a web page. Web browsers are
+limited in the number of requests that they can make in parallel, so fewer
+requests can mean faster loading for your application.
 
-Sprockets 把所有 JavaScript 文件连接为一个主 `.js` 文件，把所有 CSS 文件连接为一个主 `.css` 文件。后文会介绍，我们可以按需定制连接文件的方式。在生产环境中，Rails 会在每个文件名中插入 SHA256 指纹，以便 Web 浏览器缓存文件。当我们修改了文件内容，Rails 会自动修改文件名中的指纹，从而让原有缓存失效。
+Sprockets concatenates all JavaScript files into one master `.js` file and all
+CSS files into one master `.css` file. As you'll learn later in this guide, you
+can customize this strategy to group files any way you like. In production,
+Rails inserts an SHA256 fingerprint into each filename so that the file is
+cached by the web browser. You can invalidate the cache by altering this
+fingerprint, which happens automatically whenever you change the file contents.
 
-Asset Pipeline 的特性之二是简化或压缩静态资源文件。对于 CSS 文件，会删除空格和注释。对于 JavaScript 文件，可以进行更复杂的处理，我们可以从内置选项中选择处理方式，也可以自定义处理方式。
+The second feature of the asset pipeline is asset minification or compression.
+For CSS files, this is done by removing whitespace and comments. For JavaScript,
+more complex processes can be applied. You can choose from a set of built in
+options or specify your own.
 
-Asset Pipeline 的特性之三是可以使用更高级的语言编写静态资源文件，再通过预编译转换为实际的静态资源文件。默认支持的高级语言有：用于编写 CSS 的 Sass，用于编写 JavaScript 的 CoffeeScript，以及 ERB。
+The third feature of the asset pipeline is it allows coding assets via a
+higher-level language, with precompilation down to the actual assets. Supported
+languages include Sass for CSS, CoffeeScript for JavaScript, and ERB for both by
+default.
 
-<a class="anchor" id="what-is-fingerprinting-and-why-should-i-care"></a>
+### What is Fingerprinting and Why Should I Care?
 
-### 指纹识别是什么，为什么要关心指纹？
+Fingerprinting is a technique that makes the name of a file dependent on the
+contents of the file. When the file contents change, the filename is also
+changed. For content that is static or infrequently changed, this provides an
+easy way to tell whether two versions of a file are identical, even across
+different servers or deployment dates.
 
-指纹是一项根据文件内容修改文件名的技术。一旦文件内容发生变化，文件名就会发生变化。对于静态文件或内容很少发生变化的文件，这项技术提供了确定文件的两个版本是否相同的简单方法，特别是在跨服务器和多次部署的情况下。
+When a filename is unique and based on its content, HTTP headers can be set to
+encourage caches everywhere (whether at CDNs, at ISPs, in networking equipment,
+or in web browsers) to keep their own copy of the content. When the content is
+updated, the fingerprint will change. This will cause the remote clients to
+request a new copy of the content. This is generally known as _cache busting_.
 
-当一个文件的文件名能够根据文件内容发生变化，并且能够保证不会出现重名时，就可以通过设置 HTTP 首部来建议所有缓存（CDN、ISP、网络设备或 Web 浏览器的缓存）都保存该文件的副本。一旦文件内容更新，文件名中的指纹就会发生变化，从而使远程客户端发起对文件新副本的请求。这项技术称为“缓存清除”（cache busting）。
-
-Sprockets 使用指纹的方式是在文件名中添加文件内容的哈希值，并且通常会添加到文件名末尾。例如，对于 CSS 文件 `global.css`，添加哈希值后文件名可能变为：
+The technique Sprockets uses for fingerprinting is to insert a hash of the
+content into the name, usually at the end. For example a CSS file `global.css`
 
 ```
 global-908e25f4bf641868d8683022a5b62f54.css
 ```
 
-Rails 的 Asset Pipeline 也采取了这种策略。
+This is the strategy adopted by the Rails asset pipeline.
 
-以前 Rails 采用的策略是，通过内置的辅助方法，为每一个指向静态资源文件的链接添加基于日期生成的查询字符串。在网页源代码中，会生成下面这样的链接：
+Rails' old strategy was to append a date-based query string to every asset linked
+with a built-in helper. In the source the generated code looked like this:
 
 ```
 /stylesheets/global.css?1309495796
 ```
 
-使用查询字符串的策略有如下缺点：
+The query string strategy has several disadvantages:
 
-**1. 如果一个文件的两个版本只是文件名的查询参数不同，这时不是所有缓存都能可靠地更新该文件的缓存。**
+1. **Not all caches will reliably cache content where the filename only differs by
+query parameters**
 
-[Steve Souders](http://www.stevesouders.com/blog/2008/08/23/revving-filenames-dont-use-querystring/) 建议，“……避免在可缓存的资源上使用查询字符串”。他发现，在使用查询字符串的情况下，有 5—20% 的请求不会被缓存。对于某些 CDN，通过修改查询字符串根本无法使缓存失效。
+    [Steve Souders recommends](https://www.stevesouders.com/blog/2008/08/23/revving-filenames-dont-use-querystring/),
+ "...avoiding a querystring for cacheable resources". He found that in this
+case 5-20% of requests will not be cached. Query strings in particular do not
+work at all with some CDNs for cache invalidation.
 
-**2. 在多服务器环境中，不同节点上的文件名有可能发生变化。**
+2. **The file name can change between nodes in multi-server environments.**
 
-在 Rails 2.x 中，默认基于文件修改时间生成查询字符串。当静态资源文件被部署到某个节点上时，无法保证文件的时间戳保持不变，这样，对于同一个文件的请求，不同服务器可能返回不同的文件名。
+    The default query string in Rails 2.x is based on the modification time of
+the files. When assets are deployed to a cluster, there is no guarantee that the
+timestamps will be the same, resulting in different values being used depending
+on which server handles the request.
 
-**3. 缓存失效的情况过多。**
+3. **Too much cache invalidation**
 
-每次部署代码的新版本时，静态资源文件都会被重新部署，这些文件的最后修改时间也会发生变化。这样，不管其内容是否发生变化，客户端都不得不重新获取这些文件。
+    When static assets are deployed with each new release of code, the mtime
+(time of last modification) of _all_ these files changes, forcing all remote
+clients to fetch them again, even when the content of those assets has not changed.
 
-使用指纹可以避免使用查询字符串的这些缺点，并且能够确保文件内容相同时文件名也相同。
+Fingerprinting fixes these problems by avoiding query strings, and by ensuring
+that filenames are consistent based on their content.
 
-在开发环境和生产环境中，指纹都是默认启用的。通过 `config.assets.digest` 配置选项，可以启用或禁用指纹。
+Fingerprinting is enabled by default for both the development and production
+environments. You can enable or disable it in your configuration through the
+`config.assets.digest` option.
 
-扩展阅读：
+More reading:
 
-*   [优化缓存](http://code.google.com/speed/page-speed/docs/caching.html)
-*   [为文件名添加版本号：请不要使用查询字符串](http://www.stevesouders.com/blog/2008/08/23/revving-filenames-dont-use-querystring/)
+* [Optimize caching](https://developers.google.com/speed/docs/insights/LeverageBrowserCaching)
+* [Revving Filenames: don't use querystring](http://www.stevesouders.com/blog/2008/08/23/revving-filenames-dont-use-querystring/)
 
-<a class="anchor" id="how-to-use-the-asset-pipeline"></a>
 
-## 如何使用 Asset Pipeline
+How to Use the Asset Pipeline
+-----------------------------
 
-在 Rails 的早期版本中，所有静态资源文件都放在 `public` 文件夹的子文件夹中，例如 `images`、`javascripts` 和 `stylesheets` 子文件夹。当 Rails 开始使用 Asset Pipeline 后，就推荐把静态资源文件放在 `app/assets` 文件夹中，并使用 Sprockets 中间件处理这些文件。
+In previous versions of Rails, all assets were located in subdirectories of
+`public` such as `images`, `javascripts` and `stylesheets`. With the asset
+pipeline, the preferred location for these assets is now the `app/assets`
+directory. Files in this directory are served by the Sprockets middleware.
 
-当然，静态资源文件仍然可以放在 `public` 文件夹及其子文件夹中。只要把 `config.public_file_server.enabled` 选项设置为 `true`，Rails 应用或 Web 服务器就会处理 `public` 文件夹及其子文件夹中的所有静态资源文件。但对于需要预处理的文件，都应该放在 `app/assets` 文件夹中。
+Assets can still be placed in the `public` hierarchy. Any assets under `public`
+will be served as static files by the application or web server when
+`config.public_file_server.enabled` is set to true. You should use `app/assets` for
+files that must undergo some pre-processing before they are served.
 
-在生产环境中，Rails 默认会对 `public/assets` 文件夹中的文件进行预处理。经过预处理的静态资源文件将由 Web 服务器直接处理。在生产环境中，`app/assets` 文件夹中的文件不会直接交由 Web 服务器处理。
+In production, Rails precompiles these files to `public/assets` by default. The
+precompiled copies are then served as static assets by the web server. The files
+in `app/assets` are never served directly in production.
 
-<a class="anchor" id="controller-specific-assets"></a>
+### Controller Specific Assets
 
-### 针对控制器的静态资源文件
+When you generate a scaffold or a controller, Rails also generates a
+Cascading Style Sheet file (or SCSS file if `sass-rails` is in the `Gemfile`)
+for that controller. Additionally, when generating a scaffold, Rails generates
+the file `scaffolds.css` (or `scaffolds.scss` if `sass-rails` is in the
+`Gemfile`.)
 
-当我们使用生成器生成脚手架或控制器时，Rails 会同时为控制器生成 JavaScript 文件（如果 Gemfile 中包含了 `coffee-rails` gem，那么生成的是 CoffeeScript 文件）和 CSS 文件（如果 Gemfile 中包含了 `sass-rails` gem，那么生成的是 SCSS 文件）。此外，在生成脚手架时，Rails 还会生成 `scaffolds.css` 文件（如果 Gemfile 中包含了 `sass-rails` gem，那么生成的是 `scaffolds.scss` 文件）。
+For example, if you generate a `ProjectsController`, Rails will also add a new
+file at `app/assets/stylesheets/projects.scss`. By default these files will be
+ready to use by your application immediately using the `require_tree` directive. See
+[Manifest Files and Directives](#manifest-files-and-directives) for more details
+on require_tree.
 
-例如，当我们生成 `ProjectsController` 时，Rails 会新建 `app/assets/javascripts/projects.coffee` 文件和 `app/assets/stylesheets/projects.scss` 文件。默认情况下，应用会通过 `require_tree` 指令引入这两个文件。关于 `require_tree` 指令的更多介绍，请参阅 [清单文件和指令](#manifest-files-and-directives)。
+You can also opt to include controller specific stylesheets and JavaScript files
+only in their respective controllers using the following:
 
-针对控制器的 JavaScript 文件和 CSS 文件也可以只在相应的控制器中引入：
+`<%= javascript_include_tag params[:controller] %>` or `<%= stylesheet_link_tag
+params[:controller] %>`
 
-`<%= javascript_include_tag params[:controller] %>` 或 `<%= stylesheet_link_tag params[:controller] %>`
+When doing this, ensure you are not using the `require_tree` directive, as that
+will result in your assets being included more than once.
 
-此时，千万不要使用 `require_tree` 指令，否则就会重复包含这些静态资源文件。
+WARNING: When using asset precompilation, you will need to ensure that your
+controller assets will be precompiled when loading them on a per page basis. By
+default `.coffee` and `.scss` files will not be precompiled on their own. See
+[Precompiling Assets](#precompiling-assets) for more information on how
+precompiling works.
 
-WARNING: 在进行静态资源文件预编译时，请确保针对控制器的静态文件是在按页加载时进行预编译的。默认情况下，Rails 不会自动对 `.coffee` 和 `.scss` 文件进行预编译。关于预编译工作原理的更多介绍，请参阅 [预编译静态资源文件](#precompiling-assets)。
+NOTE: You must have an ExecJS supported runtime in order to use CoffeeScript.
+If you are using macOS or Windows, you have a JavaScript runtime installed in
+your operating system. Check [ExecJS](https://github.com/rails/execjs#readme) documentation to know all supported JavaScript runtimes.
 
-NOTE: 要使用 CoffeeScript，就必须安装支持 ExecJS 的运行时。macOS 和 Windows 已经预装了此类运行时。关于所有可用运行时的更多介绍，请参阅 [ExecJS](https://github.com/rails/execjs#readme) 文档。
-
-通过在 `config/application.rb` 配置文件中添加下述代码，可以禁止生成针对控制器的静态资源文件：
+You can also disable generation of controller specific asset files by adding the
+following to your `config/application.rb` configuration:
 
 ```ruby
-config.generators do |g|
-  g.assets false
-end
+  config.generators do |g|
+    g.assets false
+  end
 ```
 
-<a class="anchor" id="asset-organization"></a>
+### Asset Organization
 
-### 静态资源文件的组织方式
+Pipeline assets can be placed inside an application in one of three locations:
+`app/assets`, `lib/assets` or `vendor/assets`.
 
-应用的 Asset Pipeline 静态资源文件可以储存在三个位置：`app/assets`、`lib/assets` 和 `vendor/assets`。
+* `app/assets` is for assets that are owned by the application, such as custom
+images, JavaScript files, or stylesheets.
 
-*   `app/assets` 文件夹用于储存应用自有的静态资源文件，例如自定义图像、JavaScript 文件和 CSS 文件。
-*   `lib/assets` 文件夹用于储存自有代码库的静态资源文件，这些代码库或者不适合放在当前应用中，或者需要在多个应用间共享。
-*   `vendor/assets` 文件夹用于储存第三方代码库的静态资源文件，例如 JavaScript 插件和 CSS 框架。如果第三方代码库中引用了同样由 Asset Pipeline 处理的静态资源文件（图像、CSS 文件等），就必须使用 `asset_path` 这样的辅助方法重新编写相关代码。
+* `lib/assets` is for your own libraries' code that doesn't really fit into the
+scope of the application or those libraries which are shared across applications.
 
-WARNING: 从 Rails 3 升级而来的用户需要注意，通过设置应用的清单文件， 我们可以包含 `lib/assets` 和 `vendor/assets` 文件夹中的静态资源文件，但是这两个文件夹不再是预编译数组的一部分。更多介绍请参阅 [预编译静态资源文件](#precompiling-assets)。
+* `vendor/assets` is for assets that are owned by outside entities, such as
+code for JavaScript plugins and CSS frameworks. Keep in mind that third party
+code with references to other files also processed by the asset Pipeline (images,
+stylesheets, etc.), will need to be rewritten to use helpers like `asset_path`.
 
-<a class="anchor" id="search-paths"></a>
+#### Search Paths
 
-#### 搜索路径
+When a file is referenced from a manifest or a helper, Sprockets searches the
+three default asset locations for it.
 
-当清单文件或辅助方法引用了静态资源文件时，Sprockets 会在静态资源文件的三个默认存储位置中进行查找。
+The default locations are: the `images`, `javascripts` and `stylesheets`
+directories under the `app/assets` folder, but these subdirectories
+are not special - any path under `assets/*` will be searched.
 
-这三个默认存储位置分别是 `app/assets` 文件夹的 `images`、`javascripts` 和 `stylesheets` 子文件夹，实际上这三个文件夹并没有什么特别之处，所有的 `app/assets/*` 文件夹及其子文件夹都会被搜索。
-
-例如，下列文件：
+For example, these files:
 
 ```
 app/assets/javascripts/home.js
@@ -169,169 +249,222 @@ vendor/assets/javascripts/slider.js
 vendor/assets/somepackage/phonebox.js
 ```
 
-在清单文件中可以像下面这样进行引用：
+would be referenced in a manifest like this:
 
-```javascript
+```js
 //= require home
 //= require moovinator
 //= require slider
 //= require phonebox
 ```
 
-这些文件夹的子文件夹中的静态资源文件：
+Assets inside subdirectories can also be accessed.
 
 ```
 app/assets/javascripts/sub/something.js
 ```
 
-可以像下面这样进行引用：
+is referenced as:
 
-```javascript
+```js
 //= require sub/something
 ```
 
-通过在 Rails 控制台中检查 `Rails.application.config.assets.paths` 变量，我们可以查看搜索路径。
+You can view the search path by inspecting
+`Rails.application.config.assets.paths` in the Rails console.
 
-除了标准的 `app/assets/*` 路径，还可以在 `config/application.rb` 配置文件中为 Asset Pipeline 添加其他路径。例如：
+Besides the standard `assets/*` paths, additional (fully qualified) paths can be
+added to the pipeline in `config/initializers/assets.rb`. For example:
 
 ```ruby
-config.assets.paths << Rails.root.join("lib", "videoplayer", "flash")
+Rails.application.config.assets.paths << Rails.root.join("lib", "videoplayer", "flash")
 ```
 
-Rails 会按照路径在搜索路径中出现的先后顺序，对路径进行遍历。因此，在默认情况下，`app/assets` 中的文件优先级最高，将会遮盖 `lib` 和 `vendor` 文件夹中的同名文件。
+Paths are traversed in the order they occur in the search path. By default,
+this means the files in `app/assets` take precedence, and will mask
+corresponding paths in `lib` and `vendor`.
 
-千万注意，在清单文件之外引用的静态资源文件必须添加到预编译数组中，否则无法在生产环境中使用。
+It is important to note that files you want to reference outside a manifest must
+be added to the precompile array or they will not be available in the production
+environment.
 
-<a class="anchor" id="using-index-files"></a>
+#### Using Index Files
 
-#### 使用索引文件
+Sprockets uses files named `index` (with the relevant extensions) for a special
+purpose.
 
-对于 Sprockets，名为 `index`（带有相关扩展名）的文件具有特殊用途。
+For example, if you have a jQuery library with many modules, which is stored in
+`lib/assets/javascripts/library_name`, the file `lib/assets/javascripts/library_name/index.js` serves as
+the manifest for all files in this library. This file could include a list of
+all the required files in order, or a simple `require_tree` directive.
 
-例如，假设应用中使用的 jQuery 库及多个模块储存在 `lib/assets/javascripts/library_name` 文件夹中，那么 `lib/assets/javascripts/library_name/index.js` 文件将作为这个库的清单文件。在这个库的清单文件中，应该按顺序列出所有需要加载的文件，或者干脆使用 `require_tree` 指令。
+The library as a whole can be accessed in the application manifest like so:
 
-在应用的清单文件中，可以把这个库作为一个整体加载：
-
-```javascript
+```js
 //= require library_name
 ```
 
-这样，相关代码总是作为整体在应用中使用，降低了维护成本，并使代码保持简洁。
+This simplifies maintenance and keeps things clean by allowing related code to
+be grouped before inclusion elsewhere.
 
-<a class="anchor" id="coding-links-to-assets"></a>
+### Coding Links to Assets
 
-### 创建指向静态资源文件的链接
-
-Sprockets 没有为访问静态资源文件添加任何新方法，而是继续使用我们熟悉的 `javascript_include_tag` 和 `stylesheet_link_tag` 辅助方法：
+Sprockets does not add any new methods to access your assets - you still use the
+familiar `javascript_include_tag` and `stylesheet_link_tag`:
 
 ```erb
 <%= stylesheet_link_tag "application", media: "all" %>
 <%= javascript_include_tag "application" %>
 ```
 
-如果使用了 Rails 默认包含的 `turbolinks` gem，并使用了 `data-turbolinks-track` 选项，Turbolinks 就会检查静态资源文件是否有更新，如果有更新就加载到页面中：
+If using the turbolinks gem, which is included by default in Rails, then
+include the 'data-turbolinks-track' option which causes turbolinks to check if
+an asset has been updated and if so loads it into the page:
 
 ```erb
 <%= stylesheet_link_tag "application", media: "all", "data-turbolinks-track" => "reload" %>
 <%= javascript_include_tag "application", "data-turbolinks-track" => "reload" %>
 ```
 
-在常规视图中，我们可以像下面这样访问 `app/assets/images` 文件夹中的图像：
+In regular views you can access images in the `app/assets/images` directory
+like this:
 
 ```erb
 <%= image_tag "rails.png" %>
 ```
 
-如果在应用中启用了 Asset Pipeline，并且未在当前环境中禁用 Asset Pipeline，那么这个图像文件将由 Sprockets 处理。如果图像的位置是 `public/assets/rails.png`，那么将由 Web 服务器处理。
+Provided that the pipeline is enabled within your application (and not disabled
+in the current environment context), this file is served by Sprockets. If a file
+exists at `public/assets/rails.png` it is served by the web server.
 
-如果文件请求包含 SHA256 哈希值，例如 `public/assets/rails-f90d8a84c707a8dc923fca1ca1895ae8ed0a09237f6992015fef1e11be77c023.png`，处理的方式也是一样的。关于如何生成哈希值的介绍，请参阅 [在生产环境中](#in-production)。
+Alternatively, a request for a file with an SHA256 hash such as
+`public/assets/rails-f90d8a84c707a8dc923fca1ca1895ae8ed0a09237f6992015fef1e11be77c023.png`
+is treated the same way. How these hashes are generated is covered in the [In
+Production](#in-production) section later on in this guide.
 
-Sprockets 还会检查 `config.assets.paths` 中指定的路径，其中包括 Rails 应用的标准路径和 Rails 引擎添加的路径。
+Sprockets will also look through the paths specified in `config.assets.paths`,
+which includes the standard application paths and any paths added by Rails
+engines.
 
-也可以把图像放在子文件夹中，访问时只需加上子文件夹的名称即可：
+Images can also be organized into subdirectories if required, and then can be
+accessed by specifying the directory's name in the tag:
 
 ```erb
 <%= image_tag "icons/rails.png" %>
 ```
 
-WARNING: 如果对静态资源文件进行了预编译（请参阅 [在生产环境中](#in-production)），那么在页面中链接到并不存在的静态资源文件或空字符串将导致该页面抛出异常。因此，在使用 `image_tag` 等辅助方法处理用户提供的数据时一定要小心。
+WARNING: If you're precompiling your assets (see [In Production](#in-production)
+below), linking to an asset that does not exist will raise an exception in the
+calling page. This includes linking to a blank string. As such, be careful using
+`image_tag` and the other helpers with user-supplied data.
 
-<a class="anchor" id="css-and-erb"></a>
+#### CSS and ERB
 
-#### CSS 和 ERB
+The asset pipeline automatically evaluates ERB. This means if you add an
+`erb` extension to a CSS asset (for example, `application.css.erb`), then
+helpers like `asset_path` are available in your CSS rules:
 
-Asset Pipeline 会自动计算 ERB 的值。也就是说，只要给 CSS 文件添加 `.erb` 扩展名（例如 `application.css.erb`），就可以在 CSS 规则中使用 `asset_path` 等辅助方法。
-
-```erb
+```css
 .class { background-image: url(<%= asset_path 'image.png' %>) }
 ```
 
-上述代码中的 `asset_path` 辅助方法会返回指向图像真实路径的链接。图像必须位于静态文件加载路径中，例如 `app/assets/images/image.png`，以便在这里引用。如果在 `public/assets` 文件夹中已经存在此图像的带指纹的版本，那么将引用这个带指纹的版本。
+This writes the path to the particular asset being referenced. In this example,
+it would make sense to have an image in one of the asset load paths, such as
+`app/assets/images/image.png`, which would be referenced here. If this image is
+already available in `public/assets` as a fingerprinted file, then that path is
+referenced.
 
-要想使用 [data URI](http://en.wikipedia.org/wiki/Data_URI_scheme)（用于把图像数据直接嵌入 CSS 文件中），可以使用 `asset_data_uri` 辅助方法：
+If you want to use a [data URI](https://en.wikipedia.org/wiki/Data_URI_scheme) -
+a method of embedding the image data directly into the CSS file - you can use
+the `asset_data_uri` helper.
 
-```erb
+```css
 #logo { background: url(<%= asset_data_uri 'logo.png' %>) }
 ```
 
-`asset_data_uri` 辅助方法会把正确格式化后的 data URI 插入 CSS 源代码中。
+This inserts a correctly-formatted data URI into the CSS source.
 
-注意，关闭标签不能使用 `-%>` 形式。
+Note that the closing tag cannot be of the style `-%>`.
 
-<a class="anchor" id="css-and-sass"></a>
+#### CSS and Sass
 
-#### CSS 和 Sass
+When using the asset pipeline, paths to assets must be re-written and
+`sass-rails` provides `-url` and `-path` helpers (hyphenated in Sass,
+underscored in Ruby) for the following asset classes: image, font, video, audio,
+JavaScript and stylesheet.
 
-在使用 Asset Pipeline 时，静态资源文件的路径都必须重写，为此 `sass-rails` gem 提供了 `-url` 和 `-path` 系列辅助方法（在 Sass 中使用连字符，在 Ruby 中使用下划线），用于处理图像、字体、视频、音频、JavaScript 和 CSS 等类型的静态资源文件。
+* `image-url("rails.png")` returns `url(/assets/rails.png)`
+* `image-path("rails.png")` returns `"/assets/rails.png"`
 
-*   `image-url("rails.png")` 会返回 `url(/assets/rails.png)`
-*   `image-path("rails.png")` 会返回 `"/assets/rails.png"`
+The more generic form can also be used:
 
-或使用更通用的形式：
+* `asset-url("rails.png")` returns `url(/assets/rails.png)`
+* `asset-path("rails.png")` returns `"/assets/rails.png"`
 
-*   `asset-url("rails.png")` 返回 `url(/assets/rails.png)`
-*   `asset-path("rails.png")` 返回 `"/assets/rails.png"`
+#### JavaScript/CoffeeScript and ERB
 
-<a class="anchor" id="javascript-coffeescript-and-erb"></a>
+If you add an `erb` extension to a JavaScript asset, making it something such as
+`application.js.erb`, you can then use the `asset_path` helper in your
+JavaScript code:
 
-#### JavaScript/CoffeeScript 和 ERB
-
-只要给 JavaScript 文件添加 `.erb` 扩展名（例如 `application.js.erb`），就可以在 JavaScript 源代码中使用 `asset_path` 辅助方法：
-
-```erb
+```js
 $('#logo').attr({ src: "<%= asset_path('logo.png') %>" });
 ```
 
-上述代码中的 `asset_path` 辅助方法会返回指向图像真实路径的链接。
+This writes the path to the particular asset being referenced.
 
-同样，只要给 CoffeeScript 文件添加 `.erb` 扩展名（例如 `application.coffee.erb`），就可以在 CoffeeScript 源代码中使用 `asset_path` 辅助方法：
+Similarly, you can use the `asset_path` helper in CoffeeScript files with `erb`
+extension (e.g., `application.coffee.erb`):
 
-```erb
+```js
 $('#logo').attr src: "<%= asset_path('logo.png') %>"
 ```
 
-<a class="anchor" id="manifest-files-and-directives"></a>
+### Manifest Files and Directives
 
-### 清单文件和指令
+Sprockets uses manifest files to determine which assets to include and serve.
+These manifest files contain _directives_ - instructions that tell Sprockets
+which files to require in order to build a single CSS or JavaScript file. With
+these directives, Sprockets loads the files specified, processes them if
+necessary, concatenates them into one single file, and then compresses them
+(based on value of `Rails.application.config.assets.js_compressor`). By serving
+one file rather than many, the load time of pages can be greatly reduced because
+the browser makes fewer requests. Compression also reduces file size, enabling
+the browser to download them faster.
 
-Sprockets 使用清单文件来确定需要包含和处理哪些静态资源文件。这些清单文件中的指令会告诉 Sprockets，要想创建 CSS 或 JavaScript 文件需要加载哪些文件。通过这些指令，可以让 Sprockets 加载指定文件，对这些文件进行必要的处理，然后把它们连接为单个文件，最后进行压缩（压缩方式取决于 `Rails.application.config.assets.js_compressor` 选项的值）。这样在页面中只需处理一个文件而非多个文件，减少了浏览器的请求次数，大大缩短了页面的加载时间。通过压缩还能使文件变小，使浏览器可以更快地下载。
+For example, with a `app/assets/javascripts/application.js` file containing the
+following lines:
 
-例如，在默认情况下，新建 Rails 应用的 `app/assets/javascripts/application.js` 文件包含下面几行代码：
-
-```javascript
+```js
 // ...
-//= require jquery
-//= require jquery_ujs
+//= require rails-ujs
+//= require turbolinks
 //= require_tree .
 ```
 
-在 JavaScript 文件中，Sprockets 指令以 `//=.` 开头。上述代码中使用了 `require` 和 `require_tree` 指令。`require` 指令用于告知 Sprockets 哪些文件需要加载。这里加载的是 Sprockets 搜索路径中的 `jquery.js` 和 `jquery_ujs.js` 文件。我们不必显式提供文件的扩展名，因为 Sprockets 假定在 `.js` 文件中加载的总是 `.js` 文件。
+In JavaScript files, Sprockets directives begin with `//=`. In the above case,
+the file is using the `require` and the `require_tree` directives. The `require`
+directive is used to tell Sprockets the files you wish to require. Here, you are
+requiring the files `rails-ujs.js` and `turbolinks.js` that are available somewhere
+in the search path for Sprockets. You need not supply the extensions explicitly.
+Sprockets assumes you are requiring a `.js` file when done from within a `.js`
+file.
 
-`require_tree` 指令告知 `Sprockets` 以递归方式包含指定文件夹中的所有 JavaScript 文件。在指定文件夹路径时，必须使用相对于清单文件的相对路径。也可以通过 `require_directory` 指令包含指定文件夹中的所有 JavaScript 文件，此时将不会采取递归方式。
+The `require_tree` directive tells Sprockets to recursively include _all_
+JavaScript files in the specified directory into the output. These paths must be
+specified relative to the manifest file. You can also use the
+`require_directory` directive which includes all JavaScript files only in the
+directory specified, without recursion.
 
-清单文件中的指令是按照从上到下的顺序处理的，但我们无法确定 `require_tree` 指令包含文件的顺序，因此不应该依赖于这些文件的顺序。如果想要确保连接文件时某些 JavaScript 文件出现在其他 JavaScript 文件之前，可以在清单文件中先行加载这些文件。注意，`require` 系列指令不会重复加载文件。
+Directives are processed top to bottom, but the order in which files are
+included by `require_tree` is unspecified. You should not rely on any particular
+order among those. If you need to ensure some particular JavaScript ends up
+above some other in the concatenated file, require the prerequisite file first
+in the manifest. Note that the family of `require` directives prevents files
+from being included twice in the output.
 
-在默认情况下，新建 Rails 应用的 `app/assets/stylesheets/application.css` 文件包含下面几行代码：
+Rails also creates a default `app/assets/stylesheets/application.css` file
+which contains these lines:
 
 ```css
 /* ...
@@ -340,21 +473,33 @@ Sprockets 使用清单文件来确定需要包含和处理哪些静态资源文�
 */
 ```
 
-无论新建 Rails 应用时是否使用了 `--skip-sprockets` 选项，Rails 都会创建 `app/assets/javascripts/application.js` 和 `app/assets/stylesheets/application.css` 文件。因此，之后想要使用 Asset Pipeline 非常容易。
+Rails creates `app/assets/stylesheets/application.css` regardless of whether the
+`--skip-sprockets` option is used when creating a new Rails application. This is
+so you can easily add asset pipelining later if you like.
 
-我们在 JavaScript 文件中使用的指令同样可以在 CSS 文件中使用，此时加载的是 CSS 文件而不是 JavaScript 文件。在 CSS 清单文件中，`require_tree` 指令的工作原理和在 JavaScript 清单文件中相同，会加载指定文件夹中的所有 CSS 文件。
+The directives that work in JavaScript files also work in stylesheets
+(though obviously including stylesheets rather than JavaScript files). The
+`require_tree` directive in a CSS manifest works the same way as the JavaScript
+one, requiring all stylesheets from the current directory.
 
-上述代码中使用了 `require_self` 指令，用于把当前文件中的 CSS 代码（如果存在）插入调用这个指令的位置。
+In this example, `require_self` is used. This puts the CSS contained within the
+file (if any) at the precise location of the `require_self` call.
 
-NOTE: 要想使用多个 Sass 文件，通常应该使用 [Sass @import 规则](http://sass-lang.com/docs/yardoc/file.SASS_REFERENCE.html#import)，而不是 Sprockets 指令。如果使用 Sprockets 指令，这些 Sass 文件将拥有各自的作用域，这样变量和混入只能在定义它们的文件中使用。
+NOTE. If you want to use multiple Sass files, you should generally use the [Sass `@import` rule](https://sass-lang.com/docs/yardoc/file.SASS_REFERENCE.html#import)
+instead of these Sprockets directives. When using Sprockets directives, Sass files exist within
+their own scope, making variables or mixins only available within the document they were defined in.
 
-和使用 `require_tree` 指令相比，使用 `@import "*"` 和 `@import "**/*"` 的效果完全相同，都能加载指定文件夹中的所有文件。更多介绍和注意事项请参阅 [sass-rails 文档](https://github.com/rails/sass-rails#features)。
+You can do file globbing as well using `@import "*"`, and `@import "**/*"` to add the whole tree which is equivalent to how `require_tree` works. Check the [sass-rails documentation](https://github.com/rails/sass-rails#features) for more info and important caveats.
 
-我们可以根据需要使用多个清单文件。例如，可以用 `admin.js` 和 `admin.css` 清单文件分别包含应用管理后台的 JS 和 CSS 文件。
+You can have as many manifest files as you need. For example, the `admin.css`
+and `admin.js` manifest could contain the JS and CSS files that are used for the
+admin section of an application.
 
-CSS 清单文件中指令的执行顺序类似于前文介绍的 JavaScript 清单文件，尤其是加载的文件都会按照指定顺序依次编译。例如，我们可以像下面这样把 3 个 CSS 文件连接在一起：
+The same remarks about ordering made above apply. In particular, you can specify
+individual files and they are compiled in the order specified. For example, you
+might concatenate three CSS files together this way:
 
-```css
+```js
 /* ...
 *= require reset
 *= require layout
@@ -362,33 +507,49 @@ CSS 清单文件中指令的执行顺序类似于前文介绍的 JavaScript 清�
 */
 ```
 
-<a class="anchor" id="preprocessing"></a>
+### Preprocessing
 
-### 预处理
+The file extensions used on an asset determine what preprocessing is applied.
+When a controller or a scaffold is generated with the default Rails gemset, an
+SCSS file is generated in place of a regular CSS file. The example used before
+was a controller called "projects", which generated an
+`app/assets/stylesheets/projects.scss` file.
 
-静态资源文件的扩展名决定了预处理的方式。在使用默认的 Rails gemset 生成控制器或脚手架时，会生成 CoffeeScript 和 SCSS 文件，而不是普通的 JavaScript 和 CSS 文件。在前文的例子中，生成 `projects` 控制器时会生成 `app/assets/javascripts/projects.coffee` 和 `app/assets/stylesheets/projects.scss` 文件。
+In development mode, or if the asset pipeline is disabled, when this file is
+requested it is processed by the processor provided by the `sass-rails` gem and
+then sent back to the browser as CSS. When asset pipelining is enabled, this
+file is preprocessed and placed in the `public/assets` directory for serving by
+either the Rails app or web server.
 
-在开发环境中，或 Asset Pipeline 被禁用时，会使用 `coffee-script` 和 `sass` gem 提供的处理器分别处理相应的文件请求，并把生成的 JavaScript 和 CSS 文件发给浏览器。当 Asset Pipeline 可用时，会对这些文件进行预处理，然后储存在 `public/assets` 文件夹中，由 Rails 应用或 Web 服务器处理。
+Additional layers of preprocessing can be requested by adding other extensions,
+where each extension is processed in a right-to-left manner. These should be
+used in the order the processing should be applied. For example, a stylesheet
+called `app/assets/stylesheets/projects.scss.erb` is first processed as ERB,
+then SCSS, and finally served as CSS. The same applies to a JavaScript file -
+`app/assets/javascripts/projects.coffee.erb` is processed as ERB, then
+CoffeeScript, and served as JavaScript.
 
-通过添加其他扩展名，可以对文件进行更多预处理。对扩展名的解析顺序是从右到左，相应的预处理顺序也是从右到左。例如，对于 `app/assets/stylesheets/projects.scss.erb` 文件，会先处理 ERB，再处理 SCSS，最后作为 CSS 文件处理。同样，对于 `app/assets/javascripts/projects.coffee.erb` 文件，会先处理 ERB，再处理 CoffeeScript，最后作为 JavaScript 文件处理。
+Keep in mind the order of these preprocessors is important. For example, if
+you called your JavaScript file `app/assets/javascripts/projects.erb.coffee`
+then it would be processed with the CoffeeScript interpreter first, which
+wouldn't understand ERB and therefore you would run into problems.
 
-记住预处理顺序很重要。例如，如果我们把文件名写为 `app/assets/javascripts/projects.erb.coffee`，就会先处理 CoffeeScript，这时一旦遇到 ERB 代码就会出错。
 
-<a class="anchor" id="in-development"></a>
+In Development
+--------------
 
-## 在开发环境中
+In development mode, assets are served as separate files in the order they are
+specified in the manifest file.
 
-在开发环境中，Asset Pipeline 会按照清单文件中指定的顺序处理静态资源文件。
+This manifest `app/assets/javascripts/application.js`:
 
-对于清单文件 `app/assets/javascripts/application.js`：
-
-```javascript
+```js
 //= require core
 //= require projects
 //= require tickets
 ```
 
-会生成下面的 HTML：
+would generate this HTML:
 
 ```html
 <script src="/assets/core.js?body=1"></script>
@@ -396,91 +557,89 @@ CSS 清单文件中指令的执行顺序类似于前文介绍的 JavaScript 清�
 <script src="/assets/tickets.js?body=1"></script>
 ```
 
-其中 `body` 参数是使用 Sprockets 时必须使用的参数。
+The `body` param is required by Sprockets.
 
-<a class="anchor" id="runtime-error-checking"></a>
+### Raise an Error When an Asset is Not Found
 
-### 检查运行时错误
-
-在生产环境中，Asset Pipeline 默认会在运行时检查潜在错误。要想禁用此行为，可以设置：
-
-```ruby
-config.assets.raise_runtime_errors = false
-```
-
-当此选项设置为 `true` 时，Asset Pipeline 会检查应用中加载的所有静态资源文件是否都已包含在 `config.assets.precompile` 列表中。如果此时 `config.assets.digest` 也设置为 `true`，Asset Pipeline 会要求所有对静态资源文件的请求都包含指纹（digest）。
-
-<a class="anchor" id="raise-an-error-when-an-asset-is-not-found"></a>
-
-### 找不到静态资源时抛出错误
-
-如果使用的 sprockets-rails 是 3.2.0 或以上版本，可以配置找不到静态资源时的行为。如果禁用了“静态资源后备机制”，找不到静态资源时抛出错误。
+If you are using sprockets-rails >= 3.2.0 you can configure what happens
+when an asset lookup is performed and nothing is found. If you turn off "asset fallback"
+then an error will be raised when an asset cannot be found.
 
 ```ruby
 config.assets.unknown_asset_fallback = false
 ```
 
-如果启用了“静态资源后备机制”，找不到静态资源时，输出路径，而不抛出错误。静态资源后备机制默认启用。
+If "asset fallback" is enabled then when an asset cannot be found the path will be
+output instead and no error raised. The asset fallback behavior is disabled by default.
 
-<a class="anchor" id="turning-digests-off"></a>
+### Turning Digests Off
 
-### 关闭指纹
-
-通过修改 `config/environments/development.rb` 配置文件，我们可以关闭指纹：
+You can turn off digests by updating `config/environments/development.rb` to
+include:
 
 ```ruby
 config.assets.digest = false
 ```
 
-当此选项设置为 `true` 时，Rails 会为静态资源文件的 URL 生成指纹。
+When this option is true, digests will be generated for asset URLs.
 
-<a class="anchor" id="turning-debugging-off"></a>
+### Turning Debugging Off
 
-### 关闭调试
-
-通过修改 `config/environments/development.rb` 配置文件，我们可以关闭调式模式：
+You can turn off debug mode by updating `config/environments/development.rb` to
+include:
 
 ```ruby
 config.assets.debug = false
 ```
 
-当调试模式关闭时，Sprockets 会对所有文件进行必要的预处理，然后把它们连接起来。此时，前文的清单文件会生成下面的 HTML：
+When debug mode is off, Sprockets concatenates and runs the necessary
+preprocessors on all files. With debug mode turned off the manifest above would
+generate instead:
 
 ```html
 <script src="/assets/application.js"></script>
 ```
 
-当服务器启动后，静态资源文件将在第一次请求时进行编译和缓存。Sprockets 通过设置 `must-revalidate Cache-Control` HTTP 首部，来减少后续请求造成的开销，此时对于后续请求浏览器会得到 304（未修改）响应。
+Assets are compiled and cached on the first request after the server is started.
+Sprockets sets a `must-revalidate` Cache-Control HTTP header to reduce request
+overhead on subsequent requests - on these the browser gets a 304 (Not Modified)
+response.
 
-如果清单文件中的某个文件在两次请求之间发生了变化，服务器会使用新编译的文件作为响应。
+If any of the files in the manifest have changed between requests, the server
+responds with a new compiled file.
 
-还可以通过 Rails 辅助方法启用调试模式：
+Debug mode can also be enabled in Rails helper methods:
 
 ```erb
 <%= stylesheet_link_tag "application", debug: true %>
 <%= javascript_include_tag "application", debug: true %>
 ```
 
-当然，如果已经启用了调式模式，再使用 `:debug` 选项就完全是多余的了。
+The `:debug` option is redundant if debug mode is already on.
 
-在开发模式中，我们也可以启用压缩功能以检查其工作是否正常，在需要进行调试时再禁用压缩功能。
+You can also enable compression in development mode as a sanity check, and
+disable it on-demand as required for debugging.
 
-<a class="anchor" id="in-production"></a>
+In Production
+-------------
 
-## 在生产环境中
+In the production environment Sprockets uses the fingerprinting scheme outlined
+above. By default Rails assumes assets have been precompiled and will be
+served as static assets by your web server.
 
-在生产环境中，Sprockets 会使用前文介绍的指纹机制。默认情况下，Rails 假定静态资源文件都经过了预编译，并将由 Web 服务器处理。
+During the precompilation phase an SHA256 is generated from the contents of the
+compiled files, and inserted into the filenames as they are written to disk.
+These fingerprinted names are used by the Rails helpers in place of the manifest
+name.
 
-在预编译阶段，Sprockets 会根据静态资源文件的内容生成 SHA256 哈希值，并在保存文件时把这个哈希值添加到文件名中。Rails 辅助方法会用这些包含指纹的文件名代替清单文件中的文件名。
-
-例如，下面的代码：
+For example this:
 
 ```erb
 <%= javascript_include_tag "application" %>
 <%= stylesheet_link_tag "application" %>
 ```
 
-会生成下面的 HTML：
+generates something like this:
 
 ```html
 <script src="/assets/application-908e25f4bf641868d8683022a5b62f54.js"></script>
@@ -488,58 +647,74 @@ config.assets.debug = false
 rel="stylesheet" />
 ```
 
-NOTE: Rails 开始使用 Asset Pipeline 后，不再使用 `:cache` 和 `:concat` 选项，因此在调用 `javascript_include_tag` 和 `stylesheet_link_tag` 辅助方法时需要删除这些选项。
+NOTE: with the Asset Pipeline the `:cache` and `:concat` options aren't used
+anymore, delete these options from the `javascript_include_tag` and
+`stylesheet_link_tag`.
 
-可以通过 `config.assets.digest` 初始化选项（默认为 `true`）启用或禁用指纹功能。
+The fingerprinting behavior is controlled by the `config.assets.digest`
+initialization option (which defaults to `true`).
 
-NOTE: 在正常情况下，请不要修改默认的 `config.assets.digest` 选项（默认为 `true`）。如果文件名中未包含指纹，并且 HTTP 头信息的过期时间设置为很久以后，远程客户端将无法在文件内容发生变化时重新获取文件。
+NOTE: Under normal circumstances the default `config.assets.digest` option
+should not be changed. If there are no digests in the filenames, and far-future
+headers are set, remote clients will never know to refetch the files when their
+content changes.
 
-<a class="anchor" id="precompiling-assets"></a>
+### Precompiling Assets
 
-### 预编译静态资源文件
+Rails comes bundled with a command to compile the asset manifests and other
+files in the pipeline.
 
-Rails 提供了一个 Rake 任务，用于编译 Asset Pipeline 清单文件中的静态资源文件和其他相关文件。
+Compiled assets are written to the location specified in `config.assets.prefix`.
+By default, this is the `/assets` directory.
 
-经过编译的静态资源文件将储存在 `config.assets.prefix` 选项指定的路径中，默认为 `/assets` 文件夹。
+You can call this command on the server during deployment to create compiled
+versions of your assets directly on the server. See the next section for
+information on compiling locally.
 
-部署 Rails 应用时可以在服务器上执行这个 Rake 任务，以便直接在服务器上完成静态资源文件的编译。关于本地编译的介绍，请参阅下一节。
+The command is:
 
-这个 Rake 任务是：
-
-```sh
-$ RAILS_ENV=production bin/rails assets:precompile
+```bash
+$ RAILS_ENV=production rails assets:precompile
 ```
 
-Capistrano（v2.15.1 及更高版本）提供了对这个 Rake 任务的支持。只需把下面这行代码添加到 `Capfile` 中：
+This links the folder specified in `config.assets.prefix` to `shared/assets`.
+If you already use this shared folder you'll need to write your own deployment
+command.
 
-```ruby
-load 'deploy/assets'
-```
+It is important that this folder is shared between deployments so that remotely
+cached pages referencing the old compiled assets still work for the life of
+the cached page.
 
-就会把 `config.assets.prefix` 选项指定的文件夹链接到 `shared/assets` 文件夹。当然，如果 `shared/assets` 文件夹已经用于其他用途，我们就得自己编写部署任务了。
-
-需要注意的是，`shared/assets` 文件夹会在多次部署之间共享，这样引用了这些静态资源文件的远程客户端的缓存页面在其生命周期中就能正常工作。
-
-编译文件时的默认匹配器（matcher）包括 `application.js`、`application.css`，以及 `app/assets` 文件夹和 gem 中的所有非 JS/CSS 文件（会自动包含所有图像）：
+The default matcher for compiling files includes `application.js`,
+`application.css` and all non-JS/CSS files (this will include all image assets
+automatically) from `app/assets` folders including your gems:
 
 ```ruby
 [ Proc.new { |filename, path| path =~ /app\/assets/ && !%w(.js .css).include?(File.extname(filename)) },
 /application.(css|js)$/ ]
 ```
 
-NOTE: 这个匹配器（及预编译数组的其他成员；见后文）会匹配编译后的文件名，这意味着无论是 JS/CSS 文件，还是能够编译为 JS/CSS 的文件，都将被排除在外。例如，`.coffee` 和 `.scss` 文件能够编译为 JS/CSS，因此被排除在默认的编译范围之外。
+NOTE: The matcher (and other members of the precompile array; see below) is
+applied to final compiled file names. This means anything that compiles to
+JS/CSS is excluded, as well as raw JS/CSS files; for example, `.coffee` and
+`.scss` files are **not** automatically included as they compile to JS/CSS.
 
-要想包含其他清单文件，或单独的 JavaScript 和 CSS 文件，可以把它们添加到 `config/initializers/assets.rb` 配置文件的 `precompile` 数组中：
+If you have other manifests or individual stylesheets and JavaScript files to
+include, you can add them to the `precompile` array in `config/initializers/assets.rb`:
 
 ```ruby
 Rails.application.config.assets.precompile += %w( admin.js admin.css )
 ```
 
-NOTE: 添加到 `precompile` 数组的文件名应该以 `.js` 或 `.css` 结尾，即便实际添加的是 CoffeeScript 或 Sass 文件也是如此。
+NOTE. Always specify an expected compiled filename that ends with `.js` or `.css`,
+even if you want to add Sass or CoffeeScript files to the precompile array.
 
-`assets:precompile` 这个 Rake 任务还会成生 `.sprockets-manifest-md5hash.json` 文件（其中 `md5hash` 是一个 MD5 哈希值），其内容是所有静态资源文件及其指纹的列表。有了这个文件，Rails 辅助方法不需要 Sprockets 就能获得静态资源文件对应的指纹。下面是一个典型的 `.sprockets-manifest-md5hash.json` 文件的例子：
+The command also generates a `.sprockets-manifest-randomhex.json` (where `randomhex` is
+a 16-byte random hex string) that contains a list with all your assets and their respective
+fingerprints. This is used by the Rails helper methods to avoid handing the
+mapping requests back to Sprockets. A typical manifest file looks like:
 
-```json
+```ruby
 {"files":{"application-aee4be71f1288037ae78b997df388332edfd246471b533dcedaa8f9fe156442b.js":{"logical_path":"application.js","mtime":"2016-12-23T20:12:03-05:00","size":412383,
 "digest":"aee4be71f1288037ae78b997df388332edfd246471b533dcedaa8f9fe156442b","integrity":"sha256-ruS+cfEogDeueLmX3ziDMu39JGRxtTPc7aqPn+FWRCs="},
 "application-86a292b5070793c37e2c0e5f39f73bb387644eaeada7f96e6fc040a028b16c18.css":{"logical_path":"application.css","mtime":"2016-12-23T19:12:20-05:00","size":2994,
@@ -554,32 +729,36 @@ NOTE: 添加到 `precompile` 数组的文件名应该以 `.js` 或 `.css` 结尾
 "my_image.png":"my_image-f4028156fd7eca03584d5f2fc0470df1e0dbc7369eaae638b2ff033f988ec493.png"}}
 ```
 
-`.sprockets-manifest-md5hash.json` 文件默认位于 `config.assets.prefix` 选项所指定的位置的根目录（默认为 `/assets` 文件夹）。
+The default location for the manifest is the root of the location specified in
+`config.assets.prefix` ('/assets' by default).
 
-NOTE: 在生产环境中，如果有些预编译后的文件丢失了，Rails 就会抛出 `Sprockets::Helpers::RailsHelper::AssetPaths::AssetNotPrecompiledError` 异常，提示所丢失文件的文件名。
+NOTE: If there are missing precompiled files in production you will get a
+`Sprockets::Helpers::RailsHelper::AssetPaths::AssetNotPrecompiledError`
+exception indicating the name of the missing file(s).
 
-<a class="anchor" id="far-future-expires-header"></a>
+#### Far-future Expires Header
 
-#### 在 HTTP 首部中设置为很久以后才过期
+Precompiled assets exist on the file system and are served directly by your web
+server. They do not have far-future headers by default, so to get the benefit of
+fingerprinting you'll have to update your server configuration to add those
+headers.
 
-预编译后的静态资源文件储存在文件系统中，并由 Web 服务器直接处理。默认情况下，这些文件的 HTTP 首部并不会在很久以后才过期，为了充分发挥指纹的作用，我们需要修改服务器配置中的请求头过期时间。
-
-对于 Apache：
+For Apache:
 
 ```apache
-# 在启用 Apache 模块 `mod_expires` 的情况下，才能使用
-# Expires* 系列指令。
+# The Expires* directives requires the Apache module
+# `mod_expires` to be enabled.
 <Location /assets/>
-  # 在使用 Last-Modified 的情况下，不推荐使用 ETag
+  # Use of ETag is discouraged when Last-Modified is present
   Header unset ETag
   FileETag None
-  # RFC 规定缓存时间为 1 年
+  # RFC says only cache for 1 year
   ExpiresActive On
   ExpiresDefault "access plus 1 year"
 </Location>
 ```
 
-对于 Nginx：
+For NGINX:
 
 ```nginx
 location ~ ^/assets/ {
@@ -590,129 +769,196 @@ location ~ ^/assets/ {
 }
 ```
 
-<a class="anchor" id="local-precompilation"></a>
+### Local Precompilation
 
-### 本地预编译
+Sometimes, you may not want or be able to compile assets on the production
+server. For instance, you may have limited write access to your production
+filesystem, or you may plan to deploy frequently without making any changes to
+your assets.
 
-在本地预编译静态资源文件的理由如下：
+In such cases, you can precompile assets _locally_ — that is, add a finalized
+set of compiled, production-ready assets to your source code repository before
+pushing to production. This way, they do not need to be precompiled separately
+on the production server upon each deployment.
 
-*   可能没有生产环境服务器文件系统的写入权限；
-*   可能需要部署到多台服务器，不想重复编译；
-*   部署可能很频繁，但静态资源文件很少变化。
+As above, you can perform this step using
 
-本地编译允许我们把编译后的静态资源文件纳入源代码版本控制，并按常规方式部署。
-
-有三个注意事项：
-
-*   不要运行用于预编译静态资源文件的 Capistrano 部署任务；
-*   开发环境中必须安装压缩或简化静态资源文件所需的工具；
-*   必须修改下面这个设置：
-
-在 `config/environments/development.rb` 配置文件中添加下面这行代码：
-
-```ruby
-config.assets.prefix = "/dev-assets"
+```bash
+$ RAILS_ENV=production rails assets:precompile
 ```
 
-在开发环境中，通过修改 `prefix`，可以让 Sprockets 使用不同的 URL 处理静态资源文件，并把所有请求都交给 Sprockets 处理。在生产环境中，`prefix` 仍然应该设置为 `/assets`。在开发环境中，如果不修改 `prefix`，应用就会优先读取 `/assets` 文件夹中预编译后的静态资源文件，这样对静态资源文件进行修改后，除非重新编译，否则看不到任何效果。
+Note the following caveats:
 
-实际上，通过修改 `prefix`，我们可以在本地预编译静态资源文件，并把这些文件储存在工作目录中，同时可以根据需要随时将其纳入源代码版本控制。开发模式将按我们的预期正常工作。
+* If precompiled assets are available, they will be served — even if they no
+  longer match the original (uncompiled) assets, _even on the development
+  server._
 
-<a class="anchor" id="live-compilation"></a>
+  To ensure that the development server always compiles assets on-the-fly (and
+  thus always reflects the most recent state of the code), the development
+  environment _must be configured to keep precompiled assets in a different
+  location than production does._ Otherwise, any assets precompiled for use in
+  production will clobber requests for them in development (_i.e.,_ subsequent
+  changes you make to assets will not be reflected in the browser).
 
-### 实时编译
+  You can do this by adding the following line to
+  `config/environments/development.rb`:
 
-在某些情况下，我们需要使用实时编译。在实时编译模式下，Asset Pipeline 中的所有静态资源文件都由 Sprockets 直接处理。
+  ```ruby
+  config.assets.prefix = "/dev-assets"
+  ```
+* The asset precompile task in your deployment tool (_e.g.,_ Capistrano) should
+  be disabled.
+* Any necessary compressors or minifiers must be available on your development
+  system.
 
-通过如下设置可以启用实时编译：
+### Live Compilation
+
+In some circumstances you may wish to use live compilation. In this mode all
+requests for assets in the pipeline are handled by Sprockets directly.
+
+To enable this option set:
 
 ```ruby
 config.assets.compile = true
 ```
 
-如前文所述，静态资源文件会在首次请求时被编译和缓存，辅助方法会把清单文件中的文件名转换为带 SHA256 哈希值的版本。
+On the first request the assets are compiled and cached as outlined in [Assets
+Cache Store](#assets-cache-store), and the manifest names used in the helpers
+are altered to include the SHA256 hash.
 
-Sprockets 还会把 `Cache-Control` HTTP 首部设置为 `max-age=31536000`，意思是服务器和客户端浏览器的所有缓存的过期时间是 1 年。这样在本地浏览器缓存或中间缓存中找到所需静态资源文件的可能性会大大增加，从而减少从服务器上获取静态资源文件的请求次数。
+Sprockets also sets the `Cache-Control` HTTP header to `max-age=31536000`. This
+signals all caches between your server and the client browser that this content
+(the file served) can be cached for 1 year. The effect of this is to reduce the
+number of requests for this asset from your server; the asset has a good chance
+of being in the local browser cache or some intermediate cache.
 
-但是实时编译模式会使用更多内存，性能也比默认设置更差，因此并不推荐使用。
+This mode uses more memory, performs more poorly than the default, and is not
+recommended.
 
-如果部署应用的生产服务器没有预装 JavaScript 运行时，可以在 Gemfile 中添加一个：
+If you are deploying a production application to a system without any
+pre-existing JavaScript runtimes, you may want to add one to your `Gemfile`:
 
 ```ruby
 group :production do
-  gem 'therubyracer'
+  gem 'mini_racer'
 end
 ```
 
-<a class="anchor" id="cdns"></a>
+### CDNs
 
-### CDN
+CDN stands for [Content Delivery
+Network](https://en.wikipedia.org/wiki/Content_delivery_network), they are
+primarily designed to cache assets all over the world so that when a browser
+requests the asset, a cached copy will be geographically close to that browser.
+If you are serving assets directly from your Rails server in production, the
+best practice is to use a CDN in front of your application.
 
-CDN 的意思是[内容分发网络](http://en.wikipedia.org/wiki/Content_delivery_network)，主要用于缓存全世界的静态资源文件。当 Web 浏览器请求静态资源文件时，CDN 会从地理位置最近的 CDN 服务器上发送缓存的文件副本。如果我们在生产环境中让 Rails 直接处理静态资源文件，那么在应用前端使用 CDN 将是最好的选择。
+A common pattern for using a CDN is to set your production application as the
+"origin" server. This means when a browser requests an asset from the CDN and
+there is a cache miss, it will grab the file from your server on the fly and
+then cache it. For example if you are running a Rails application on
+`example.com` and have a CDN configured at `mycdnsubdomain.fictional-cdn.com`,
+then when a request is made to `mycdnsubdomain.fictional-
+cdn.com/assets/smile.png`, the CDN will query your server once at
+`example.com/assets/smile.png` and cache the request. The next request to the
+CDN that comes in to the same URL will hit the cached copy. When the CDN can
+serve an asset directly the request never touches your Rails server. Since the
+assets from a CDN are geographically closer to the browser, the request is
+faster, and since your server doesn't need to spend time serving assets, it can
+focus on serving application code as fast as possible.
 
-使用 CDN 的常见模式是把生产环境中的应用设置为“源”服务器，也就是说，当浏览器从 CDN 请求静态资源文件但缓存未命中时，CDN 将立即从“源”服务器中抓取该文件，并对其进行缓存。例如，假设我们在 `example.com` 上运行 Rails 应用，并在 `mycdnsubdomain.fictional-cdn.com` 上配置了 CDN，在处理对 `mycdnsubdomain.fictional-cdn.com/assets/smile.png` 的首次请求时，CDN 会抓取 `example.com/assets/smile.png` 并进行缓存。之后再请求 `mycdnsubdomain.fictional-cdn.com/assets/smile.png` 时，CDN 会直接提供缓存中的文件副本。对于任何请求，只要 CDN 能够直接处理，就不会访问 Rails 服务器。由于 CDN 提供的静态资源文件由地理位置最近的 CDN 服务器提供，因此对请求的响应更快，同时 Rails 服务器不再需要花费大量时间处理静态资源文件，因此可以专注于更快地处理应用代码。
+#### Set up a CDN to Serve Static Assets
 
-<a class="anchor" id="set-up-a-cdn-to-serve-static-assets"></a>
+To set up your CDN you have to have your application running in production on
+the internet at a publicly available URL, for example `example.com`. Next
+you'll need to sign up for a CDN service from a cloud hosting provider. When you
+do this you need to configure the "origin" of the CDN to point back at your
+website `example.com`, check your provider for documentation on configuring the
+origin server.
 
-#### 设置用于处理静态资源文件的 CDN
-
-要设置 CDN，首先必须在公开的互联网 URL 地址上（例如 `example.com`）以生产环境运行 Rails 应用。下一步，注册云服务提供商的 CDN 服务。然后配置 CDN 的“源”服务器，把它指向我们的网站 `example.com`，具体配置方法请参考云服务提供商的文档。
-
-CDN 提供商会为我们的应用提供一个自定义子域名，例如 `mycdnsubdomain.fictional-cdn.com`（注意 `fictional-cdn.com` 只是撰写本文时杜撰的一个 CDN 提供商）。完成 CDN 服务器配置后，还需要告诉浏览器从 CDN 抓取静态资源文件，而不是直接从 Rails 服务器抓取。为此，需要在 Rails 配置中，用静态资源文件的主机代替相对路径。通过 `config/environments/production.rb` 配置文件的 `config.action_controller.asset_host` 选项，我们可以设置静态资源文件的主机：
+The CDN you provisioned should give you a custom subdomain for your application
+such as `mycdnsubdomain.fictional-cdn.com` (note fictional-cdn.com is not a
+valid CDN provider at the time of this writing). Now that you have configured
+your CDN server, you need to tell browsers to use your CDN to grab assets
+instead of your Rails server directly. You can do this by configuring Rails to
+set your CDN as the asset host instead of using a relative path. To set your
+asset host in Rails, you need to set `config.asset_host` in
+`config/environments/production.rb`:
 
 ```ruby
-config.action_controller.asset_host = 'mycdnsubdomain.fictional-cdn.com'
+config.asset_host = 'mycdnsubdomain.fictional-cdn.com'
 ```
 
-NOTE: 这里只需提供“主机”，即前文提到的子域名，而不需要指定 HTTP 协议，例如 `http://` 或 `https://`。默认情况下，Rails 会使用网页请求的 HTTP 协议作为指向静态资源文件链接的协议。
+NOTE: You only need to provide the "host", this is the subdomain and root
+domain, you do not need to specify a protocol or "scheme" such as `http://` or
+`https://`. When a web page is requested, the protocol in the link to your asset
+that is generated will match how the webpage is accessed by default.
 
-还可以通过[环境变量](http://en.wikipedia.org/wiki/Environment_variable)设置静态资源文件的主机，这样可以方便地在不同的运行环境中使用不同的静态资源文件：
+You can also set this value through an [environment
+variable](https://en.wikipedia.org/wiki/Environment_variable) to make running a
+staging copy of your site easier:
 
 ```ruby
-config.action_controller.asset_host = ENV['CDN_HOST']
+config.asset_host = ENV['CDN_HOST']
 ```
 
-NOTE: 这里还需要把服务器上的 `CDN_HOST` 环境变量设置为 `mycdnsubdomain.fictional-cdn.com`。
 
-服务器和 CDN 配置好后，就可以像下面这样引用静态资源文件：
+
+NOTE: You would need to set `CDN_HOST` on your server to `mycdnsubdomain
+.fictional-cdn.com` for this to work.
+
+Once you have configured your server and your CDN when you serve a webpage that
+has an asset:
 
 ```erb
 <%= asset_path('smile.png') %>
 ```
 
-这时返回的不再是相对路径 `/assets/smile.png`（出于可读性考虑省略了文件名中的指纹），而是指向 CDN 的完整路径：
+Instead of returning a path such as `/assets/smile.png` (digests are left out
+for readability). The URL generated will have the full path to your CDN.
 
 ```
 http://mycdnsubdomain.fictional-cdn.com/assets/smile.png
 ```
 
-如果 CDN 上有 `smile.png` 文件的副本，就会直接返回给浏览器，而 Rails 服务器甚至不知道有浏览器请求了 `smile.png` 文件。如果 CDN 上没有 `smile.png` 文件的副本，就会先从“源”服务器上抓取 `example.com/assets/smile.png` 文件，再返回给浏览器，同时保存文件的副本以备将来使用。
+If the CDN has a copy of `smile.png` it will serve it to the browser and your
+server doesn't even know it was requested. If the CDN does not have a copy it
+will try to find it at the "origin" `example.com/assets/smile.png` and then store
+it for future use.
 
-如果只想让 CDN 处理部分静态资源文件，可以在调用静态资源文件辅助方法时使用 `:host` 选项，以覆盖 `config.action_controller.asset_host` 选项中设置的值：
+If you want to serve only some assets from your CDN, you can use custom `:host`
+option your asset helper, which overwrites value set in
+`config.action_controller.asset_host`.
 
 ```erb
 <%= asset_path 'image.png', host: 'mycdnsubdomain.fictional-cdn.com' %>
 ```
 
-<a class="anchor" id="customize-cdn-caching-behavior"></a>
+#### Customize CDN Caching Behavior
 
-#### 自定义 CDN 缓存行为
+A CDN works by caching content. If the CDN has stale or bad content, then it is
+hurting rather than helping your application. The purpose of this section is to
+describe general caching behavior of most CDNs, your specific provider may
+behave slightly differently.
 
-CDN 的作用是为内容提供缓存。如果 CDN 上有过期或不良内容，那么不仅不能对应用有所助益，反而会造成负面影响。本小节将介绍大多数 CDN 的一般缓存行为，而我们使用的 CDN 在特性上可能会略有不同。
+##### CDN Request Caching
 
-<a class="anchor" id="cdn-request-caching"></a>
+While a CDN is described as being good for caching assets, in reality caches the
+entire request. This includes the body of the asset as well as any headers. The
+most important one being `Cache-Control` which tells the CDN (and web browsers)
+how to cache contents. This means that if someone requests an asset that does
+not exist `/assets/i-dont-exist.png` and your Rails application returns a 404,
+then your CDN will likely cache the 404 page if a valid `Cache-Control` header
+is present.
 
-##### CDN 请求缓存
+##### CDN Header Debugging
 
-我们常说 CDN 对于缓存静态资源文件非常有用，但实际上 CDN 缓存的是整个请求。其中既包括了静态资源文件的请求体，也包括了其首部。其中，`Cache-Control` 首部是最重要的，用于告知 CDN（和 Web 浏览器）如何缓存文件内容。假设用户请求了 `/assets/i-dont-exist.png` 这个并不存在的静态资源文件，并且 Rails 应用返回的是 404，那么只要设置了合法的 `Cache-Control` 首部，CDN 就会缓存 404 页面。
+One way to check the headers are cached properly in your CDN is by using [curl](
+https://explainshell.com/explain?cmd=curl+-I+http%3A%2F%2Fwww.example.com). You
+can request the headers from both your server and your CDN to verify they are
+the same:
 
-<a class="anchor" id="cdn-header-debugging"></a>
-
-##### 调试 CDN 首部
-
-检查 CDN 是否正确缓存了首部的方法之一是使用 [curl](http://explainshell.com/explain?cmd=curl+-I+http%3A%2F%2Fwww.example.com)。我们可以分别从 Rails 服务器和 CDN 获取首部，然后确认二者是否相同：
-
-```sh
+```bash
 $ curl -I http://www.example/assets/application-
 d0e099e021c95eb0de3615fd1d8c4d83.css
 HTTP/1.1 200 OK
@@ -726,9 +972,9 @@ Content-Length: 126560
 Via: 1.1 vegur
 ```
 
-CDN 中副本的首部：
+Versus the CDN copy.
 
-```sh
+```bash
 $ curl -I http://mycdnsubdomain.fictional-cdn.com/application-
 d0e099e021c95eb0de3615fd1d8c4d83.css
 HTTP/1.1 200 OK Server: Cowboy Last-
@@ -750,13 +996,22 @@ X-Cache-Hits:
 X-Timer: S1408912125.211638212,VS0,VE0
 ```
 
-在 CDN 文档中可以查询 CDN 提供的额外首部，例如 `X-Cache`。
+Check your CDN documentation for any additional information they may provide
+such as `X-Cache` or for any additional headers they may add.
 
-<a class="anchor" id="cdns-and-the-cache-control-header"></a>
+##### CDNs and the Cache-Control Header
 
-##### CDN 和 `Cache-Control` 首部
-
-[Cache-Control 首部](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.9)是一个 W3C 规范，用于描述如何缓存请求。当未使用 CDN 时，浏览器会根据 `Cache-Control` 首部来缓存文件内容。在静态资源文件未修改的情况下，浏览器就不必重新下载 CSS 或 JavaScript 等文件了。通常，Rails 服务器需要告诉 CDN（和浏览器）这些静态资源文件是“公共的”，这样任何缓存都可以保存这些文件的副本。此外，通常还会通过 `max-age` 字段来设置缓存失效前储存对象的时间。`max-age` 字段的单位是秒，最大设置为 31536000，即一年。在 Rails 应用中设置 `Cache-Control` 首部的方法如下：
+The [cache control
+header](https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.9) is a W3C
+specification that describes how a request can be cached. When no CDN is used, a
+browser will use this information to cache contents. This is very helpful for
+assets that are not modified so that a browser does not need to re-download a
+website's CSS or JavaScript on every request. Generally we want our Rails server
+to tell our CDN (and browser) that the asset is "public", that means any cache
+can store the request. Also we commonly want to set `max-age` which is how long
+the cache will store the object before invalidating the cache. The `max-age`
+value is set to seconds with a maximum possible value of `31536000` which is one
+year. You can do this in your Rails application by setting
 
 ```ruby
 config.public_file_server.headers = {
@@ -764,81 +1019,98 @@ config.public_file_server.headers = {
 }
 ```
 
-现在，在生产环境中，Rails 应用的静态资源文件在 CDN 上会被缓存长达 1 年之久。由于大多数 CDN 会缓存首部，静态资源文件的 `Cache-Control` 首部会被传递给请求该静态资源文件的所有浏览器，这样浏览器就会长期缓存该静态资源文件，直到缓存过期后才会重新请求该文件。
+Now when your application serves an asset in production, the CDN will store the
+asset for up to a year. Since most CDNs also cache headers of the request, this
+`Cache-Control` will be passed along to all future browsers seeking this asset,
+the browser then knows that it can store this asset for a very long time before
+needing to re-request it.
 
-<a class="anchor" id="cdns-and-url-based-cache-invalidation"></a>
+##### CDNs and URL based Cache Invalidation
 
-##### CDN 和基于 URL 地址的缓存失效
-
-大多数 CDN 会根据完整的 URL 地址来缓存静态资源文件的内容。因此，缓存
+Most CDNs will cache contents of an asset based on the complete URL. This means
+that a request to
 
 ```
 http://mycdnsubdomain.fictional-cdn.com/assets/smile-123.png
 ```
 
-和缓存
+Will be a completely different cache from
 
 ```
 http://mycdnsubdomain.fictional-cdn.com/assets/smile.png
 ```
 
-被认为是两个完全不同的静态资源文件的缓存。
+If you want to set far future `max-age` in your `Cache-Control` (and you do),
+then make sure when you change your assets that your cache is invalidated. For
+example when changing the smiley face in an image from yellow to blue, you want
+all visitors of your site to get the new blue face. When using a CDN with the
+Rails asset pipeline `config.assets.digest` is set to true by default so that
+each asset will have a different file name when it is changed. This way you
+don't have to ever manually invalidate any items in your cache. By using a
+different unique asset name instead, your users get the latest asset.
 
-如果我们把 `Cache-Control` HTTP 首部的 `max-age` 值设得很大，那么当静态资源文件的内容发生变化时，应同时使原有缓存失效。例如，当我们把黄色笑脸图像更换为蓝色笑脸图像时，我们希望网站的所有访客看到的都是新的蓝色笑脸图像。如果我们使用了 CDN，并使用了 Rails Asset Pipeline `config.assets.digest` 选项的默认值 `true`，一旦静态资源文件的内容发生变化，其文件名就会发生变化。这样，我们就不需要每次手动使某个静态资源文件的缓存失效。通过使用唯一的新文件名，我们就能确保用户访问的总是静态资源文件的最新版本。
+Customizing the Pipeline
+------------------------
 
-<a class="anchor" id="customizing-the-pipeline"></a>
+### CSS Compression
 
-## 自定义 Asset Pipeline
+One of the options for compressing CSS is YUI. The [YUI CSS
+compressor](https://yui.github.io/yuicompressor/css.html) provides
+minification.
 
-<a class="anchor" id="css-compression"></a>
-
-### 压缩 CSS
-
-压缩 CSS 的可选方式之一是使用 YUI。通过 [YUI CSS 压缩器](http://yui.github.io/yuicompressor/css.html)可以缩小 CSS 文件的大小。
-
-在 Gemfile 中添加 `yui-compressor` gem 后，通过下面的设置可以启用 YUI 压缩：
+The following line enables YUI compression, and requires the `yui-compressor`
+gem.
 
 ```ruby
 config.assets.css_compressor = :yui
 ```
-
-如果我们在 Gemfile 中添加了 `sass-rails` gem，那么也可以使用 Sass 压缩：
+The other option for compressing CSS if you have the sass-rails gem installed is
 
 ```ruby
 config.assets.css_compressor = :sass
 ```
 
-<a class="anchor" id="javascript-compression"></a>
+### JavaScript Compression
 
-### 压缩 JavaScript
+Possible options for JavaScript compression are `:closure`, `:uglifier` and
+`:yui`. These require the use of the `closure-compiler`, `uglifier` or
+`yui-compressor` gems, respectively.
 
-压缩 JavaScript 的可选方式有 `:closure`、`:uglifier` 和 `:yui`，分别要求在 Gemfile 中添加 `closure-compiler`、`uglifier` 和 `yui-compressor` gem。
+Take the `uglifier` gem, for example.
+This gem wraps [UglifyJS](https://github.com/mishoo/UglifyJS) (written for
+NodeJS) in Ruby. It compresses your code by removing white space and comments,
+shortening local variable names, and performing other micro-optimizations such
+as changing `if` and `else` statements to ternary operators where possible.
 
-默认情况下，Gemfile 中包含了 [uglifier](https://github.com/lautis/uglifier) gem，这个 gem 使用 Ruby 包装 [UglifyJS](https://github.com/mishoo/UglifyJS)（使用 NodeJS 开发），作用是通过删除空白和注释、缩短局部变量名及其他微小优化（例如在可能的情况下把 `if&#8230;&#8203;else` 语句修改为三元运算符）压缩 JavaScript 代码。
-
-使用 `uglifier` 压缩 JavaScript 需进行如下设置：
+The following line invokes `uglifier` for JavaScript compression.
 
 ```ruby
 config.assets.js_compressor = :uglifier
 ```
 
-NOTE: 要使用 `uglifier` 压缩 JavaScript，就必须安装支持 [ExecJS](https://github.com/rails/execjs#readme) 的运行时。macOS 和 Windows 已经预装了此类运行时。
+NOTE: You will need an [ExecJS](https://github.com/rails/execjs#readme)
+supported runtime in order to use `uglifier`. If you are using macOS or
+Windows you have a JavaScript runtime installed in your operating system.
 
-<a class="anchor" id="serving-gzipped-version-of-assets"></a>
 
-### 用 GZip 压缩静态资源文件
 
-默认情况下，Sprockets 会用 GZip 压缩编译后的静态资源文件，同时也会保留未压缩的版本。通过 GZip 压缩可以减少对带宽的占用。设置 GZip 压缩的方式如下：
+### GZipping your assets
+
+By default, gzipped version of compiled assets will be generated, along with
+the non-gzipped version of assets. Gzipped assets help reduce the transmission
+of data over the wire. You can configure this by setting the `gzip` flag.
 
 ```ruby
-config.assets.gzip = false # 禁止用 GZip 压缩静态资源文件
+config.assets.gzip = false # disable gzipped assets generation
 ```
 
-<a class="anchor" id="using-your-own-compressor"></a>
+Refer to your web server's documentation for instructions on how to serve gzipped assets.
 
-### 自定义压缩工具
+### Using Your Own Compressor
 
-在设置 CSS 和 JavaScript 压缩工具时还可以使用对象。这个对象要能响应 `compress` 方法，这个方法接受一个字符串作为唯一参数，并返回一个字符串。
+The compressor config settings for CSS and JavaScript also take any object.
+This object must have a `compress` method that takes a string as the sole
+argument and it must return a string.
 
 ```ruby
 class Transformer
@@ -848,48 +1120,58 @@ class Transformer
 end
 ```
 
-要使用这个压缩工具，需在 `application.rb` 配置文件中做如下设置：
+To enable this, pass a new object to the config option in `application.rb`:
 
 ```ruby
 config.assets.css_compressor = Transformer.new
 ```
 
-<a class="anchor" id="changing-the-assets-path"></a>
 
-### 修改静态资源文件的路径
+### Changing the _assets_ Path
 
-默认情况下，Sprockets 使用 `/assets` 作为静态资源文件的公开路径。
+The public path that Sprockets uses by default is `/assets`.
 
-我们可以修改这个路径：
+This can be changed to something else:
 
 ```ruby
 config.assets.prefix = "/some_other_path"
 ```
 
-通过这种方式，在升级未使用 Asset Pipeline 但使用了 `/assets` 路径的老项目时，我们就可以轻松为新的静态资源文件设置另一个公开路径。
+This is a handy option if you are updating an older project that didn't use the
+asset pipeline and already uses this path or you wish to use this path for
+a new resource.
 
-<a class="anchor" id="x-sendfile-headers"></a>
+### X-Sendfile Headers
 
-### `X-Sendfile` 首部
+The X-Sendfile header is a directive to the web server to ignore the response
+from the application, and instead serve a specified file from disk. This option
+is off by default, but can be enabled if your server supports it. When enabled,
+this passes responsibility for serving the file to the web server, which is
+faster. Have a look at [send_file](https://api.rubyonrails.org/classes/ActionController/DataStreaming.html#method-i-send_file)
+on how to use this feature.
 
-`X-Sendfile` 首部的作用是让 Web 服务器忽略应用对请求的响应，直接返回磁盘中的指定文件。默认情况下 Rails 不会发送这个首部，但在支持这个首部的服务器上可以启用这一特性，以提供更快的响应速度。关于这一特性的更多介绍，请参阅 [`send_file` 方法的文档](http://api.rubyonrails.org/classes/ActionController/DataStreaming.html#method-i-send_file)。
-
-Apache 和 NGINX 支持 `X-Sendfile` 首部，启用方法是在 `config/environments/production.rb` 配置文件中进行设置：
+Apache and NGINX support this option, which can be enabled in
+`config/environments/production.rb`:
 
 ```ruby
-# config.action_dispatch.x_sendfile_header = "X-Sendfile" # 用于 Apache
-# config.action_dispatch.x_sendfile_header = 'X-Accel-Redirect' # 用于 NGINX
+# config.action_dispatch.x_sendfile_header = "X-Sendfile" # for Apache
+# config.action_dispatch.x_sendfile_header = 'X-Accel-Redirect' # for NGINX
 ```
 
-WARNING: 要想在升级现有应用时使用上述选项，可以把这两行代码粘贴到 `production.rb` 配置文件中，或其他类似的生产环境配置文件中。
+WARNING: If you are upgrading an existing application and intend to use this
+option, take care to paste this configuration option only into `production.rb`
+and any other environments you define with production behavior (not
+`application.rb`).
 
-TIP: 更多介绍请参阅生产服务器的相关文档：[Apache](https://tn123.org/mod_xsendfile/)、[NGINX](http://wiki.nginx.org/XSendfile)。
+TIP: For further details have a look at the docs of your production web server:
+- [Apache](https://tn123.org/mod_xsendfile/)
+- [NGINX](https://www.nginx.com/resources/wiki/start/topics/examples/xsendfile/)
 
-<a class="anchor" id="assets-cache-store"></a>
+Assets Cache Store
+------------------
 
-## 静态资源文件缓存的存储方式
-
-在开发环境和生产环境中，Sprockets 默认在 `tmp/cache/assets` 文件夹中缓存静态资源文件。修改这一设置的方式如下：
+By default, Sprockets caches assets in `tmp/cache/assets` in development
+and production environments. This can be changed as follows:
 
 ```ruby
 config.assets.configure do |env|
@@ -898,7 +1180,7 @@ config.assets.configure do |env|
 end
 ```
 
-禁用静态资源文件缓存的方式如下：
+To disable the assets cache store:
 
 ```ruby
 config.assets.configure do |env|
@@ -906,19 +1188,26 @@ config.assets.configure do |env|
 end
 ```
 
-<a class="anchor" id="adding-assets-to-your-gems"></a>
+Adding Assets to Your Gems
+--------------------------
 
-## 通过 gem 添加静态资源文件
+Assets can also come from external sources in the form of gems.
 
-我们还可以通过 gem 添加静态资源文件。
+A good example of this is the `jquery-rails` gem.
+This gem contains an engine class which inherits from `Rails::Engine`.
+By doing this, Rails is informed that the directory for this
+gem may contain assets and the `app/assets`, `lib/assets` and
+`vendor/assets` directories of this engine are added to the search path of
+Sprockets.
 
-为 Rails 提供标准 JavaScript 库的 `jquery-rails` gem 就是很好的例子。这个 gem 中包含了继承自 `Rails::Engine` 类的引擎类，这样 Rails 就知道这个 gem 中可能包含静态资源文件，于是会把其中的 `app/assets`、`lib/assets` 和 `vendor/assets` 文件夹添加到 Sprockets 的搜索路径中。
+Making Your Library or Gem a Pre-Processor
+------------------------------------------
 
-<a class="anchor" id="making-your-library-or-gem-a-pre-processor"></a>
-
-## 使用代码库或 gem 作为预处理器
-
-Sprockets 使用 Processors、Transformers、Compressors 和 Exporters 扩展功能。详情参阅“[Extending Sprockets](https://github.com/rails/sprockets/blob/master/guides/extending_sprockets.md)”一文。下述示例注册一个预处理器，在 text/css 文件（.css）默认添加一个注释。
+Sprockets uses Processors, Transformers, Compressors, and Exporters to extend
+Sprockets functionality. Have a look at
+[Extending Sprockets](https://github.com/rails/sprockets/blob/master/guides/extending_sprockets.md)
+to learn more. Here we registered a preprocessor to add a comment to the end
+of text/css (`.css`) files.
 
 ```ruby
 module AddComment
@@ -928,62 +1217,9 @@ module AddComment
 end
 ```
 
-有了修改输入数据的模块后，还要把它注册为指定 MIME 类型的预处理器：
+Now that you have a module that modifies the input data, it's time to register
+it as a preprocessor for your mime type.
 
 ```ruby
 Sprockets.register_preprocessor 'text/css', AddComment
-```
-
-<a class="anchor" id="upgrading-from-old-versions-of-rails"></a>
-
-## 从旧版本的 Rails 升级
-
-从 Rails 3.0 或 Rails 2.x 升级时有一些问题需要解决。首先，要把 `public/` 文件夹中的文件移动到新位置。关于不同类型文件储存位置的介绍，请参阅 [静态资源文件的组织方式](#asset-organization)。
-
-其次，要避免出现重复的 JavaScript 文件。从 Rails 3.1 开始，jQuery 成为默认的 JavaScript 库，Rails 会自动加载 `jquery.js`，不再需要手动把 `jquery.js` 复制到 `app/assets` 文件夹中。
-
-再次，要使用正确的默认选项更新各种环境配置文件。
-
-在 `application.rb` 配置文件中：
-
-```ruby
-# 静态资源文件的版本，通过修改这个选项可以使原有的静态资源文件缓存全部过期
-config.assets.version = '1.0'
-
-# 通过 onfig.assets.prefix = "/assets" 修改静态资源文件的路径
-```
-
-在 `development.rb` 配置文件中：
-
-```ruby
-# 展开用于加载静态资源文件的代码
-config.assets.debug = true
-```
-
-在 `production.rb` 配置文件中：
-
-```ruby
-# 选择（可用的）压缩工具
-config.assets.js_compressor = :uglifier
-# config.assets.css_compressor = :yui
-
-# 在找不到已编译的静态资源文件的情况下，不退回到 Asset Pipeline
-config.assets.compile = false
-
-# 为静态资源文件的 URL 地址生成指纹
-config.assets.digest = true
-
-# 预编译附加的静态资源文件（application.js、application.css 和所有
-# 已添加的非 JS/CSS 文件）
-# config.assets.precompile += %w( admin.js admin.css )
-```
-
-Rails 4 及更高版本不会再在 `test.rb` 配置文件中添加 Sprockets 的默认设置，因此需要手动完成。需要添加的默认设置包括 `config.assets.compile = true`、`config.assets.compress = false`、`config.assets.debug = false` 和 `config.assets.digest = false`。
-
-最后，还要在 Gemfile 中加入下列 gem：
-
-```ruby
-gem 'sass-rails',   "~> 3.2.3"
-gem 'coffee-rails', "~> 3.2.1"
-gem 'uglifier'
 ```

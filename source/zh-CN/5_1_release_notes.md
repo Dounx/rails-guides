@@ -1,87 +1,110 @@
-# Ruby on Rails 5.1 发布记
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-Rails 5.1 的重要变化：
+Ruby on Rails 5.1 Release Notes
+===============================
 
-*   支持 Yarn
-*   支持 Webpack（可选）
-*   jQuery 不再是默认的依赖
-*   系统测试
-*   机密信息加密
-*   参数化邮件程序
-*   direct 路由和 resolve 路由
-*   `form_for` 和 `form_tag` 统一为 `form_with`
+Highlights in Rails 5.1:
 
-本文只涵盖重要变化。若想了解缺陷修正和具体变化，请查看更新日志或 GitHub 中 Rails 主仓库的[提交历史](https://github.com/rails/rails/commits/5-1-stable)。
+* Yarn Support
+* Optional Webpack support
+* jQuery no longer a default dependency
+* System tests
+* Encrypted secrets
+* Parameterized mailers
+* Direct & resolved routes
+* Unification of form_for and form_tag into form_with
 
------------------------------------------------------------------------------
+These release notes cover only the major changes. To learn about various bug
+fixes and changes, please refer to the change logs or check out the [list of
+commits](https://github.com/rails/rails/commits/5-1-stable) in the main Rails
+repository on GitHub.
 
-<a class="anchor" id="upgrading-to-rails-5-1"></a>
+--------------------------------------------------------------------------------
 
-## 升级到 Rails 5.1
+Upgrading to Rails 5.1
+----------------------
 
-如果升级现有应用，在继续之前，最好确保有足够的测试覆盖度。如果尚未升级到 Rails 5.0，应该先升级到 5.0 版，确保应用能正常运行之后，再尝试升级到 Rails 5.1。升级时的注意事项参见 [从 Rails 5.0 升级到 5.1](upgrading_ruby_on_rails.html#upgrading-from-rails-5-0-to-rails-5-1)。
+If you're upgrading an existing application, it's a great idea to have good test
+coverage before going in. You should also first upgrade to Rails 5.0 in case you
+haven't and make sure your application still runs as expected before attempting
+an update to Rails 5.1. A list of things to watch out for when upgrading is
+available in the
+[Upgrading Ruby on Rails](upgrading_ruby_on_rails.html#upgrading-from-rails-5-0-to-rails-5-1)
+guide.
 
-<a class="anchor" id="major-features"></a>
 
-## 主要功能
+Major Features
+--------------
 
-<a class="anchor" id="yarn-support"></a>
+### Yarn Support
 
-### 支持 Yarn
+[Pull Request](https://github.com/rails/rails/pull/26836)
 
-[拉取请求](https://github.com/rails/rails/pull/26836)
+Rails 5.1 allows managing JavaScript dependencies
+from npm via Yarn. This will make it easy to use libraries like React, VueJS
+or any other library from npm world. The Yarn support is integrated with
+the asset pipeline so that all dependencies will work seamlessly with the
+Rails 5.1 app.
 
-Rails 5.1 支持使用 Yarn 管理通过 NPM 安装的 JavaScript 依赖。这样便于使用 NPM 中的 React、VueJS 等库。对 Yarn 的支持集成在 Asset Pipeline 中，因此所有依赖都能顺利在 Rails 5.1 应用中使用。
+### Optional Webpack support
 
-<a class="anchor" id="optional-webpack-support"></a>
+[Pull Request](https://github.com/rails/rails/pull/27288)
 
-### Webpack 支持（可选）
+Rails apps can integrate with [Webpack](https://webpack.js.org/), a JavaScript
+asset bundler, more easily using the new [Webpacker](https://github.com/rails/webpacker)
+gem. Use the `--webpack` flag when generating new applications to enable Webpack
+integration.
 
-[拉取请求](https://github.com/rails/rails/pull/27288)
+This is fully compatible with the asset pipeline, which you can continue to use for
+images, fonts, sounds, and other assets. You can even have some JavaScript code
+managed by the asset pipeline, and other code processed via Webpack. All of this is managed
+by Yarn, which is enabled by default.
 
-Rails 应用使用新开发的 [Webpacker](https://github.com/rails/webpacker) gem 可以轻易集成 JavaScript 静态资源打包工具 [Webpack](https://webpack.js.org/)。新建应用时指定 `--webpack` 参数可启用对 Webpack 的集成。
+### jQuery no longer a default dependency
 
-这与 Asset Pipeline 完全兼容，你可以继续使用 Asset Pipeline 管理图像、字体、音频等静态资源。甚至还可以使用 Asset Pipeline 管理部分 JavaScript 代码，使用 Webpack 管理其他代码。这些都由默认启用的 Yarn 管理。
+[Pull Request](https://github.com/rails/rails/pull/27113)
 
-<a class="anchor" id="jquery-no-longer-a-default-dependency"></a>
+jQuery was required by default in earlier versions of Rails to provide features
+like `data-remote`, `data-confirm` and other parts of Rails' Unobtrusive JavaScript
+offerings. It is no longer required, as the UJS has been rewritten to use plain,
+vanilla JavaScript. This code now ships inside of Action View as
+`rails-ujs`.
 
-### jQuery 不再是默认的依赖
+You can still use jQuery if needed, but it is no longer required by default.
 
-[拉取请求](https://github.com/rails/rails/pull/27113)
+### System tests
 
-Rails 之前的版本默认需要 jQuery，因为要支持 `data-remote` 和 `data-confirm` 等功能，以及 Rails 提供的非侵入式 JavaScript。现在 jQuery 不再需要了，因为 UJS 使用纯 JavaScript 重写了。这个脚本现在通过 Action View  提供，名为 `rails-ujs`。
+[Pull Request](https://github.com/rails/rails/pull/26703)
 
-如果需要，可以继续使用 jQuery，但它不再是默认的依赖了。
+Rails 5.1 has baked-in support for writing Capybara tests, in the form of
+System tests. You no longer need to worry about configuring Capybara and
+database cleaning strategies for such tests. Rails 5.1 provides a wrapper
+for running tests in Chrome with additional features such as failure
+screenshots.
 
-<a class="anchor" id="system-tests"></a>
+### Encrypted secrets
 
-### 系统测试
+[Pull Request](https://github.com/rails/rails/pull/28038)
 
-[拉取请求](https://github.com/rails/rails/pull/26703)
+Rails now allows management of application secrets in a secure way,
+inspired by the [sekrets](https://github.com/ahoward/sekrets) gem.
 
-Rails 5.1 内建对 Capybara 测试的支持，不过对外称为系统测试。你无需再担心配置 Capybara 和数据库清理策略。Rails 5.1 对这类测试做了包装，可以在 Chrome 运行相关测试，而且失败时还能截图。
+Run `bin/rails secrets:setup` to set up a new encrypted secrets file. This will
+also generate a master key, which must be stored outside of the repository. The
+secrets themselves can then be safely checked into the revision control system,
+in an encrypted form.
 
-<a class="anchor" id="encrypted-secrets"></a>
+Secrets will be decrypted in production, using a key stored either in the
+`RAILS_MASTER_KEY` environment variable, or in a key file.
 
-### 机密信息加密
+### Parameterized mailers
 
-[拉取请求](https://github.com/rails/rails/pull/28038)
+[Pull Request](https://github.com/rails/rails/pull/27825)
 
-受 [sekrets](https://github.com/ahoward/sekrets) gem 启发，Rails 现在以一种安全的方式管理应用中的机密信息。
+Allows specifying common parameters used for all methods in a mailer class in
+order to share instance variables, headers, and other common setup.
 
-运行 `bin/rails secrets:setup`，创建一个加密的机密信息文件。这个命令还会生成一个主密钥，必须把它放在仓库外部。机密信息已经加密，可以放心检入版本控制系统。
-
-在生产环境中，Rails 会使用 `RAILS_MASTER_KEY` 环境变量或密钥文件中的密钥解密机密信息。
-
-<a class="anchor" id="parameterized-mailers"></a>
-
-### 参数化邮件程序
-
-[拉取请求](https://github.com/rails/rails/pull/27825)
-
-允许为一个邮件程序类中的所有方法指定通用的参数，方便共享实例变量、首部和其他数据。
-
-```ruby
+``` ruby
 class InvitationsMailer < ApplicationMailer
   before_action { @inviter, @invitee = params[:inviter], params[:invitee] }
   before_action { @account = params[:inviter].account }
@@ -95,42 +118,40 @@ InvitationsMailer.with(inviter: person_a, invitee: person_b)
                  .account_invitation.deliver_later
 ```
 
-<a class="anchor" id="direct-resolved-routes"></a>
+### Direct & resolved routes
 
-### direct 路由和 resolve 路由
+[Pull Request](https://github.com/rails/rails/pull/23138)
 
-[拉取请求](https://github.com/rails/rails/pull/23138)
+Rails 5.1 adds two new methods, `resolve` and `direct`, to the routing
+DSL. The `resolve` method allows customizing polymorphic mapping of models.
 
-Rails 5.1 为路由 DSL 增加了两个新方法：`resolve` 和 `direct`。前者用于定制模型的多态映射。
-
-```ruby
+``` ruby
 resource :basket
 
 resolve("Basket") { [:basket] }
 ```
 
-```erb
+``` erb
 <%= form_for @basket do |form| %>
   <!-- basket form -->
 <% end %>
 ```
 
-此时生成的 URL 是单数形式的 `/basket`，而不是往常的 `/baskets/:id`。
+This will generate the singular URL `/basket` instead of the usual `/baskets/:id`.
 
-`direct` 用于创建自定义的 URL 辅助方法。
+The `direct` method allows creation of custom URL helpers.
 
-```ruby
+``` ruby
 direct(:homepage) { "http://www.rubyonrails.org" }
+
+homepage_url # => "http://www.rubyonrails.org"
 ```
 
-```irb
->> homepage_url
-=> "http://www.rubyonrails.org"
-```
+The return value of the block must be a valid argument for the `url_for`
+method. So, you can pass a valid string URL, Hash, Array, an
+Active Model instance, or an Active Model class.
 
-块的返回值必须能用作 `url_for` 方法的参数。因此，可以传入有效的 URL 字符串、散列、数组、Active Model 实例或 Active Model 类。
-
-```ruby
+``` ruby
 direct :commentable do |model|
   [ model, anchor: model.dom_id ]
 end
@@ -140,66 +161,66 @@ direct :main do
 end
 ```
 
-<a class="anchor" id="unification-of-form-for-and-form-tag-into-form-with"></a>
+### Unification of form_for and form_tag into form_with
 
-### `form_for` 和 `form_tag` 统一为 `form_with`
+[Pull Request](https://github.com/rails/rails/pull/26976)
 
-[拉取请求](https://github.com/rails/rails/pull/26976)
+Before Rails 5.1, there were two interfaces for handling HTML forms:
+`form_for` for model instances and `form_tag` for custom URLs.
 
-在 Rails 5.1 之前，处理 HTML 表单有两个接口：针对模型实例的 `form_for` 和针对自定义 URL 的 `form_tag`。
+Rails 5.1 combines both of these interfaces with `form_with`, and
+can generate form tags based on URLs, scopes, or models.
 
-Rails 5.1 把这两个接口统一成 `form_with` 了，可以根据 URL、作用域或模型生成表单标签。
+Using just a URL:
 
-只使用 URL：
-
-```erb
+``` erb
 <%= form_with url: posts_path do |form| %>
   <%= form.text_field :title %>
 <% end %>
 
-<%# 生成的表单为 %>
+<%# Will generate %>
 
 <form action="/posts" method="post" data-remote="true">
   <input type="text" name="title">
 </form>
 ```
 
-指定作用域，添加到输入字段的名称前：
+Adding a scope prefixes the input field names:
 
-```erb
+``` erb
 <%= form_with scope: :post, url: posts_path do |form| %>
   <%= form.text_field :title %>
 <% end %>
 
-<%# 生成的表单为 %>
+<%# Will generate %>
 
 <form action="/posts" method="post" data-remote="true">
   <input type="text" name="post[title]">
 </form>
 ```
 
-使用模型，从中推知 URL 和作用域：
+Using a model infers both the URL and scope:
 
-```erb
+``` erb
 <%= form_with model: Post.new do |form| %>
   <%= form.text_field :title %>
 <% end %>
 
-<%# 生成的表单为 %>
+<%# Will generate %>
 
 <form action="/posts" method="post" data-remote="true">
   <input type="text" name="post[title]">
 </form>
 ```
 
-现有模型的更新表单填有字段的值：
+An existing model makes an update form and fills out field values:
 
-```erb
+``` erb
 <%= form_with model: Post.first do |form| %>
   <%= form.text_field :title %>
 <% end %>
 
-<%# 生成的表单为 %>
+<%# Will generate %>
 
 <form action="/posts/1" method="post" data-remote="true">
   <input type="hidden" name="_method" value="patch">
@@ -207,271 +228,431 @@ Rails 5.1 把这两个接口统一成 `form_with` 了，可以根据 URL、作�
 </form>
 ```
 
-<a class="anchor" id="incompatibilities"></a>
+Incompatibilities
+-----------------
 
-## 不兼容的功能
+The following changes may require immediate action upon upgrade.
 
-下述变动需要立即采取行动。
+### Transactional tests with multiple connections
 
-<a class="anchor" id="transactional-tests-with-multiple-connections"></a>
+Transactional tests now wrap all Active Record connections in database
+transactions.
 
-### 使用多个连接的事务型测试
+When a test spawns additional threads, and those threads obtain database
+connections, those connections are now handled specially:
 
-事务型测试现在把所有 Active Record 连接包装在数据库事务中。
+The threads will share a single connection, which is inside the managed
+transaction. This ensures all threads see the database in the same
+state, ignoring the outermost transaction. Previously, such additional
+connections were unable to see the fixture rows, for example.
 
-如果测试派生额外的线程，而且线程获得了数据库连接，这些连接现在使用特殊的方式处理。
+When a thread enters a nested transaction, it will temporarily obtain
+exclusive use of the connection, to maintain isolation.
 
-这些线程将共享一个连接，放在事务中。这样能确保所有线程看到的数据库状态是一样的，忽略最外层的事务。以前，额外的连接无法查看固件记录。
+If your tests currently rely on obtaining a separate,
+outside-of-transaction, connection in a spawned thread, you'll need to
+switch to more explicit connection management.
 
-线程进入嵌套的事务时，为了维护隔离性，它会临时获得连接的专用权。
+If your tests spawn threads and those threads interact while also using
+explicit database transactions, this change may introduce a deadlock.
 
-如果你的测试目前要在派生的线程中获得不在事务中的单独连接，需要直接管理连接。
+The easy way to opt out of this new behavior is to disable transactional
+tests on any test cases it affects.
 
-如果测试派生线程，而线程与显式数据库事务交互，这一变化可能导致死锁。
+Railties
+--------
 
-若想避免这个新行为的影响，简单的方法是在受影响的测试用例上禁用事务型测试。
+Please refer to the [Changelog][railties] for detailed changes.
 
-<a class="anchor" id="railties-5-1"></a>
+### Removals
 
-## Railties
+*   Remove deprecated `config.static_cache_control`.
+    ([commit](https://github.com/rails/rails/commit/c861decd44198f8d7d774ee6a74194d1ac1a5a13))
 
-变化详情参见 [Changelog](https://github.com/rails/rails/blob/5-1-stable/railties/CHANGELOG.md)。
+*   Remove deprecated `config.serve_static_files`.
+    ([commit](https://github.com/rails/rails/commit/0129ca2eeb6d5b2ea8c6e6be38eeb770fe45f1fa))
 
-<a class="anchor" id="railties-removals-5-1"></a>
+*   Remove deprecated file `rails/rack/debugger`.
+    ([commit](https://github.com/rails/rails/commit/7563bf7b46e6f04e160d664e284a33052f9804b8))
 
-### 删除
+*   Remove deprecated tasks: `rails:update`, `rails:template`, `rails:template:copy`,
+    `rails:update:configs` and `rails:update:bin`.
+    ([commit](https://github.com/rails/rails/commit/f7782812f7e727178e4a743aa2874c078b722eef))
 
-*   删除弃用的 `config.static_cache_control`。（[提交](https://github.com/rails/rails/commit/c861decd44198f8d7d774ee6a74194d1ac1a5a13)）
-*   删除弃用的 `config.serve_static_files`。（[提交](https://github.com/rails/rails/commit/0129ca2eeb6d5b2ea8c6e6be38eeb770fe45f1fa)）
-*   删除弃用的 `rails/rack/debugger`。（[提交](https://github.com/rails/rails/commit/7563bf7b46e6f04e160d664e284a33052f9804b8)）
-*   删除弃用的任务：`rails:update`，`rails:template`，`rails:template:copy`，`rails:update:configs` 和 `rails:update:bin`。（[提交](https://github.com/rails/rails/commit/f7782812f7e727178e4a743aa2874c078b722eef)）
-*   删除 `routes` 任务弃用的 `CONTROLLER` 环境变量。（[提交](https://github.com/rails/rails/commit/f9ed83321ac1d1902578a0aacdfe55d3db754219)）
-*   删除 `rails new` 命令的 `-j`（`--javascript`）选项。（[拉取请求](https://github.com/rails/rails/pull/28546)）
+*   Remove deprecated `CONTROLLER` environment variable for `routes` task.
+    ([commit](https://github.com/rails/rails/commit/f9ed83321ac1d1902578a0aacdfe55d3db754219))
 
-<a class="anchor" id="railties-notable-changes-5-1"></a>
+*   Remove -j (--javascript) option from `rails new` command.
+    ([Pull Request](https://github.com/rails/rails/pull/28546))
 
-### 重要变化
+### Notable changes
 
-*   在 `config/secrets.yml` 中添加一部分，供所有环境使用。（[提交](https://github.com/rails/rails/commit/e530534265d2c32b5c5f772e81cb9002dcf5e9cf)）
-*   `config/secrets.yml` 文件中的所有键现在都通过符号加载。（[拉取请求](https://github.com/rails/rails/pull/26929)）
-*   从默认栈中删除 jquery-rails。Action View 提供的 rails-ujs 现在是默认的 UJS 适配器。（[拉取请求](https://github.com/rails/rails/pull/27113)）
-*   为新应用添加 Yarn 支持，创建 yarn binstub 和 package.json。（[拉取请求](https://github.com/rails/rails/pull/26836)）
-*   通过 `--webpack` 选项为新应用添加 Webpack 支持，相关功能由 rails/webpacker gem 提供。（[拉取请求](https://github.com/rails/rails/pull/27288)）
-*   生成新应用时，如果没提供 `--skip-git` 选项，初始化 Git 仓库。（[拉取请求](https://github.com/rails/rails/pull/27632)）
-*   在 `config/secrets.yml.enc` 文件中保存加密的机密信息。（[拉取请求](https://github.com/rails/rails/pull/28038)）
-*   在 `rails initializers` 中显示 railtie 类名。（[拉取请求](https://github.com/rails/rails/pull/25257)）
+*   Added a shared section to `config/secrets.yml` that will be loaded for all
+    environments.
+    ([commit](https://github.com/rails/rails/commit/e530534265d2c32b5c5f772e81cb9002dcf5e9cf))
 
-<a class="anchor" id="action-cable-5-1"></a>
+*   The config file `config/secrets.yml` is now loaded in with all keys as symbols.
+    ([Pull Request](https://github.com/rails/rails/pull/26929))
 
-## Action Cable
+*   Removed jquery-rails from default stack. rails-ujs, which is shipped
+    with Action View, is included as default UJS adapter.
+    ([Pull Request](https://github.com/rails/rails/pull/27113))
 
-变化详情参见 [Changelog](https://github.com/rails/rails/blob/5-1-stable/actioncable/CHANGELOG.md)。
+*   Add Yarn support in new apps with a yarn binstub and package.json.
+    ([Pull Request](https://github.com/rails/rails/pull/26836))
 
-<a class="anchor" id="action-cable-notable-changes-5-1"></a>
+*   Add Webpack support in new apps via the `--webpack` option, which will delegate
+    to the rails/webpacker gem.
+    ([Pull Request](https://github.com/rails/rails/pull/27288))
 
-### 重要变化
+*   Initialize Git repo when generating new app, if option `--skip-git` is not
+    provided.
+    ([Pull Request](https://github.com/rails/rails/pull/27632))
 
-*   允许在 `cable.yml` 中为 Redis 和事件型 Redis 适配器提供 `channel_prefix`，以防多个应用使用同一个 Redis 服务器时名称有冲突。（[拉取请求](https://github.com/rails/rails/pull/27425)）
-*   添加 `ActiveSupport::Notifications` 钩子，用于广播数据。（[拉取请求](https://github.com/rails/rails/pull/24988)）
+*   Add encrypted secrets in `config/secrets.yml.enc`.
+    ([Pull Request](https://github.com/rails/rails/pull/28038))
 
-<a class="anchor" id="action-pack-5-1"></a>
+*   Display railtie class name in `rails initializers`.
+    ([Pull Request](https://github.com/rails/rails/pull/25257))
 
-## Action Pack
+Action Cable
+-----------
 
-变化详情参见 [Changelog](https://github.com/rails/rails/blob/5-1-stable/actionpack/CHANGELOG.md)。
+Please refer to the [Changelog][action-cable] for detailed changes.
 
-<a class="anchor" id="action-pack-removals-5-1"></a>
+### Notable changes
 
-### 删除
+*   Added support for `channel_prefix` to Redis and evented Redis adapters
+    in `cable.yml` to avoid name collisions when using the same Redis server
+    with multiple applications.
+    ([Pull Request](https://github.com/rails/rails/pull/27425))
 
-*   `ActionDispatch::IntegrationTest` 和 `ActionController::TestCase` 类的 `#process`、`#get`、`#post`、`#patch`、`#put`、`#delete` 和 `#head` 等方法不再允许使用非关键字参数。（[提交](https://github.com/rails/rails/commit/98b8309569a326910a723f521911e54994b112fb)，[提交](https://github.com/rails/rails/commit/de9542acd56f60d281465a59eac11e15ca8b3323)）
-*   删除弃用的 `ActionDispatch::Callbacks.to_prepare` 和 `ActionDispatch::Callbacks.to_cleanup`。（[提交](https://github.com/rails/rails/commit/3f2b7d60a52ffb2ad2d4fcf889c06b631db1946b)）
-*   删除弃用的与控制器过滤器有关的方法。（[提交](https://github.com/rails/rails/commit/d7be30e8babf5e37a891522869e7b0191b79b757)）
+*   Add `ActiveSupport::Notifications` hook for broadcasting data.
+    ([Pull Request](https://github.com/rails/rails/pull/24988))
 
-<a class="anchor" id="action-pack-deprecations-5-1"></a>
+Action Pack
+-----------
 
-### 弃用
+Please refer to the [Changelog][action-pack] for detailed changes.
 
-*   弃用 `config.action_controller.raise_on_unfiltered_parameters`。在 Rails 5.1 中没有任何效果。（[提交](https://github.com/rails/rails/commit/c6640fb62b10db26004a998d2ece98baede509e5)）
+### Removals
 
-<a class="anchor" id="action-pack-notable-changes-5-1"></a>
+*   Removed support for non-keyword arguments in `#process`, `#get`, `#post`,
+    `#patch`, `#put`, `#delete`, and `#head` for the `ActionDispatch::IntegrationTest`
+    and `ActionController::TestCase` classes.
+    ([Commit](https://github.com/rails/rails/commit/98b8309569a326910a723f521911e54994b112fb),
+    [Commit](https://github.com/rails/rails/commit/de9542acd56f60d281465a59eac11e15ca8b3323))
 
-### 重要变化
+*   Removed deprecated `ActionDispatch::Callbacks.to_prepare` and
+    `ActionDispatch::Callbacks.to_cleanup`.
+    ([Commit](https://github.com/rails/rails/commit/3f2b7d60a52ffb2ad2d4fcf889c06b631db1946b))
 
-*   为路由 DSL 增加 `direct` 和 `resolve` 方法。（[拉取请求](https://github.com/rails/rails/pull/23138)）
-*   新增 `ActionDispatch::SystemTestCase` 类，用于编写应用的系统测试。（[拉取请求](https://github.com/rails/rails/pull/26703)）
+*   Removed deprecated methods related to controller filters.
+    ([Commit](https://github.com/rails/rails/commit/d7be30e8babf5e37a891522869e7b0191b79b757))
 
-<a class="anchor" id="action-view-5-1"></a>
+*   Removed deprecated support to `:text` and `:nothing` in `render`.
+    ([Commit](https://github.com/rails/rails/commit/79a5ea9eadb4d43b62afacedc0706cbe88c54496),
+    [Commit](https://github.com/rails/rails/commit/57e1c99a280bdc1b324936a690350320a1cd8111))
 
-## Action View
+*   Removed deprecated support for calling `HashWithIndifferentAccess` methods on `ActionController::Parameters`.
+    ([Commit](https://github.com/rails/rails/pull/26746/commits/7093ceb480ad6a0a91b511832dad4c6a86981b93))
 
-变化详情参见 [Changelog](https://github.com/rails/rails/blob/5-1-stable/actionview/CHANGELOG.md)。
+### Deprecations
 
-<a class="anchor" id="action-view-removals-5-1"></a>
+*   Deprecated `config.action_controller.raise_on_unfiltered_parameters`.
+    It doesn't have any effect in Rails 5.1.
+    ([Commit](https://github.com/rails/rails/commit/c6640fb62b10db26004a998d2ece98baede509e5))
 
-### 删除
+### Notable changes
 
-*   删除 `ActionView::Template::Error` 中弃用的 `#original_exception` 方法。（[提交](https://github.com/rails/rails/commit/b9ba263e5aaa151808df058f5babfed016a1879f)）
-*   删除 `strip_tags` 方法不恰当的 `encode_special_chars` 选项。（[拉取请求](https://github.com/rails/rails/pull/28061)）
+*   Added the `direct` and `resolve` methods to the routing DSL.
+    ([Pull Request](https://github.com/rails/rails/pull/23138))
 
-<a class="anchor" id="action-view-deprecations-5-1"></a>
+*   Added a new `ActionDispatch::SystemTestCase` class to write system tests in
+    your applications.
+    ([Pull Request](https://github.com/rails/rails/pull/26703))
 
-### 弃用
+Action View
+-------------
 
-*   弃用 ERB 处理程序 Erubis，换成 Erubi。（[拉取请求](https://github.com/rails/rails/pull/27757)）
+Please refer to the [Changelog][action-view] for detailed changes.
 
-<a class="anchor" id="action-view-notable-changes-5-1"></a>
+### Removals
 
-### 重要变化
+*   Removed deprecated `#original_exception` in `ActionView::Template::Error`.
+    ([commit](https://github.com/rails/rails/commit/b9ba263e5aaa151808df058f5babfed016a1879f))
 
-*   原始模板处理程序（Rails 5 默认的模板处理程序）现在输出对 HTML 安全的字符串。（[提交](https://github.com/rails/rails/commit/1de0df86695f8fa2eeae6b8b46f9b53decfa6ec8)）
-*   修改 `datetime_field` 和 `datetime_field_tag`，让它们生成 `datetime-local` 字段。（[拉取请求](https://github.com/rails/rails/pull/28061)）
-*   新增 Builder 风格的 HTML 标签句法（`tag.div`、`tag.br`，等等）。（[拉取请求](https://github.com/rails/rails/pull/25543)）
-*   添加 `form_with`，统一 `form_tag` 和 `form_for`。（[拉取请求](https://github.com/rails/rails/pull/26976)）
-*   为 `current_page?` 方法添加 `check_parameters` 选项。（[拉取请求](https://github.com/rails/rails/pull/27549)）
+*   Remove the option `encode_special_chars` misnomer from `strip_tags`.
+    ([Pull Request](https://github.com/rails/rails/pull/28061))
 
-<a class="anchor" id="action-mailer-5-1"></a>
+### Deprecations
 
-## Action Mailer
+*   Deprecated Erubis ERB handler in favor of Erubi.
+    ([Pull Request](https://github.com/rails/rails/pull/27757))
 
-变化详情参见 [Changelog](https://github.com/rails/rails/blob/5-1-stable/actionmailer/CHANGELOG.md)。
+### Notable changes
 
-<a class="anchor" id="action-mailer-notable-changes-5-1"></a>
+*   Raw template handler (the default template handler in Rails 5) now outputs
+    HTML-safe strings.
+    ([commit](https://github.com/rails/rails/commit/1de0df86695f8fa2eeae6b8b46f9b53decfa6ec8))
 
-### 重要变化
+*   Change `datetime_field` and `datetime_field_tag` to generate `datetime-local`
+    fields.
+    ([Pull Request](https://github.com/rails/rails/pull/25469))
 
-*   有附件而且在行间设定正文时，允许自定义内容类型。（[拉取请求](https://github.com/rails/rails/pull/27227)）
-*   允许把 lambda 传给 `default` 方法。（[提交](https://github.com/rails/rails/commit/1cec84ad2ddd843484ed40b1eb7492063ce71baf)）
-*   支持参数化邮件程序，在动作之间共享前置过滤器和默认值。（[提交](https://github.com/rails/rails/commit/1cec84ad2ddd843484ed40b1eb7492063ce71baf)）
-*   把传给邮件程序动作的参数传给 `process.action_mailer` 时间，放在 `args` 键名下。（[拉取请求](https://github.com/rails/rails/pull/27900)）
+*   New Builder-style syntax for HTML tags (`tag.div`, `tag.br`, etc.)
+    ([Pull Request](https://github.com/rails/rails/pull/25543))
 
-<a class="anchor" id="active-record-5-1"></a>
+*   Add `form_with` to unify `form_tag` and `form_for` usage.
+    ([Pull Request](https://github.com/rails/rails/pull/26976))
 
-## Active Record
+*   Add `check_parameters` option to `current_page?`.
+    ([Pull Request](https://github.com/rails/rails/pull/27549))
 
-变化详情参见 [Changelog](https://github.com/rails/rails/blob/5-1-stable/activerecord/CHANGELOG.md)。
+Action Mailer
+-------------
 
-<a class="anchor" id="active-record-removals-5-1"></a>
+Please refer to the [Changelog][action-mailer] for detailed changes.
 
-### 删除
+### Notable changes
 
-*   不再允许同时为 `ActiveRecord::QueryMethods#select` 传入参数和块。（[提交](https://github.com/rails/rails/commit/4fc3366d9d99a0eb19e45ad2bf38534efbf8c8ce)）
-*   删除弃用的 i18n 作用域 `activerecord.errors.messages.restrict_dependent_destroy.one` 和 `activerecord.errors.messages.restrict_dependent_destroy.many`。（[提交](https://github.com/rails/rails/commit/00e3973a311)）
-*   删除单个和集合关系读值方法中弃用的 `force_reload` 参数。（[提交](https://github.com/rails/rails/commit/09cac8c67af)）
-*   不再支持把一列传给 `#quote`。（[提交](https://github.com/rails/rails/commit/e646bad5b7c)）
-*   删除 `#tables` 方法弃用的 `name` 参数。（[提交](https://github.com/rails/rails/commit/d5be101dd02214468a27b6839ffe338cfe8ef5f3)）
-*   `#tables` 和 `#table_exists?` 不再返回表和视图，而只返回表。（[提交](https://github.com/rails/rails/commit/5973a984c369a63720c2ac18b71012b8347479a8)）
-*   删除 `ActiveRecord::StatementInvalid#initialize` 和 `ActiveRecord::StatementInvalid#original_exception` 弃用的 `original_exception` 参数。（[提交](https://github.com/rails/rails/commit/bc6c5df4699d3f6b4a61dd12328f9e0f1bd6cf46)）
-*   不再支持在查询中使用类。（[提交](https://github.com/rails/rails/commit/b4664864c972463c7437ad983832d2582186e886)）
-*   不再支持在 LIMIT 子句中使用逗号。（[提交](https://github.com/rails/rails/commit/fc3e67964753fb5166ccbd2030d7382e1976f393)）
-*   删除 `#destroy_all` 弃用的 `conditions` 参数。（[提交](https://github.com/rails/rails/commit/d31a6d1384cd740c8518d0bf695b550d2a3a4e9b)）
-*   删除 `#delete_all` 弃用的 `conditions` 参数。（[提交](https://github.com/rails/rails/pull/27503/commits/e7381d289e4f8751dcec9553dcb4d32153bd922b)）
-*   删除弃用的 `#load_schema_for` 方法，换成 `#load_schema`。（[提交](https://github.com/rails/rails/commit/419e06b56c3b0229f0c72d3e4cdf59d34d8e5545)）
-*   删除弃用的 `#raise_in_transactional_callbacks` 配置。（[提交](https://github.com/rails/rails/commit/8029f779b8a1dd9848fee0b7967c2e0849bf6e07)）
-*   删除弃用的 `#use_transactional_fixtures` 配置。（[提交](https://github.com/rails/rails/commit/3955218dc163f61c932ee80af525e7cd440514b3)）
+*   Allowed setting custom content type when attachments are included
+    and body is set inline.
+    ([Pull Request](https://github.com/rails/rails/pull/27227))
 
-<a class="anchor" id="active-record-deprecations-5-1"></a>
+*   Allowed passing lambdas as values to the `default` method.
+    ([Commit](https://github.com/rails/rails/commit/1cec84ad2ddd843484ed40b1eb7492063ce71baf))
 
-### 弃用
+*   Added support for parameterized invocation of mailers to share before filters and defaults
+    between different mailer actions.
+    ([Commit](https://github.com/rails/rails/commit/1cec84ad2ddd843484ed40b1eb7492063ce71baf))
 
-*   弃用 `error_on_ignored_order_or_limit` 旗标，改用 `error_on_ignored_order`。（[提交](https://github.com/rails/rails/commit/451437c6f57e66cc7586ec966e530493927098c7)）
-*   弃用 `sanitize_conditions`，改用 `sanitize_sql`。（[拉取请求](https://github.com/rails/rails/pull/25999)）
-*   弃用连接适配器的 `supports_migrations?` 方法。（[拉取请求](https://github.com/rails/rails/pull/28172)）
-*   弃用 `Migrator.schema_migrations_table_name`，改用 `SchemaMigration.table_name`。（[拉取请求](https://github.com/rails/rails/pull/28351)）
-*   加引号和做类型转换时不再调用 `#quoted_id`。（[拉取请求](https://github.com/rails/rails/pull/27962)）
-*   `#index_name_exists?` 方法不再接受 `default` 参数。（[拉取请求](https://github.com/rails/rails/pull/26930)）
+*   Passed the incoming arguments to the mailer action to `process.action_mailer` event under
+    an `args` key.
+    ([Pull Request](https://github.com/rails/rails/pull/27900))
 
-<a class="anchor" id="active-record-notable-changes-5-1"></a>
+Active Record
+-------------
 
-### 重要变化
+Please refer to the [Changelog][active-record] for detailed changes.
 
-*   主键的默认类型改为 BIGINT。（[拉取请求](https://github.com/rails/rails/pull/26266)）
-*   支持 MySQL 5.7.5+ 和 MariaDB 5.2.0+ 的虚拟（生成的）列。（[提交](https://github.com/rails/rails/commit/65bf1c60053e727835e06392d27a2fb49665484c)）
-*   支持在批量处理时限制记录数量。（[提交](https://github.com/rails/rails/commit/451437c6f57e66cc7586ec966e530493927098c7)）
-*   事务型测试现在把所有 Active Record 连接包装在数据库事务中。（[拉取请求](https://github.com/rails/rails/pull/28726)）
-*   默认跳过 `mysqldump` 命令输出的注释。（[拉取请求](https://github.com/rails/rails/pull/23301)）
-*   把块传给 `ActiveRecord::Relation#count` 时，使用 Ruby 的 `Enumerable#count` 计算记录数量，而不是悄无声息地忽略块。（[拉取请求](https://github.com/rails/rails/pull/24203)）
-*   把 `"-v ON_ERROR_STOP=1"` 旗标传给 `psql` 命令，不静默 SQL 错误。（[拉取请求](https://github.com/rails/rails/pull/24773)）
-*   添加 `ActiveRecord::Base.connection_pool.stat`。（[拉取请求](https://github.com/rails/rails/pull/26988)）
-*   如果直接继承 `ActiveRecord::Migration`，抛出错误。应该指定迁移针对的 Rails 版本。（[提交](https://github.com/rails/rails/commit/249f71a22ab21c03915da5606a063d321f04d4d3)）
-*   通过 `through` 建立的关联，如果反射名称有歧义，抛出错误。（[提交](https://github.com/rails/rails/commit/0944182ad7ed70d99b078b22426cbf844edd3f61)）
+### Removals
 
-<a class="anchor" id="active-model-5-1"></a>
+*   Removed support for passing arguments and block at the same time to
+    `ActiveRecord::QueryMethods#select`.
+    ([Commit](https://github.com/rails/rails/commit/4fc3366d9d99a0eb19e45ad2bf38534efbf8c8ce))
 
-## Active Model
+*   Removed deprecated `activerecord.errors.messages.restrict_dependent_destroy.one` and
+    `activerecord.errors.messages.restrict_dependent_destroy.many` i18n scopes.
+    ([Commit](https://github.com/rails/rails/commit/00e3973a311))
 
-变化详情参见 [Changelog](https://github.com/rails/rails/blob/5-1-stable/activemodel/CHANGELOG.md)。
+*   Removed deprecated force reload argument in singular and collection association readers.
+    ([Commit](https://github.com/rails/rails/commit/09cac8c67af))
 
-<a class="anchor" id="active-model-removals-5-1"></a>
+*   Removed deprecated support for passing a column to `#quote`.
+    ([Commit](https://github.com/rails/rails/commit/e646bad5b7c))
 
-### 删除
+*   Removed deprecated `name` arguments from `#tables`.
+    ([Commit](https://github.com/rails/rails/commit/d5be101dd02214468a27b6839ffe338cfe8ef5f3))
 
-*   删除 `ActiveModel::Errors` 中弃用的方法。（[提交](https://github.com/rails/rails/commit/9de6457ab0767ebab7f2c8bc583420fda072e2bd)）
-*   删除长度验证的 `:tokenizer` 选项。（[提交](https://github.com/rails/rails/commit/6a78e0ecd6122a6b1be9a95e6c4e21e10e429513)）
-*   回调返回 `false` 时不再终止回调链。（[提交](https://github.com/rails/rails/commit/3a25cdca3e0d29ee2040931d0cb6c275d612dffe)）
+*   Removed deprecated behavior of `#tables` and `#table_exists?` to return tables and views
+    to return only tables and not views.
+    ([Commit](https://github.com/rails/rails/commit/5973a984c369a63720c2ac18b71012b8347479a8))
 
-<a class="anchor" id="active-model-notable-changes-5-1"></a>
+*   Removed deprecated `original_exception` argument in `ActiveRecord::StatementInvalid#initialize`
+    and `ActiveRecord::StatementInvalid#original_exception`.
+    ([Commit](https://github.com/rails/rails/commit/bc6c5df4699d3f6b4a61dd12328f9e0f1bd6cf46))
 
-### 重要变化
+*   Removed deprecated support of passing a class as a value in a query.
+    ([Commit](https://github.com/rails/rails/commit/b4664864c972463c7437ad983832d2582186e886))
 
-*   赋值给模型属性的字符串现在能正确冻结了。（[拉取请求](https://github.com/rails/rails/pull/28729)）
+*   Removed deprecated support to query using commas on LIMIT.
+    ([Commit](https://github.com/rails/rails/commit/fc3e67964753fb5166ccbd2030d7382e1976f393))
 
-<a class="anchor" id="active-job-5-1"></a>
+*   Removed deprecated `conditions` parameter from `#destroy_all`.
+    ([Commit](https://github.com/rails/rails/commit/d31a6d1384cd740c8518d0bf695b550d2a3a4e9b))
 
-## Active Job
+*   Removed deprecated `conditions` parameter from `#delete_all`.
+    ([Commit](https://github.com/rails/rails/pull/27503/commits/e7381d289e4f8751dcec9553dcb4d32153bd922b))
 
-变化详情参见 [Changelog](https://github.com/rails/rails/blob/5-1-stable/activejob/CHANGELOG.md)。
+*   Removed deprecated method `#load_schema_for` in favor of `#load_schema`.
+    ([Commit](https://github.com/rails/rails/commit/419e06b56c3b0229f0c72d3e4cdf59d34d8e5545))
 
-<a class="anchor" id="active-job-removals-5-1"></a>
+*   Removed deprecated `#raise_in_transactional_callbacks` configuration.
+    ([Commit](https://github.com/rails/rails/commit/8029f779b8a1dd9848fee0b7967c2e0849bf6e07))
 
-### 删除
+*   Removed deprecated `#use_transactional_fixtures` configuration.
+    ([Commit](https://github.com/rails/rails/commit/3955218dc163f61c932ee80af525e7cd440514b3))
 
-*   不再支持把适配器类传给 `.queue_adapter`。（[提交](https://github.com/rails/rails/commit/d1fc0a5eb286600abf8505516897b96c2f1ef3f6)）
-*   删除 `ActiveJob::DeserializationError` 中弃用的 `#original_exception`。（[提交](https://github.com/rails/rails/commit/d861a1fcf8401a173876489d8cee1ede1cecde3b)）
+### Deprecations
 
-<a class="anchor" id="active-job-notable-changes"></a>
+*   Deprecated `error_on_ignored_order_or_limit` flag in favor of
+    `error_on_ignored_order`.
+    ([Commit](https://github.com/rails/rails/commit/451437c6f57e66cc7586ec966e530493927098c7))
 
-### 重要变化
+*   Deprecated `sanitize_conditions` in favor of `sanitize_sql`.
+    ([Pull Request](https://github.com/rails/rails/pull/25999))
 
-*   增加通过 `ActiveJob::Base.retry_on` 和 `ActiveJob::Base.discard_on` 实现的声明式异常处理。（[拉取请求](https://github.com/rails/rails/pull/25991)）
-*   把作业实例传入块，这样在尝试失败后可以访问 `job.arguments` 等信息。（[提交](https://github.com/rails/rails/commit/a1e4c197cb12fef66530a2edfaeda75566088d1f)）
+*   Deprecated `supports_migrations?` on connection adapters.
+    ([Pull Request](https://github.com/rails/rails/pull/28172))
 
-<a class="anchor" id="active-support-5-1"></a>
+*   Deprecated `Migrator.schema_migrations_table_name`, use `SchemaMigration.table_name` instead.
+    ([Pull Request](https://github.com/rails/rails/pull/28351))
 
-## Active Support
+*   Deprecated using `#quoted_id` in quoting and type casting.
+    ([Pull Request](https://github.com/rails/rails/pull/27962))
 
-变化详情参见 [Changelog](https://github.com/rails/rails/blob/5-1-stable/activesupport/CHANGELOG.md)。
+*   Deprecated passing `default` argument to `#index_name_exists?`.
+    ([Pull Request](https://github.com/rails/rails/pull/26930))
 
-<a class="anchor" id="active-support-removals-5-1"></a>
+### Notable changes
 
-### 删除
+*   Change Default Primary Keys to BIGINT.
+    ([Pull Request](https://github.com/rails/rails/pull/26266))
 
-*   删除 `ActiveSupport::Concurrency::Latch` 类。（[提交](https://github.com/rails/rails/commit/0d7bd2031b4054fbdeab0a00dd58b1b08fb7fea6)）
-*   删除 `halt_callback_chains_on_return_false`。（[提交](https://github.com/rails/rails/commit/4e63ce53fc25c3bc15c5ebf54bab54fa847ee02a)）
-*   回调返回 `false` 时不再终止回调链。（[提交](https://github.com/rails/rails/commit/3a25cdca3e0d29ee2040931d0cb6c275d612dffe)）
+*   Virtual/generated column support for MySQL 5.7.5+ and MariaDB 5.2.0+.
+    ([Commit](https://github.com/rails/rails/commit/65bf1c60053e727835e06392d27a2fb49665484c))
 
-<a class="anchor" id="active-support-deprecations-5-1"></a>
+*   Added support for limits in batch processing.
+    ([Commit](https://github.com/rails/rails/commit/451437c6f57e66cc7586ec966e530493927098c7))
 
-### 弃用
+*   Transactional tests now wrap all Active Record connections in database
+    transactions.
+    ([Pull Request](https://github.com/rails/rails/pull/28726))
 
-*   温和弃用顶层 `HashWithIndifferentAccess` 类，换成 `ActiveSupport::HashWithIndifferentAccess`。（[拉取请求](https://github.com/rails/rails/pull/28157)）
-*   `set_callback` 和 `skip_callback` 的 `:if` 和 `:unless` 条件选项不再接受字符串。（[提交](https://github.com/rails/rails/commit/0952552)）
+*   Skipped comments in the output of `mysqldump` command by default.
+    ([Pull Request](https://github.com/rails/rails/pull/23301))
 
-<a class="anchor" id="notable-changes-5-1"></a>
+*   Fixed `ActiveRecord::Relation#count` to use Ruby's `Enumerable#count` for counting
+    records when a block is passed as argument instead of silently ignoring the
+    passed block.
+    ([Pull Request](https://github.com/rails/rails/pull/24203))
 
-### 重要变化
+*   Pass `"-v ON_ERROR_STOP=1"` flag with `psql` command to not suppress SQL errors.
+    ([Pull Request](https://github.com/rails/rails/pull/24773))
 
-*   修正 DST 发生变化时的时段解析和变迁。（[提交](https://github.com/rails/rails/commit/8931916f4a1c1d8e70c06063ba63928c5c7eab1e)，[拉取请求](https://github.com/rails/rails/pull/26597)）
-*   Unicode 更新到 9.0.0 版。（[拉取请求](https://github.com/rails/rails/pull/27822)）
-*   为 `#ago` 添加别名 `Duration#before`，为 `#since` 添加别名 `#after`。（[拉取请求](https://github.com/rails/rails/pull/27721)）
-*   添加 `Module#delegate_missing_to`，把当前对象未定义的方法委托给一个代理对象。（[拉取请求](https://github.com/rails/rails/pull/23930)）
-*   添加 `Date#all_day`，返回一个范围，表示当前日期和时间上的一整天。（[拉取请求](https://github.com/rails/rails/pull/24930)）
-*   为测试引入 `assert_changes` 和 `assert_no_changes`。（[拉取请求](https://github.com/rails/rails/pull/25393)）
-*   现在嵌套调用 `travel` 和 `travel_to` 抛出异常。（[拉取请求](https://github.com/rails/rails/pull/24890)）
-*   更新 `DateTime#change`，支持微秒和纳秒。（[拉取请求](https://github.com/rails/rails/pull/28242)）
+*   Add `ActiveRecord::Base.connection_pool.stat`.
+    ([Pull Request](https://github.com/rails/rails/pull/26988))
 
-<a class="anchor" id="credits-5-1"></a>
+*   Inheriting directly from `ActiveRecord::Migration` raises an error.
+    Specify the Rails version for which the migration was written for.
+    ([Commit](https://github.com/rails/rails/commit/249f71a22ab21c03915da5606a063d321f04d4d3))
 
-## 荣誉榜
+*   An error is raised when `through` association has ambiguous reflection name.
+    ([Commit](https://github.com/rails/rails/commit/0944182ad7ed70d99b078b22426cbf844edd3f61))
 
-得益于[众多贡献者](http://contributors.rubyonrails.org/)，Rails 才能变得这么稳定和强健。向他们致敬！
+Active Model
+------------
+
+Please refer to the [Changelog][active-model] for detailed changes.
+
+### Removals
+
+*   Removed deprecated methods in `ActiveModel::Errors`.
+    ([commit](https://github.com/rails/rails/commit/9de6457ab0767ebab7f2c8bc583420fda072e2bd))
+
+*   Removed deprecated `:tokenizer` option in the length validator.
+    ([commit](https://github.com/rails/rails/commit/6a78e0ecd6122a6b1be9a95e6c4e21e10e429513))
+
+*   Remove deprecated behavior that halts callbacks when the return value is false.
+    ([commit](https://github.com/rails/rails/commit/3a25cdca3e0d29ee2040931d0cb6c275d612dffe))
+
+### Notable changes
+
+*   The original string assigned to a model attribute is no longer incorrectly
+    frozen.
+    ([Pull Request](https://github.com/rails/rails/pull/28729))
+
+Active Job
+-----------
+
+Please refer to the [Changelog][active-job] for detailed changes.
+
+### Removals
+
+*   Removed deprecated support to passing the adapter class to `.queue_adapter`.
+    ([commit](https://github.com/rails/rails/commit/d1fc0a5eb286600abf8505516897b96c2f1ef3f6))
+
+*   Removed deprecated `#original_exception` in `ActiveJob::DeserializationError`.
+    ([commit](https://github.com/rails/rails/commit/d861a1fcf8401a173876489d8cee1ede1cecde3b))
+
+### Notable changes
+
+*   Added declarative exception handling via `ActiveJob::Base.retry_on` and `ActiveJob::Base.discard_on`.
+    ([Pull Request](https://github.com/rails/rails/pull/25991))
+
+*   Yield the job instance so you have access to things like `job.arguments` on
+    the custom logic after retries fail.
+    ([commit](https://github.com/rails/rails/commit/a1e4c197cb12fef66530a2edfaeda75566088d1f))
+
+Active Support
+--------------
+
+Please refer to the [Changelog][active-support] for detailed changes.
+
+### Removals
+
+*   Removed the `ActiveSupport::Concurrency::Latch` class.
+    ([Commit](https://github.com/rails/rails/commit/0d7bd2031b4054fbdeab0a00dd58b1b08fb7fea6))
+
+*   Removed `halt_callback_chains_on_return_false`.
+    ([Commit](https://github.com/rails/rails/commit/4e63ce53fc25c3bc15c5ebf54bab54fa847ee02a))
+
+*   Removed deprecated behavior that halts callbacks when the return is false.
+    ([Commit](https://github.com/rails/rails/commit/3a25cdca3e0d29ee2040931d0cb6c275d612dffe))
+
+### Deprecations
+
+*   The top level `HashWithIndifferentAccess` class has been softly deprecated
+    in favor of the `ActiveSupport::HashWithIndifferentAccess` one.
+    ([Pull Request](https://github.com/rails/rails/pull/28157))
+
+*   Deprecated passing string to `:if` and `:unless` conditional options on `set_callback` and `skip_callback`.
+    ([Commit](https://github.com/rails/rails/commit/0952552))
+
+### Notable changes
+
+*   Fixed duration parsing and traveling to make it consistent across DST changes.
+    ([Commit](https://github.com/rails/rails/commit/8931916f4a1c1d8e70c06063ba63928c5c7eab1e),
+    [Pull Request](https://github.com/rails/rails/pull/26597))
+
+*   Updated Unicode to version 9.0.0.
+    ([Pull Request](https://github.com/rails/rails/pull/27822))
+
+*   Add Duration#before and #after as aliases for #ago and #since.
+    ([Pull Request](https://github.com/rails/rails/pull/27721))
+
+*   Added `Module#delegate_missing_to` to delegate method calls not
+    defined for the current object to a proxy object.
+    ([Pull Request](https://github.com/rails/rails/pull/23930))
+
+*   Added `Date#all_day` which returns a range representing the whole day
+    of the current date & time.
+    ([Pull Request](https://github.com/rails/rails/pull/24930))
+
+*   Introduced the `assert_changes` and `assert_no_changes` methods for tests.
+    ([Pull Request](https://github.com/rails/rails/pull/25393))
+
+*   The `travel` and `travel_to` methods now raise on nested calls.
+    ([Pull Request](https://github.com/rails/rails/pull/24890))
+
+*   Update `DateTime#change` to support usec and nsec.
+    ([Pull Request](https://github.com/rails/rails/pull/28242))
+
+Credits
+-------
+
+See the
+[full list of contributors to Rails](https://contributors.rubyonrails.org/) for
+the many people who spent many hours making Rails, the stable and robust
+framework it is. Kudos to all of them.
+
+[railties]:       https://github.com/rails/rails/blob/5-1-stable/railties/CHANGELOG.md
+[action-pack]:    https://github.com/rails/rails/blob/5-1-stable/actionpack/CHANGELOG.md
+[action-view]:    https://github.com/rails/rails/blob/5-1-stable/actionview/CHANGELOG.md
+[action-mailer]:  https://github.com/rails/rails/blob/5-1-stable/actionmailer/CHANGELOG.md
+[action-cable]:   https://github.com/rails/rails/blob/5-1-stable/actioncable/CHANGELOG.md
+[active-record]:  https://github.com/rails/rails/blob/5-1-stable/activerecord/CHANGELOG.md
+[active-model]:   https://github.com/rails/rails/blob/5-1-stable/activemodel/CHANGELOG.md
+[active-support]: https://github.com/rails/rails/blob/5-1-stable/activesupport/CHANGELOG.md
+[active-job]:     https://github.com/rails/rails/blob/5-1-stable/activejob/CHANGELOG.md

@@ -1,44 +1,79 @@
-# Rails 命令行
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-读完本文后，您将学到：
+The Rails Command Line
+======================
 
-*   如何新建 Rails 应用；
-*   如何生成模型、控制器、数据库迁移和单元测试；
-*   如何启动开发服务器；
-*   如果在交互式 shell 中测试对象；
+After reading this guide, you will know:
 
------------------------------------------------------------------------------
+* How to create a Rails application.
+* How to generate models, controllers, database migrations, and unit tests.
+* How to start a development server.
+* How to experiment with objects through an interactive shell.
 
-NOTE: 阅读本文前请阅读[Rails 入门](getting_started.html)，掌握一些 Rails 基础知识。
+--------------------------------------------------------------------------------
 
+NOTE: This tutorial assumes you have basic Rails knowledge from reading the [Getting Started with Rails Guide](getting_started.html).
 
-<a class="anchor" id="command-line-basics"></a>
+Command Line Basics
+-------------------
 
-## 命令行基础
+There are a few commands that are absolutely critical to your everyday usage of Rails. In the order of how much you'll probably use them are:
 
-有些命令在 Rails 开发过程中经常会用到，下面按照使用频率倒序列出：
+* `bin/rails console`
+* `bin/rails server`
+* `bin/rails test`
+* `bin/rails generate`
+* `bin/rails db:migrate`
+* `bin/rails db:create`
+* `bin/rails routes`
+* `bin/rails dbconsole`
+* `rails new app_name`
 
-*   `rails console`
-*   `rails server`
-*   `bin/rails`
-*   `rails generate`
-*   `rails dbconsole`
-*   `rails new app_name`
+You can get a list of rails commands available to you, which will often depend on your current directory, by typing `rails --help`. Each command has a description, and should help you find the thing you need.
 
-这些命令都可指定 `-h` 或 `--help` 选项列出更多信息。
+```bash
+$ rails --help
+Usage: rails COMMAND [ARGS]
 
-下面我们新建一个 Rails 应用，通过它介绍各个命令的用法。
+The most common rails commands are:
+ generate    Generate new code (short-cut alias: "g")
+ console     Start the Rails console (short-cut alias: "c")
+ server      Start the Rails server (short-cut alias: "s")
+ ...
 
-<a class="anchor" id="rails-new"></a>
+All commands can be run with -h (or --help) for more information.
+
+In addition to those commands, there are:
+ about                               List versions of all Rails ...
+ assets:clean[keep]                  Remove old compiled assets
+ assets:clobber                      Remove compiled assets
+ assets:environment                  Load asset compile environment
+ assets:precompile                   Compile all the assets ...
+ ...
+ db:fixtures:load                    Loads fixtures into the ...
+ db:migrate                          Migrate the database ...
+ db:migrate:status                   Display status of migrations
+ db:rollback                         Rolls the schema back to ...
+ db:schema:cache:clear               Clears a db/schema_cache.yml file
+ db:schema:cache:dump                Creates a db/schema_cache.yml file
+ db:schema:dump                      Creates a database schema file (either db/schema.rb or db/structure.sql ...
+ db:schema:load                      Loads a database schema file (either db/schema.rb or db/structure.sql ...
+ db:seed                             Loads the seed data ...
+ db:version                          Retrieves the current schema ...
+ ...
+ restart                             Restart app by touching ...
+ tmp:create                          Creates tmp directories ...
+```
+
+Let's create a simple Rails application to step through each of these commands in context.
 
 ### `rails new`
 
-安装 Rails 后首先要做的就是使用 `rails new` 命令新建 Rails 应用。
+The first thing we'll want to do is create a new Rails application by running the `rails new` command after installing Rails.
 
-TIP: 如果还没安装 Rails ，可以执行 `gem install rails` 命令安装。
+INFO: You can install the rails gem by typing `gem install rails`, if you don't have it already.
 
-
-```sh
+```bash
 $ rails new commandsapp
      create
      create  README.md
@@ -53,53 +88,69 @@ $ rails new commandsapp
         run  bundle install
 ```
 
-这个简单的命令会生成很多文件，组成一个完整的 Rails 应用目录结构，直接就可运行。
+Rails will set you up with what seems like a huge amount of stuff for such a tiny command! You've got the entire Rails directory structure now with all the code you need to run our simple application right out of the box.
 
-<a class="anchor" id="rails-server"></a>
+If you wish to skip some files or components from being generated, you can append the following arguments to your `rails new` command:
 
-### `rails server`
+| Argument                | Description                                                 |
+| ----------------------- | ----------------------------------------------------------- |
+| `--skip-gemfile`        | Don't create a Gemfile                                      |
+| `--skip-git`            | Skip .gitignore file                                        |
+| `--skip-keeps`          | Skip source control .keep files                             |
+| `--skip-action-mailer`  | Skip Action Mailer files                                    |
+| `--skip-action-text`    | Skip Action Text gem                                        |
+| `--skip-active-record`  | Skip Active Record files                                    |
+| `--skip-active-storage` | Skip Active Storage files                                   |
+| `--skip-puma`           | Skip Puma related files                                     |
+| `--skip-action-cable`   | Skip Action Cable files                                     |
+| `--skip-sprockets`      | Skip Sprockets files                                        |
+| `--skip-spring`         | Don't install Spring application preloader                  |
+| `--skip-listen`         | Don't generate configuration that depends on the listen gem |
+| `--skip-javascript`     | Skip JavaScript files                                       |
+| `--skip-turbolinks`     | Skip turbolinks gem                                         |
+| `--skip-test`           | Skip test files                                             |
+| `--skip-system-test`    | Skip system test files                                      |
+| `--skip-bootsnap`       | Skip bootsnap gem                                           |
 
-`rails server` 命令用于启动 Rails 自带的 Puma Web 服务器。若想在浏览器中访问应用，就要执行这个命令。
+### `bin/rails server`
 
-无需其他操作，执行 `rails server` 命令后就能运行刚才创建的 Rails 应用：
+The `bin/rails server` command launches a web server named Puma which comes bundled with Rails. You'll use this any time you want to access your application through a web browser.
 
-```sh
+With no further work, `bin/rails server` will run our new shiny Rails app:
+
+```bash
 $ cd commandsapp
 $ bin/rails server
 => Booting Puma
-=> Rails 5.1.0 application starting in development on http://0.0.0.0:3000
-=> Run `rails server -h` for more startup options
+=> Rails 6.0.0 application starting in development
+=> Run `bin/rails server --help` for more startup options
 Puma starting in single mode...
-* Version 3.0.2 (ruby 2.3.0-p0), codename: Plethora of Penguin Pinatas
+* Version 3.12.1 (ruby 2.5.7-p206), codename: Llamas in Pajamas
 * Min threads: 5, max threads: 5
 * Environment: development
 * Listening on tcp://localhost:3000
 Use Ctrl-C to stop
 ```
 
-只执行了三个命令，我们就启动了一个 Rails 服务器，监听着 3000 端口。打开浏览器，访问 <http://localhost:3000>，你会看到一个简单的 Rails 应用。
+With just three commands we whipped up a Rails server listening on port 3000. Go to your browser and open [http://localhost:3000](http://localhost:3000), you will see a basic Rails app running.
 
-TIP: 启动服务器的命令还可使用别名“s”：`rails s`。
+INFO: You can also use the alias "s" to start the server: `bin/rails s`.
 
+The server can be run on a different port using the `-p` option. The default development environment can be changed using `-e`.
 
-如果想让服务器监听其他端口，可通过 `-p` 选项指定。所处的环境（默认为开发环境）可由 `-e` 选项指定。
-
-```sh
+```bash
 $ bin/rails server -e production -p 4000
 ```
 
-`-b` 选项把 Rails 绑定到指定的 IP（默认为 localhost）。指定 `-d` 选项后，服务器会以守护进程的形式运行。
+The `-b` option binds Rails to the specified IP, by default it is localhost. You can run a server as a daemon by passing a `-d` option.
 
-<a class="anchor" id="rails-generate"></a>
+### `bin/rails generate`
 
-### `rails generate`
+The `bin/rails generate` command uses templates to create a whole lot of things. Running `bin/rails generate` by itself gives a list of available generators:
 
-`rails generate` 目录使用模板生成很多东西。单独执行 `rails generate` 命令，会列出可用的生成器：
+INFO: You can also use the alias "g" to invoke the generator command: `bin/rails g`.
 
-TIP: 还可使用别名“g”执行生成器命令：`rails g`。
-
-
-```sh
+```bash
 $ bin/rails generate
 Usage: rails generate GENERATOR [args] [options]
 
@@ -110,25 +161,24 @@ Please choose a generator below.
 
 Rails:
   assets
+  channel
   controller
   generator
   ...
   ...
 ```
 
-NOTE: 使用其他生成器 gem 可以安装更多的生成器，或者使用插件中提供的生成器，甚至还可以自己编写生成器。
+NOTE: You can install more generators through generator gems, portions of plugins you'll undoubtedly install, and you can even create your own!
 
+Using generators will save you a large amount of time by writing **boilerplate code**, code that is necessary for the app to work.
 
-使用生成器可以节省大量编写样板代码（即应用运行必须的代码）的时间。
+Let's make our own controller with the controller generator. But what command should we use? Let's ask the generator:
 
-下面我们使用控制器生成器生成一个控制器。不过，应该使用哪个命令呢？我们问一下生成器：
+INFO: All Rails console utilities have help text. As with most *nix utilities, you can try adding `--help` or `-h` to the end, for example `bin/rails server --help`.
 
-TIP: 所有 Rails 命令都有帮助信息。和其他 *nix 命令一样，可以在命令后加上 `--help` 或 `-h` 选项，例如 `rails server --help`。
-
-
-```sh
+```bash
 $ bin/rails generate controller
-Usage: rails generate controller NAME [action action] [options]
+Usage: bin/rails generate controller NAME [action action] [options]
 
 ...
 ...
@@ -141,7 +191,7 @@ Description:
     ...
 
 Example:
-    `rails generate controller CreditCards open debit credit close`
+    `bin/rails generate controller CreditCards open debit credit close`
 
     Credit card controller with URLs like /credit_cards/debit.
         Controller: app/controllers/credit_cards_controller.rb
@@ -150,12 +200,12 @@ Example:
         Helper:     app/helpers/credit_cards_helper.rb
 ```
 
-控制器生成器接受的参数形式是 `generate controller ControllerName action1 action2`。下面我们来生成 `Greetings` 控制器，包含一个动作 `hello`，通过它跟读者打个招呼。
+The controller generator is expecting parameters in the form of `generate controller ControllerName action1 action2`. Let's make a `Greetings` controller with an action of **hello**, which will say something nice to us.
 
-```sh
+```bash
 $ bin/rails generate controller Greetings hello
      create  app/controllers/greetings_controller.rb
-      route  get "greetings/hello"
+      route  get 'greetings/hello'
      invoke  erb
      create    app/views/greetings
      create    app/views/greetings/hello.html.erb
@@ -163,16 +213,15 @@ $ bin/rails generate controller Greetings hello
      create    test/controllers/greetings_controller_test.rb
      invoke  helper
      create    app/helpers/greetings_helper.rb
+     invoke    test_unit
      invoke  assets
-     invoke    coffee
-     create      app/assets/javascripts/greetings.coffee
      invoke    scss
      create      app/assets/stylesheets/greetings.scss
 ```
 
-这个命令生成了什么呢？它在应用中创建了一堆目录，还有控制器文件、视图文件、功能测试文件、视图辅助方法文件、JavaScript 文件和样式表文件。
+What all did this generate? It made sure a bunch of directories were in our application, and created a controller file, a view file, a functional test file, a helper for the view, a JavaScript file, and a stylesheet file.
 
-打开控制器文件（`app/controllers/greetings_controller.rb`），做些改动：
+Check out the controller and modify it a little (in `app/controllers/greetings_controller.rb`):
 
 ```ruby
 class GreetingsController < ApplicationController
@@ -182,55 +231,56 @@ class GreetingsController < ApplicationController
 end
 ```
 
-然后修改视图文件（`app/views/greetings/hello.html.erb`），显示消息：
+Then the view, to display our message (in `app/views/greetings/hello.html.erb`):
 
 ```erb
 <h1>A Greeting for You!</h1>
 <p><%= @message %></p>
 ```
 
-执行 `rails server` 命令启动服务器：
+Fire up your server using `bin/rails server`.
 
-```sh
+```bash
 $ bin/rails server
 => Booting Puma...
 ```
 
-要查看的 URL 是 <http://localhost:3000/greetings/hello>。
+The URL will be [http://localhost:3000/greetings/hello](http://localhost:3000/greetings/hello).
 
-TIP: 在常规的 Rails 应用中，URL 的格式是 http://(host)/(controller)/(action)，访问 http://(host)/(controller) 这样的 URL 会进入控制器的 `index` 动作。
+INFO: With a normal, plain-old Rails application, your URLs will generally follow the pattern of http://(host)/(controller)/(action), and a URL like http://(host)/(controller) will hit the **index** action of that controller.
 
+Rails comes with a generator for data models too.
 
-Rails 也为数据模型提供了生成器。
-
-```sh
+```bash
 $ bin/rails generate model
 Usage:
-  rails generate model NAME [field[:type][:index] field[:type][:index]] [options]
+  bin/rails generate model NAME [field[:type][:index] field[:type][:index]] [options]
 
 ...
 
-Active Record options:
-      [--migration]            # Indicates when to generate migration
-                               # Default: true
+ActiveRecord options:
+      [--migration], [--no-migration]        # Indicates when to generate migration
+                                             # Default: true
 
 ...
 
 Description:
-    Create rails files for model generator.
+    Generates a new model. Pass the model name, either CamelCased or
+    under_scored, and an optional list of attribute pairs as arguments.
+
+...
 ```
 
-NOTE: `type` 参数可用的全部字段类型参见 `SchemaStatements` 模块中 [`add_column` 方法的 API 文档](http://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/SchemaStatements.html#method-i-add_column)。`index` 参数为相应的列生成索引。
+NOTE: For a list of available field types for the `type` parameter, refer to the [API documentation](https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/SchemaStatements.html#method-i-add_column) for the add_column method for the `SchemaStatements` module. The `index` parameter generates a corresponding index for the column.
 
+But instead of generating a model directly (which we'll be doing later), let's set up a scaffold. A **scaffold** in Rails is a full set of model, database migration for that model, controller to manipulate it, views to view and manipulate the data, and a test suite for each of the above.
 
-不过我们暂且不直接生成模型（后文再生成），先来使用脚手架（scaffold）。Rails 中的脚手架会生成资源所需的全部文件，包括模型、模型所用的迁移、处理模型的控制器、查看数据的视图，以及各部分的测试组件。
+We will set up a simple resource called "HighScore" that will keep track of our highest score on video games we play.
 
-我们要创建一个名为“HighScore”的资源，记录视频游戏的最高得分。
-
-```sh
+```bash
 $ bin/rails generate scaffold HighScore game:string score:integer
     invoke  active_record
-    create    db/migrate/20130717151933_create_high_scores.rb
+    create    db/migrate/20190416145729_create_high_scores.rb
     create    app/models/high_score.rb
     invoke    test_unit
     create      test/models/high_score_test.rb
@@ -248,25 +298,26 @@ $ bin/rails generate scaffold HighScore game:string score:integer
     create      app/views/high_scores/_form.html.erb
     invoke    test_unit
     create      test/controllers/high_scores_controller_test.rb
+    create      test/system/high_scores_test.rb
     invoke    helper
     create      app/helpers/high_scores_helper.rb
+    invoke      test_unit
     invoke    jbuilder
     create      app/views/high_scores/index.json.jbuilder
     create      app/views/high_scores/show.json.jbuilder
+    create      app/views/high_scores/_high_score.json.jbuilder
     invoke  assets
-    invoke    coffee
-    create      app/assets/javascripts/high_scores.coffee
     invoke    scss
     create      app/assets/stylesheets/high_scores.scss
     invoke  scss
-   identical    app/assets/stylesheets/scaffolds.scss
+    create    app/assets/stylesheets/scaffolds.scss
 ```
 
-这个生成器检测到以下各组件对应的目录已经存在：模型、控制器、辅助方法、布局、功能测试、单元测试和样式表。然后创建“HighScore”资源的视图、控制器、模型和数据库迁移（用于创建 `high_scores` 数据表和字段），并设置好路由，以及测试等。
+The generator checks that there exist the directories for models, controllers, helpers, layouts, functional and unit tests, stylesheets, creates the views, controller, model and database migration for HighScore (creating the `high_scores` table and fields), takes care of the route for the **resource**, and new tests for everything.
 
-我们要运行迁移，执行文件 `20130717151933_create_high_scores.rb` 中的代码，这样才能修改数据库的模式。那么要修改哪个数据库呢？执行 `bin/rails db:migrate` 命令后会生成 SQLite3 数据库。稍后再详细说明 `bin/rails`。
+The migration requires that we **migrate**, that is, run some Ruby code (living in that `20130717151933_create_high_scores.rb`) to modify the schema of our database. Which database? The SQLite3 database that Rails will create for you when we run the `bin/rails db:migrate` command. We'll talk more about that command below.
 
-```sh
+```bash
 $ bin/rails db:migrate
 ==  CreateHighScores: migrating ===============================================
 -- create_table(:high_scores)
@@ -274,112 +325,109 @@ $ bin/rails db:migrate
 ==  CreateHighScores: migrated (0.0019s) ======================================
 ```
 
-TIP: 介绍一下单元测试。单元测试是用来测试和做断言的代码。在单元测试中，我们只关注代码的一小部分，例如模型中的一个方法，测试其输入和输出。单元测试是你的好伙伴，你逐渐会意识到，单元测试的程度越高，生活的质量越高。真的。关于单元测试的详情，参阅[Rails 应用测试指南](testing.html)。
+INFO: Let's talk about unit tests. Unit tests are code that tests and makes assertions
+about code. In unit testing, we take a little part of code, say a method of a model,
+and test its inputs and outputs. Unit tests are your friend. The sooner you make
+peace with the fact that your quality of life will drastically increase when you unit
+test your code, the better. Seriously. Please visit
+[the testing guide](https://guides.rubyonrails.org/testing.html) for an in-depth
+look at unit testing.
 
+Let's see the interface Rails created for us.
 
-我们来看一下 Rails 创建的界面。
-
-```sh
+```bash
 $ bin/rails server
 ```
 
-打开浏览器，访问 <http://localhost:3000/high_scores>，现在可以创建新的最高得分了（太空入侵者得了 55,160 分）。
+Go to your browser and open [http://localhost:3000/high_scores](http://localhost:3000/high_scores), now we can create new high scores (55,160 on Space Invaders!)
 
-<a class="anchor" id="rails-console"></a>
+### `bin/rails console`
 
-### `rails console`
+The `console` command lets you interact with your Rails application from the command line. On the underside, `bin/rails console` uses IRB, so if you've ever used it, you'll be right at home. This is useful for testing out quick ideas with code and changing data server-side without touching the website.
 
-执行 `console` 命令后，可以在命令行中与 Rails 应用交互。`rails console` 使用的是 IRB，所以如果你用过 IRB 的话，操作起来很顺手。在控制台里可以快速测试想法，或者修改服务器端数据，而无需在网站中操作。
+INFO: You can also use the alias "c" to invoke the console: `bin/rails c`.
 
-TIP: 这个命令还可以使用别名“c”：`rails c`。
+You can specify the environment in which the `console` command should operate.
 
-
-执行 `console` 命令时可以指定在哪个环境中打开控制台：
-
-```sh
-$ bin/rails console staging
+```bash
+$ bin/rails console -e staging
 ```
 
-如果你想测试一些代码，但不想改变存储的数据，可以执行 `rails console --sandbox` 命令。
+If you wish to test out some code without changing any data, you can do that by invoking `bin/rails console --sandbox`.
 
-```sh
+```bash
 $ bin/rails console --sandbox
 Loading development environment in sandbox (Rails 5.1.0)
 Any modifications you make will be rolled back on exit
 irb(main):001:0>
 ```
 
-<a class="anchor" id="the-app-and-helper-objects"></a>
+#### The app and helper objects
 
-#### `app` 和 `helper` 对象
+Inside the `bin/rails console` you have access to the `app` and `helper` instances.
 
-在控制台中可以访问 `app` 和 `helper` 对象。
-
-通过 `app` 可以访问 URL 和路径辅助方法，还可以发送请求。
+With the `app` method you can access named route helpers, as well as do requests.
 
 ```irb
->> app.root_path
+irb> app.root_path
 => "/"
 
->> app.get _
+irb> app.get _
 Started GET "/" for 127.0.0.1 at 2014-06-19 10:41:57 -0300
 ...
 ```
 
-通过 `helper` 可以访问 Rails 和应用定义的辅助方法。
+With the `helper` method it is possible to access Rails and your application's helpers.
 
 ```irb
->> helper.time_ago_in_words 30.days.ago
+irb> helper.time_ago_in_words 30.days.ago
 => "about 1 month"
 
->> helper.my_custom_helper
+irb> helper.my_custom_helper
 => "my custom helper"
 ```
 
-<a class="anchor" id="rails-dbconsole"></a>
+### `bin/rails dbconsole`
 
-### `rails dbconsole`
+`bin/rails dbconsole` figures out which database you're using and drops you into whichever command line interface you would use with it (and figures out the command line parameters to give to it, too!). It supports MySQL (including MariaDB), PostgreSQL, and SQLite3.
 
-`rails dbconsole` 能检测到你正在使用的数据库类型（还能理解传入的命令行参数），然后进入该数据库的命令行界面。该命令支持 MySQL（包括 MariaDB）、PostgreSQL 和 SQLite3。
+INFO: You can also use the alias "db" to invoke the dbconsole: `bin/rails db`.
 
-TIP: 这个命令还可以使用别名“db”：`rails db`。
+If you are using multiple databases, `bin/rails dbconsole` will connect to the primary database by default. You can specify which database to connect to using `--database` or `--db`:
 
+```bash
+$ bin/rails dbconsole --database=animals
+```
 
-<a class="anchor" id="rails-runner"></a>
+### `bin/rails runner`
 
-### `rails runner`
+`runner` runs Ruby code in the context of Rails non-interactively. For instance:
 
-`runner` 能以非交互的方式在 Rails 中运行 Ruby 代码。例如：
-
-```sh
+```bash
 $ bin/rails runner "Model.long_running_method"
 ```
 
-TIP: 这个命令还可以使用别名“r”：`rails r`。
+INFO: You can also use the alias "r" to invoke the runner: `bin/rails r`.
 
+You can specify the environment in which the `runner` command should operate using the `-e` switch.
 
-可以使用 `-e` 选项指定 `runner` 命令在哪个环境中运行。
-
-```sh
+```bash
 $ bin/rails runner -e staging "Model.long_running_method"
 ```
 
-甚至还可以执行文件中的 Ruby 代码：
+You can even execute ruby code written in a file with runner.
 
-```sh
+```bash
 $ bin/rails runner lib/code_to_be_run.rb
 ```
 
-<a class="anchor" id="rails-destroy"></a>
+### `bin/rails destroy`
 
-### `rails destroy`
+Think of `destroy` as the opposite of `generate`. It'll figure out what generate did, and undo it.
 
-`destroy` 可以理解成 `generate` 的逆操作，它能识别生成了什么，然后撤销。
+INFO: You can also use the alias "d" to invoke the destroy command: `bin/rails d`.
 
-TIP: 这个命令还可以使用别名“d”：`rails d`。
-
-
-```sh
+```bash
 $ bin/rails generate model Oops
       invoke  active_record
       create    db/migrate/20120528062523_create_oops.rb
@@ -388,8 +436,7 @@ $ bin/rails generate model Oops
       create      test/models/oops_test.rb
       create      test/fixtures/oops.yml
 ```
-
-```sh
+```bash
 $ bin/rails destroy model Oops
       invoke  active_record
       remove    db/migrate/20120528062523_create_oops.rb
@@ -399,207 +446,186 @@ $ bin/rails destroy model Oops
       remove      test/fixtures/oops.yml
 ```
 
-<a class="anchor" id="bin-rails"></a>
+### `bin/rails about`
 
-## `bin/rails`
+`bin/rails about` gives information about version numbers for Ruby, RubyGems, Rails, the Rails subcomponents, your application's folder, the current Rails environment name, your app's database adapter, and schema version. It is useful when you need to ask for help, check if a security patch might affect you, or when you need some stats for an existing Rails installation.
 
-从 Rails 5.0+ 起，rake 命令内建到 `rails` 可执行文件中了，因此现在应该使用 `bin/rails` 执行命令。
-
-`bin/rails` 支持的任务列表可通过 `bin/rails --help` 查看（可用的任务根据所在的目录有所不同）。每个任务都有描述，应该能帮助你找到所需的那个。
-
-```sh
-$ bin/rails --help
-Usage: rails COMMAND [ARGS]
-
-The most common rails commands are:
-generate    Generate new code (short-cut alias: "g")
-console     Start the Rails console (short-cut alias: "c")
-server      Start the Rails server (short-cut alias: "s")
-...
-
-All commands can be run with -h (or --help) for more information.
-
-In addition to those commands, there are:
-about                               List versions of all Rails ...
-assets:clean[keep]                  Remove old compiled assets
-assets:clobber                      Remove compiled assets
-assets:environment                  Load asset compile environment
-assets:precompile                   Compile all the assets ...
-...
-db:fixtures:load                    Loads fixtures into the ...
-db:migrate                          Migrate the database ...
-db:migrate:status                   Display status of migrations
-db:rollback                         Rolls the schema back to ...
-db:schema:cache:clear               Clears a db/schema_cache.yml file
-db:schema:cache:dump                Creates a db/schema_cache.yml file
-db:schema:dump                      Creates a db/schema.rb file ...
-db:schema:load                      Loads a schema.rb file ...
-db:seed                             Loads the seed data ...
-db:structure:dump                   Dumps the database structure ...
-db:structure:load                   Recreates the databases ...
-db:version                          Retrieves the current schema ...
-...
-restart                             Restart app by touching ...
-tmp:create
-```
-
-TIP: 还可以使用 `bin/rails -T` 列出所有任务。
-
-
-<a class="anchor" id="about"></a>
-
-### `about`
-
-`bin/rails about` 输出以下信息：Ruby、RubyGems、Rails 的版本号，Rails 使用的组件，应用所在的文件夹，Rails 当前所处的环境名，应用使用的数据库适配器，以及数据库模式版本号。如果想向他人需求帮助，检查安全补丁对你是否有影响，或者需要查看现有 Rails 应用的状态，就可以使用这个任务。
-
-```sh
+```bash
 $ bin/rails about
 About your application's environment
-Rails version             5.1.0
-Ruby version              2.2.2 (x86_64-linux)
-RubyGems version          2.4.6
-Rack version              2.0.1
+Rails version             6.0.0
+Ruby version              2.5.0 (x86_64-linux)
+RubyGems version          2.7.3
+Rack version              2.0.4
 JavaScript Runtime        Node.js (V8)
 Middleware:               Rack::Sendfile, ActionDispatch::Static, ActionDispatch::Executor, ActiveSupport::Cache::Strategy::LocalCache::Middleware, Rack::Runtime, Rack::MethodOverride, ActionDispatch::RequestId, ActionDispatch::RemoteIp, Sprockets::Rails::QuietAssets, Rails::Rack::Logger, ActionDispatch::ShowExceptions, WebConsole::Middleware, ActionDispatch::DebugExceptions, ActionDispatch::Reloader, ActionDispatch::Callbacks, ActiveRecord::Migration::CheckPending, ActionDispatch::Cookies, ActionDispatch::Session::CookieStore, ActionDispatch::Flash, Rack::Head, Rack::ConditionalGet, Rack::ETag
 Application root          /home/foobar/commandsapp
 Environment               development
 Database adapter          sqlite3
-Database schema version   20110805173523
+Database schema version   20180205173523
 ```
 
-<a class="anchor" id="assets"></a>
+### `bin/rails assets:`
 
-### `assets`
+You can precompile the assets in `app/assets` using `bin/rails assets:precompile`, and remove older compiled assets using `bin/rails assets:clean`. The `assets:clean` command allows for rolling deploys that may still be linking to an old asset while the new assets are being built.
 
-`bin/rails assets:precompile` 用于预编译 `app/assets` 文件夹中的静态资源文件。`bin/rails assets:clean` 用于把之前编译好的静态资源文件删除。滚动部署时应该执行 `assets:clean`，以防仍然链接旧的静态资源文件。
+If you want to clear `public/assets` completely, you can use `bin/rails assets:clobber`.
 
-如果想完全清空 `public/assets` 目录，可以使用 `bin/rails assets:clobber`。
+### `bin/rails db:`
 
-<a class="anchor" id="db"></a>
+The most common commands of the `db:` rails namespace are `migrate` and `create`, and it will pay off to try out all of the migration rails commands (`up`, `down`, `redo`, `reset`). `bin/rails db:version` is useful when troubleshooting, telling you the current version of the database.
 
-### `db`
+More information about migrations can be found in the [Migrations](active_record_migrations.html) guide.
 
-`bin/rails` 命名空间 `db:` 中最常用的任务是 `migrate` 和 `create`，这两个任务会尝试运行所有迁移相关的任务（`up`、`down`、`redo`、`reset`）。`bin/rails db:version` 在排查问题时很有用，它会输出数据库的当前版本。
+### `bin/rails notes`
 
-关于数据库迁移的进一步说明，参阅[Active Record 迁移](active_record_migrations.html)。
+`bin/rails notes` searches through your code for comments beginning with a specific keyword. You can refer to `bin/rails notes --help` for information about usage.
 
-<a class="anchor" id="notes"></a>
+By default, it will search in `app`, `config`, `db`, `lib`, and `test` directories for FIXME, OPTIMIZE, and TODO annotations in files with extension `.builder`, `.rb`, `.rake`, `.yml`, `.yaml`, `.ruby`, `.css`, `.js`, and `.erb`.
 
-### `notes`
-
-`bin/rails notes` 在代码中搜索以 FIXME、OPTIMIZE 或 TODO 开头的注释。搜索的文件类型包括 `.builder`、`.rb`、`.rake`、`.yml`、`.yaml`、`.ruby`、`.css`、`.js` 和 `.erb`，搜索的注解包括默认的和自定义的。
-
-```sh
+```bash
 $ bin/rails notes
-(in /home/foobar/commandsapp)
 app/controllers/admin/users_controller.rb:
   * [ 20] [TODO] any other way to do this?
   * [132] [FIXME] high priority for next deploy
 
-app/models/school.rb:
+lib/school.rb:
   * [ 13] [OPTIMIZE] refactor this code to make it faster
   * [ 17] [FIXME]
 ```
 
-可以使用 `config.annotations.register_extensions` 选项添加新的文件扩展名。这个选项的值是扩展名列表和对应的正则表达式。
+#### Annotations
+
+You can pass specific annotations by using the `--annotations` argument. By default, it will search for FIXME, OPTIMIZE, and TODO.
+Note that annotations are case sensitive.
+
+```bash
+$ bin/rails notes --annotations FIXME RELEASE
+app/controllers/admin/users_controller.rb:
+  * [101] [RELEASE] We need to look at this before next release
+  * [132] [FIXME] high priority for next deploy
+
+lib/school.rb:
+  * [ 17] [FIXME]
+```
+
+#### Tags
+
+You can add more default tags to search for by using `config.annotations.register_tags`. It receives a list of tags.
 
 ```ruby
-config.annotations.register_extensions("scss", "sass", "less") { |annotation| /\/\/\s*(#{annotation}):?\s*(.*)$/ }
+config.annotations.register_tags("DEPRECATEME", "TESTME")
 ```
 
-如果想查看特定类型的注解，如 FIXME，可以使用 `bin/rails notes:fixme`。注意，注解的名称是小写形式。
-
-```sh
-$ bin/rails notes:fixme
-(in /home/foobar/commandsapp)
+```bash
+$ bin/rails notes
 app/controllers/admin/users_controller.rb:
-  * [132] high priority for next deploy
-
-app/models/school.rb:
-  * [ 17]
+  * [ 20] [TODO] do A/B testing on this
+  * [ 42] [TESTME] this needs more functional tests
+  * [132] [DEPRECATEME] ensure this method is deprecated in next release
 ```
 
-此外，还可以在代码中使用自定义的注解，然后使用 `bin/rails notes:custom`，并通过 `ANNOTATION` 环境变量指定注解类型，将其列出。
+#### Directories
 
-```sh
-$ bin/rails notes:custom ANNOTATION=BUG
-(in /home/foobar/commandsapp)
-app/models/article.rb:
-  * [ 23] Have to fix this one before pushing!
-```
-
-NOTE: 使用内置的注解或自定义的注解时，注解的名称（FIXME、BUG 等）不会在输出中显示。
-
-
-默认情况下，`rails notes` 在 `app`、`config`、`db`、`lib` 和 `test` 目录中搜索。如果想搜索其他目录，可以通过 `config.annotations.register_directories` 选项配置。
+You can add more default directories to search from by using `config.annotations.register_directories`. It receives a list of directory names.
 
 ```ruby
 config.annotations.register_directories("spec", "vendor")
 ```
 
-此外，还可以通过 `SOURCE_ANNOTATION_DIRECTORIES` 环境变量指定，目录之间使用逗号分开。
-
-```sh
-$ export SOURCE_ANNOTATION_DIRECTORIES='spec,vendor'
+```bash
 $ bin/rails notes
-(in /home/foobar/commandsapp)
-app/models/user.rb:
-  * [ 35] [FIXME] User should have a subscription at this point
+app/controllers/admin/users_controller.rb:
+  * [ 20] [TODO] any other way to do this?
+  * [132] [FIXME] high priority for next deploy
+
+lib/school.rb:
+  * [ 13] [OPTIMIZE] Refactor this code to make it faster
+  * [ 17] [FIXME]
+
 spec/models/user_spec.rb:
   * [122] [TODO] Verify the user that has a subscription works
+
+vendor/tools.rb:
+  * [ 56] [TODO] Get rid of this dependency
 ```
 
-<a class="anchor" id="routes"></a>
+#### Extensions
 
-### `routes`
+You can add more default file extensions to search from by using `config.annotations.register_extensions`. It receives a list of extensions with its corresponding regex to match it up.
 
-`rails routes` 列出应用中定义的所有路由，可为解决路由问题提供帮助，还可以让你对应用中的所有 URL 有个整体了解。
+```ruby
+config.annotations.register_extensions("scss", "sass") { |annotation| /\/\/\s*(#{annotation}):?\s*(.*)$/ }
+```
 
-<a class="anchor" id="test"></a>
+```bash
+$ bin/rails notes
+app/controllers/admin/users_controller.rb:
+  * [ 20] [TODO] any other way to do this?
+  * [132] [FIXME] high priority for next deploy
 
-### `test`
+app/assets/stylesheets/application.css.sass:
+  * [ 34] [TODO] Use pseudo element for this class
 
-TIP: Rails 中的单元测试详情，参见[Rails 应用测试指南](testing.html)。
+app/assets/stylesheets/application.css.scss:
+  * [  1] [TODO] Split into multiple components
 
+lib/school.rb:
+  * [ 13] [OPTIMIZE] Refactor this code to make it faster
+  * [ 17] [FIXME]
 
-Rails 提供了一个名为 Minitest 的测试组件。Rails 的稳定性由测试决定。`test:` 命名空间中的任务可用于运行各种测试。
+spec/models/user_spec.rb:
+  * [122] [TODO] Verify the user that has a subscription works
 
-<a class="anchor" id="tmp"></a>
+vendor/tools.rb:
+  * [ 56] [TODO] Get rid of this dependency
+```
 
-### `tmp`
+### `bin/rails routes`
 
-`Rails.root/tmp` 目录和 *nix 系统中的 `/tmp` 目录作用相同，用于存放临时文件，例如 PID 文件和缓存的动作等。
+`bin/rails routes` will list all of your defined routes, which is useful for tracking down routing problems in your app, or giving you a good overview of the URLs in an app you're trying to get familiar with.
 
-`tmp:` 命名空间中的任务可以清理或创建 `Rails.root/tmp` 目录：
+### `bin/rails test`
 
-*   `rails tmp:cache:clear` 清空 `tmp/cache` 目录；
-*   `rails tmp:sockets:clear` 清空 `tmp/sockets` 目录；
-*   `rails tmp:clear` 清空所有缓存和套接字文件；
-*   `rails tmp:create` 创建缓存、套接字和 PID 所需的临时目录；
+INFO: A good description of unit testing in Rails is given in [A Guide to Testing Rails Applications](testing.html)
 
-<a class="anchor" id="miscellaneous"></a>
+Rails comes with a test framework called minitest. Rails owes its stability to the use of tests. The commands available in the `test:` namespace helps in running the different tests you will hopefully write.
 
-### 其他任务
+### `bin/rails tmp:`
 
-*   `rails stats` 用于统计代码状况，显示千行代码数和测试比例等；
-*   `rails secret` 生成一个伪随机字符串，作为会话的密钥；
-*   `rails time:zones:all` 列出 Rails 能理解的所有时区；
+The `Rails.root/tmp` directory is, like the *nix /tmp directory, the holding place for temporary files like process id files and cached actions.
 
-<a class="anchor" id="custom-rake-tasks"></a>
+The `tmp:` namespaced commands will help you clear and create the `Rails.root/tmp` directory:
 
-### 自定义 Rake 任务
+* `bin/rails tmp:cache:clear` clears `tmp/cache`.
+* `bin/rails tmp:sockets:clear` clears `tmp/sockets`.
+* `bin/rails tmp:screenshots:clear` clears `tmp/screenshots`.
+* `bin/rails tmp:clear` clears all cache, sockets, and screenshot files.
+* `bin/rails tmp:create` creates tmp directories for cache, sockets, and pids.
 
-自定义的 Rake 任务保存在 `Rails.root/lib/tasks` 目录中，文件的扩展名是 `.rake`。执行 `bin/rails generate task` 命令会生成一个新的自定义任务文件。
+### Miscellaneous
+
+* `bin/rails initializers` prints out all defined initializers in the order they are invoked by Rails.
+* `bin/rails middleware` lists Rack middleware stack enabled for your app.
+* `bin/rails stats` is great for looking at statistics on your code, displaying things like KLOCs (thousands of lines of code) and your code to test ratio.
+* `bin/rails secret` will give you a pseudo-random key to use for your session secret.
+* `bin/rails time:zones:all` lists all the timezones Rails knows about.
+
+### Custom Rake Tasks
+
+Custom rake tasks have a `.rake` extension and are placed in
+`Rails.root/lib/tasks`. You can create these custom rake tasks with the
+`bin/rails generate task` command.
 
 ```ruby
 desc "I am short, but comprehensive description for my cool task"
 task task_name: [:prerequisite_task, :another_task_we_depend_on] do
-  # 在这里定义任务
-  # 可以使用任何有效的 Ruby 代码
+  # All your magic here
+  # Any valid Ruby code is allowed
 end
 ```
 
-向自定义的任务传入参数的方式如下：
+To pass arguments to your custom rake task:
 
 ```ruby
 task :task_name, [:arg_1] => [:prerequisite_1, :prerequisite_2] do |task, args|
@@ -607,43 +633,39 @@ task :task_name, [:arg_1] => [:prerequisite_1, :prerequisite_2] do |task, args|
 end
 ```
 
-任务可以分组，放入命名空间：
+You can group tasks by placing them in namespaces:
 
 ```ruby
 namespace :db do
   desc "This task does nothing"
   task :nothing do
-    # 确实什么也没做
+    # Seriously, nothing
   end
 end
 ```
 
-执行任务的方法如下：
+Invocation of the tasks will look like:
 
-```sh
+```bash
 $ bin/rails task_name
-$ bin/rails "task_name[value 1]" # 整个参数字符串应该放在引号内
+$ bin/rails "task_name[value 1]" # entire argument string should be quoted
 $ bin/rails db:nothing
 ```
 
-NOTE: 如果在任务中要与应用的模型交互、查询数据库等，可以使用 `environment` 任务加载应用代码。
+NOTE: If you need to interact with your application models, perform database queries, and so on, your task should depend on the `environment` task, which will load your application code.
 
+The Rails Advanced Command Line
+-------------------------------
 
-<a class="anchor" id="the-rails-advanced-command-line"></a>
+More advanced use of the command line is focused around finding useful (even surprising at times) options in the utilities, and fitting those to your needs and specific work flow. Listed here are some tricks up Rails' sleeve.
 
-## Rails 命令行高级用法
+### Rails with Databases and SCM
 
-Rails 命令行的高级用法就是找到实用的参数，满足特定需求或者工作流程。下面是一些常用的高级命令。
+When creating a new Rails application, you have the option to specify what kind of database and what kind of source code management system your application is going to use. This will save you a few minutes, and certainly many keystrokes.
 
-<a class="anchor" id="rails-with-databases-and-scm"></a>
+Let's see what a `--git` option and a `--database=postgresql` option will do for us:
 
-### 新建应用时指定数据库和源码管理系统
-
-新建 Rails 应用时，可以设定一些选项指定使用哪种数据库和源码管理系统。这么做可以节省一点时间，减少敲击键盘的次数。
-
-我们来看一下 `--git` 和 `--database=postgresql` 选项有什么作用：
-
-```sh
+```bash
 $ mkdir gitapp
 $ cd gitapp
 $ git init
@@ -668,17 +690,17 @@ add 'app/controllers/application_controller.rb'
 add 'log/test.log'
 ```
 
-上面的命令先新建 `gitapp` 文件夹，初始化一个空的 git 仓库，然后再把 Rails 生成的文件纳入仓库。再来看一下它在数据库配置文件中添加了什么：
+We had to create the **gitapp** directory and initialize an empty git repository before Rails would add files it created to our repository. Let's see what it put in our database configuration:
 
-```sh
+```bash
 $ cat config/database.yml
-# PostgreSQL. Versions 9.1 and up are supported.
+# PostgreSQL. Versions 9.3 and up are supported.
 #
 # Install the pg driver:
 #   gem install pg
-# On OS X with Homebrew:
+# On macOS with Homebrew:
 #   gem install pg -- --with-pg-config=/usr/local/bin/pg_config
-# On OS X with MacPorts:
+# On macOS with MacPorts:
 #   gem install pg -- --with-pg-config=/opt/local/lib/postgresql84/bin/pg_config
 # On Windows:
 #   gem install pg
@@ -688,18 +710,20 @@ $ cat config/database.yml
 # Configure Using Gemfile
 # gem 'pg'
 #
-development:
+default: &default
   adapter: postgresql
   encoding: unicode
+  # For details on connection pooling, see Rails configuration guide
+  # https://guides.rubyonrails.org/configuring.html#database-pooling
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+development:
+  <<: *default
   database: gitapp_development
-  pool: 5
-  username: gitapp
-  password:
 ...
 ...
 ```
 
-这个命令还根据我们选择的 PostgreSQL 数据库在 `database.yml` 中添加了一些配置。
+It also generated some lines in our `database.yml` configuration corresponding to our choice of PostgreSQL for database.
 
-NOTE: 指定源码管理系统选项时唯一的不便是，要先新建存放应用的目录，再初始化源码管理系统，然后才能执行 `rails new` 命令生成应用骨架。
-
+NOTE. The only catch with using the SCM options is that you have to make your application's directory first, then initialize your SCM, then you can run the `rails new` command to generate the basis of your app.

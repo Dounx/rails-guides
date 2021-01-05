@@ -1,480 +1,429 @@
-# Rails 入门
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-本文介绍如何开始使用 Ruby on Rails。
+Getting Started with Rails
+==========================
 
-读完本文后，您将学到：
+This guide covers getting up and running with Ruby on Rails.
 
-*   如何安装 Rails、创建 Rails 应用，如何连接数据库；
-*   Rails 应用的基本文件结构；
-*   MVC（模型、视图、控制器）和 REST 架构的基本原理；
-*   如何快速生成 Rails 应用骨架。
+After reading this guide, you will know:
 
------------------------------------------------------------------------------
+* How to install Rails, create a new Rails application, and connect your
+  application to a database.
+* The general layout of a Rails application.
+* The basic principles of MVC (Model, View, Controller) and RESTful design.
+* How to quickly generate the starting pieces of a Rails application.
 
-<a class="anchor" id="guide-assumptions"></a>
+--------------------------------------------------------------------------------
 
-## 前提条件
+Guide Assumptions
+-----------------
 
-本文针对想从零开始开发 Rails 应用的初学者，不要求 Rails 使用经验。不过，为了能顺利阅读，还是需要事先安装好一些软件：
+This guide is designed for beginners who want to get started with a Rails
+application from scratch. It does not assume that you have any prior experience
+with Rails.
 
-*   [Ruby](https://www.ruby-lang.org/en/downloads) 2.2.2 及以上版本
-*   [开发工具包](http://rubyinstaller.org/downloads/)的正确版本（针对 Windows 用户）
-*   包管理工具 [RubyGems](https://rubygems.org/)，随 Ruby 预装。若想深入了解 RubyGems，请参阅 [RubyGems 指南](http://guides.rubygems.org/)
-*   [SQLite3 数据库](https://www.sqlite.org/)
+Rails is a web application framework running on the Ruby programming language.
+If you have no prior experience with Ruby, you will find a very steep learning
+curve diving straight into Rails. There are several curated lists of online resources
+for learning Ruby:
 
-Rails 是使用 Ruby 语言开发的 Web 应用框架。如果之前没接触过 Ruby，会感到直接学习 Rails 的学习曲线很陡。这里提供几个学习 Ruby 的在线资源：
+* [Official Ruby Programming Language website](https://www.ruby-lang.org/en/documentation/)
+* [List of Free Programming Books](https://github.com/EbookFoundation/free-programming-books/blob/master/free-programming-books.md#ruby)
 
-*   [Ruby 语言官方网站](https://www.ruby-lang.org/en/documentation/)
-*   [免费编程图书列表](https://github.com/vhf/free-programming-books/blob/master/free-programming-books.md#ruby)
+Be aware that some resources, while still excellent, cover older versions of
+Ruby, and may not include some syntax that you will see in day-to-day
+development with Rails.
 
-需要注意的是，有些资源虽然很好，但针对的是 Ruby 1.8 甚至 1.6 这些老版本，因此不涉及一些 Rails 日常开发的常见句法。
+What is Rails?
+--------------
 
-<a class="anchor" id="what-is-rails"></a>
+Rails is a web application development framework written in the Ruby programming language.
+It is designed to make programming web applications easier by making assumptions
+about what every developer needs to get started. It allows you to write less
+code while accomplishing more than many other languages and frameworks.
+Experienced Rails developers also report that it makes web application
+development more fun.
 
-## Rails 是什么？
+Rails is opinionated software. It makes the assumption that there is a "best"
+way to do things, and it's designed to encourage that way - and in some cases to
+discourage alternatives. If you learn "The Rails Way" you'll probably discover a
+tremendous increase in productivity. If you persist in bringing old habits from
+other languages to your Rails development, and trying to use patterns you
+learned elsewhere, you may have a less happy experience.
 
-Rails 是使用 Ruby 语言编写的 Web 应用开发框架，目的是通过解决快速开发中的共通问题，简化 Web 应用的开发。与其他编程语言和框架相比，使用 Rails 只需编写更少代码就能实现更多功能。有经验的 Rails 程序员常说，Rails 让 Web 应用开发变得更有趣。
+The Rails philosophy includes two major guiding principles:
 
-Rails 有自己的设计原则，认为问题总有最好的解决方法，并且有意识地通过设计来鼓励用户使用最好的解决方法，而不是其他替代方案。一旦掌握了“Rails 之道”，就可能获得生产力的巨大提升。在 Rails 开发中，如果不改变使用其他编程语言时养成的习惯，总想使用原有的设计模式，开发体验可能就不那么让人愉快了。
+* **Don't Repeat Yourself:** DRY is a principle of software development which
+  states that "Every piece of knowledge must have a single, unambiguous, authoritative
+  representation within a system". By not writing the same information over and over
+  again, our code is more maintainable, more extensible, and less buggy.
+* **Convention Over Configuration:** Rails has opinions about the best way to do many
+  things in a web application, and defaults to this set of conventions, rather than
+  require that you specify minutiae through endless configuration files.
 
-Rails 哲学包含两大指导思想：
+Creating a New Rails Project
+----------------------------
 
-*   不要自我重复（DRY）： DRY 是软件开发中的一个原则，意思是“系统中的每个功能都要具有单一、准确、可信的实现。”。不重复表述同一件事，写出的代码才更易维护、更具扩展性，也更不容易出问题。
-*   多约定，少配置： Rails 为 Web 应用的大多数需求都提供了最好的解决方法，并且默认使用这些约定，而不是在长长的配置文件中设置每个细节。
+The best way to read this guide is to follow it step by step. All steps are
+essential to run this example application and no additional code or steps are
+needed.
 
-<a class="anchor" id="creating-a-new-rails-project"></a>
+By following along with this guide, you'll create a Rails project called
+`blog`, a (very) simple weblog. Before you can start building the application,
+you need to make sure that you have Rails itself installed.
 
-## 创建 Rails 项目
+NOTE: The examples below use `$` to represent your terminal prompt in a UNIX-like OS,
+though it may have been customized to appear differently. If you are using Windows,
+your prompt will look something like `C:\source_code>`.
 
-阅读本文的最佳方法是一步步跟着操作。所有这些步骤对于运行示例应用都是必不可少的，同时也不需要更多的代码或步骤。
+### Installing Rails
 
-通过学习本文，你将学会如何创建一个名为 Blog 的 Rails 项目，这是一个非常简单的博客。在动手开发之前，请确保已经安装了 Rails。
+Before you install Rails, you should check to make sure that your system has the
+proper prerequisites installed. These include:
 
-TIP: 文中的示例代码使用 UNIX 风格的命令行提示符 $，如果你的命令行提示符是自定义的，看起来可能会不一样。在 Windows 中，命令行提示符可能类似 `c:\source_code>`。
+* Ruby
+* SQLite3
+* Node.js
+* Yarn
 
-<a class="anchor" id="installing-rails"></a>
+#### Installing Ruby
 
-### 安装 Rails
+Open up a command line prompt. On macOS open Terminal.app; on Windows choose
+"Run" from your Start menu and type `cmd.exe`. Any commands prefaced with a
+dollar sign `$` should be run in the command line. Verify that you have a
+current version of Ruby installed:
 
-打开命令行：在 macOS 中打开 Terminal.app，在 Windows 中要在开始菜单中选择“运行”，然后输入“cmd.exe”。本文中所有以 $ 开头的代码，都应该在命令行中执行。首先确认是否安装了 Ruby 的最新版本：
-
-```sh
-$ ruby -v
-ruby 2.3.1p112
+```bash
+$ ruby --version
+ruby 2.5.0
 ```
 
-TIP: 有很多工具可以帮助你快速地在系统中安装 Ruby 和 Ruby on Rails。Windows 用户可以使用 [Rails Installer](http://railsinstaller.org/)，macOS 用户可以使用 [Tokaido](https://github.com/tokaido/tokaidoapp)。更多操作系统中的安装方法请访问 [ruby-lang.org](https://www.ruby-lang.org/en/documentation/installation/)。
+Rails requires Ruby version 2.5.0 or later. If the version number returned is
+less than that number (such as 2.3.7, or 1.8.7), you'll need to install a fresh copy of Ruby.
 
-很多类 UNIX 系统都预装了版本较新的 SQLite3。在 Windows 中，通过 Rails Installer 安装 Rails 会同时安装 SQLite3。其他操作系统中 SQLite3 的安装方法请参阅 [SQLite3 官网](https://www.sqlite.org/)。接下来，确认 SQLite3 是否在 PATH 中：
+To install Rails on Windows, you'll first need to install [Ruby Installer](https://rubyinstaller.org/).
 
-```sh
+For more installation methods for most Operating Systems take a look at
+[ruby-lang.org](https://www.ruby-lang.org/en/documentation/installation/).
+
+#### Installing SQLite3
+
+You will also need an installation of the SQLite3 database.
+Many popular UNIX-like OSes ship with an acceptable version of SQLite3.
+Others can find installation instructions at the [SQLite3 website](https://www.sqlite.org).
+
+Verify that it is correctly installed and in your load `PATH`:
+
+```bash
 $ sqlite3 --version
 ```
 
-执行结果应该显示 SQLite3 的版本号。
+The program should report its version.
 
-安装 Rails，请使用 RubyGems 提供的 `gem install` 命令：
+#### Installing Node.js and Yarn
 
-```sh
+Finally, you'll need Node.js and Yarn installed to manage your application's JavaScript.
+
+Find the installation instructions at the [Node.js website](https://nodejs.org/en/download/) and
+verify it's installed correctly with the following command:
+
+```bash
+$ node --version
+```
+
+The version of your Node.js runtime should be printed out. Make sure it's greater
+than 8.16.0.
+
+To install Yarn, follow the installation
+instructions at the [Yarn website](https://classic.yarnpkg.com/en/docs/install).
+
+Running this command should print out Yarn version:
+
+```bash
+$ yarn --version
+```
+
+If it says something like "1.22.0", Yarn has been installed correctly.
+
+#### Installing Rails
+
+To install Rails, use the `gem install` command provided by RubyGems:
+
+```bash
 $ gem install rails
 ```
 
-执行下面的命令来确认所有软件是否都已正确安装：
+To verify that you have everything installed correctly, you should be able to
+run the following:
 
-```sh
+```bash
 $ rails --version
 ```
 
-如果执行结果类似 `Rails 5.1.0`，那么就可以继续往下读了。
+If it says something like "Rails 6.0.0", you are ready to continue.
 
-<a class="anchor" id="creating-the-blog-application"></a>
+### Creating the Blog Application
 
-### 创建 Blog 应用
+Rails comes with a number of scripts called generators that are designed to make
+your development life easier by creating everything that's necessary to start
+working on a particular task. One of these is the new application generator,
+which will provide you with the foundation of a fresh Rails application so that
+you don't have to write it yourself.
 
-Rails 提供了许多名为生成器（generator）的脚本，这些脚本可以为特定任务生成所需的全部文件，从而简化开发。其中包括新应用生成器，这个脚本用于创建 Rails 应用骨架，避免了手动编写基础代码。
+To use this generator, open a terminal, navigate to a directory where you have
+rights to create files, and run:
 
-要使用新应用生成器，请打开终端，进入具有写权限的文件夹，输入：
-
-```sh
+```bash
 $ rails new blog
 ```
 
-这个命令会在文件夹 `blog` 中创建名为 Blog 的 Rails 应用，然后执行 `bundle install` 命令安装 Gemfile 中列出的 gem 及其依赖。
+This will create a Rails application called Blog in a `blog` directory and
+install the gem dependencies that are already mentioned in `Gemfile` using
+`bundle install`.
 
-TIP: 执行 `rails new -h` 命令可以查看新应用生成器的所有命令行选项。
+NOTE: If you're using Windows Subsystem for Linux then there are currently some
+limitations on file system notifications that mean you should disable the `spring`
+and `listen` gems which you can do by running `rails new blog --skip-spring --skip-listen`
+instead.
 
-创建 blog 应用后，进入该文件夹：
+TIP: You can see all of the command line options that the Rails application
+generator accepts by running `rails new --help`.
 
-```sh
+After you create the blog application, switch to its folder:
+
+```bash
 $ cd blog
 ```
 
-`blog` 文件夹中有许多自动生成的文件和文件夹，这些文件和文件夹组成了 Rails 应用的结构。本文涉及的大部分工作都在 app 文件夹中完成。下面简单介绍一下这些用新应用生成器默认选项生成的文件和文件夹的功能：
+The `blog` directory will have a number of generated files and folders that make
+up the structure of a Rails application. Most of the work in this tutorial will
+happen in the `app` folder, but here's a basic rundown on the function of each
+of the files and folders that Rails creates by default:
 
-| 文件/文件夹 | 作用  |
-|---|---|
-| `app/` | 包含应用的控制器、模型、视图、辅助方法、邮件程序、频道、作业和静态资源文件。这个文件夹是本文剩余内容关注的重点。  |
-| `bin/` | 包含用于启动应用的 rails 脚本，以及用于安装、更新、部署或运行应用的其他脚本。  |
-| `config/` | 配置应用的路由、数据库等。详情请参阅[配置 Rails 应用](configuring.html)。  |
-| `config.ru` | 基于 Rack 的服务器所需的 Rack 配置，用于启动应用。  |
-| `db/` | 包含当前数据库的模式，以及数据库迁移文件。  |
-| `Gemfile`, `Gemfile.lock` | 这两个文件用于指定 Rails 应用所需的 gem 依赖。Bundler gem 需要用到这两个文件。关于 Bundler 的更多介绍，请访问 [Bundler 官网](http://bundler.io/)。  |
-| `lib/` | 应用的扩展模块。  |
-| `log/` | 应用日志文件。  |
-| `public/` | 仅有的可以直接从外部访问的文件夹，包含静态文件和编译后的静态资源文件。  |
-| `Rakefile` | 定位并加载可在命令行中执行的任务。这些任务在 Rails 的各个组件中定义。如果要添加自定义任务，请不要修改 Rakefile，直接把自定义任务保存在 `lib/tasks` 文件夹中即可。  |
-| `README.md` | 应用的自述文件，说明应用的用途、安装方法等。  |
-| `test/` | 单元测试、固件和其他测试装置。详情请参阅[Rails 应用测试指南](testing.html)。  |
-| `tmp/` | 临时文件（如缓存和 PID 文件）。  |
-| `vendor/` | 包含第三方代码，如第三方 gem。  |
-| `.gitignore` | 告诉 Git 要忽略的文件（或模式）。详情参见 [GitHub 帮助文档](https://help.github.com/articles/ignoring-files)。  |
+| File/Folder | Purpose |
+| ----------- | ------- |
+|app/|Contains the controllers, models, views, helpers, mailers, channels, jobs, and assets for your application. You'll focus on this folder for the remainder of this guide.|
+|bin/|Contains the `rails` script that starts your app and can contain other scripts you use to set up, update, deploy, or run your application.|
+|config/|Contains configuration for your application's routes, database, and more. This is covered in more detail in [Configuring Rails Applications](configuring.html).|
+|config.ru|Rack configuration for Rack-based servers used to start the application. For more information about Rack, see the [Rack website](https://rack.github.io/).|
+|db/|Contains your current database schema, as well as the database migrations.|
+|Gemfile<br>Gemfile.lock|These files allow you to specify what gem dependencies are needed for your Rails application. These files are used by the Bundler gem. For more information about Bundler, see the [Bundler website](https://bundler.io).|
+|lib/|Extended modules for your application.|
+|log/|Application log files.|
+|package.json|This file allows you to specify what npm dependencies are needed for your Rails application. This file is used by Yarn. For more information about Yarn, see the [Yarn website](https://yarnpkg.com/lang/en/).|
+|public/|Contains static files and compiled assets. When your app is running, this directory will be exposed as-is.|
+|Rakefile|This file locates and loads tasks that can be run from the command line. The task definitions are defined throughout the components of Rails. Rather than changing `Rakefile`, you should add your own tasks by adding files to the `lib/tasks` directory of your application.|
+|README.md|This is a brief instruction manual for your application. You should edit this file to tell others what your application does, how to set it up, and so on.|
+|storage/|Active Storage files for Disk Service. This is covered in [Active Storage Overview](active_storage_overview.html).|
+|test/|Unit tests, fixtures, and other test apparatus. These are covered in [Testing Rails Applications](testing.html).|
+|tmp/|Temporary files (like cache and pid files).|
+|vendor/|A place for all third-party code. In a typical Rails application this includes vendored gems.|
+|.gitignore|This file tells git which files (or patterns) it should ignore. See [GitHub - Ignoring files](https://help.github.com/articles/ignoring-files) for more info about ignoring files.|
+|.ruby-version|This file contains the default Ruby version.|
 
-<a class="anchor" id="hello-rails"></a>
+Hello, Rails!
+-------------
 
-## Hello, Rails!
+To begin with, let's get some text up on screen quickly. To do this, you need to
+get your Rails application server running.
 
-首先，让我们快速地在页面中添加一些文字。为了访问页面，需要运行 Rails 应用服务器（即 Web 服务器）。
+### Starting up the Web Server
 
-<a class="anchor" id="starting-up-the-web-server"></a>
+You actually have a functional Rails application already. To see it, you need to
+start a web server on your development machine. You can do this by running the
+following command in the `blog` directory:
 
-### 启动 Web 服务器
-
-实际上这个 Rails 应用已经可以正常运行了。要访问应用，需要在开发设备中启动 Web 服务器。请在 `blog` 文件夹中执行下面的命令：
-
-```sh
+```bash
 $ bin/rails server
 ```
 
-TIP: Windows 用户需要把 `bin` 文件夹下的脚本文件直接传递给 Ruby 解析器，例如 `ruby bin\rails server`。
+TIP: If you are using Windows, you have to pass the scripts under the `bin`
+folder directly to the Ruby interpreter e.g. `ruby bin\rails server`.
 
-TIP: 编译 CoffeeScript 和压缩 JavaScript 静态资源文件需要 JavaScript 运行时，如果没有运行时，在压缩静态资源文件时会报错，提示没有 `execjs`。macOS 和 Windows 一般都提供了 JavaScript 运行时。在 Rails 应用的 Gemfile 中，`therubyracer` gem 被注释掉了，如果需要使用这个 gem，请去掉注释。对于 JRuby 用户，推荐使用 `therubyrhino` 这个运行时，在 JRuby 中创建 Rails 应用的 Gemfile 中默认包含了这个 gem。要查看 Rails 支持的所有运行时，请参阅 [ExecJS](https://github.com/rails/execjs#readme)。
+TIP: JavaScript asset compression requires you
+have a JavaScript runtime available on your system, in the absence
+of a runtime you will see an `execjs` error during asset compression.
+Usually macOS and Windows come with a JavaScript runtime installed.
+`therubyrhino` is the recommended runtime for JRuby users and is added by
+default to the `Gemfile` in apps generated under JRuby. You can investigate
+all the supported runtimes at [ExecJS](https://github.com/rails/execjs#readme).
 
-上述命令会启动 Puma，这是 Rails 默认使用的 Web 服务器。要查看运行中的应用，请打开浏览器窗口，访问 <http://localhost:3000>。这时应该看到默认的 Rails 欢迎页面：
+This will start up Puma, a web server distributed with Rails by default. To see
+your application in action, open a browser window and navigate to
+<http://localhost:3000>. You should see the Rails default information page:
 
-![默认的 Rails 欢迎页面](images/getting_started/rails_welcome.png)
+![Yay! You're on Rails! screenshot](images/getting_started/rails_welcome.png)
 
-TIP: 要停止 Web 服务器，请在终端中按 Ctrl+C 键。服务器停止后命令行提示符会重新出现。在大多数类 Unix 系统中，包括 macOS，命令行提示符是 $ 符号。在开发模式中，一般情况下无需重启服务器，服务器会自动加载修改后的文件。
+When you want to stop the web server, hit Ctrl+C in the terminal window where
+it's running. In the development environment, Rails does not generally
+require you to restart the server; changes you make in files will be
+automatically picked up by the server.
 
-欢迎页面是创建 Rails 应用的冒烟测试，看到这个页面就表示应用已经正确配置，能够正常工作了。
+The "Yay! You're on Rails!" page is the _smoke test_ for a new Rails
+application: it makes sure that you have your software configured correctly
+enough to serve a page.
 
-<a class="anchor" id="say-hello-rails"></a>
+### Say "Hello", Rails
 
-### 显示“Hello, Rails!”
+To get Rails saying "Hello", you need to create at minimum a *route*, a
+*controller* with an *action*, and a *view*. A route maps a request to a
+controller action. A controller action performs the necessary work to handle the
+request, and prepares any data for the view. A view displays data in a desired
+format.
 
-要让 Rails 显示“Hello, Rails!”，需要创建控制器和视图。
+In terms of implementation: Routes are rules written in a Ruby [DSL
+(Domain-Specific Language)](https://en.wikipedia.org/wiki/Domain-specific_language).
+Controllers are Ruby classes, and their public methods are actions. And views
+are templates, usually written in a mixture of HTML and Ruby.
 
-控制器接受向应用发起的特定访问请求。路由决定哪些访问请求被哪些控制器接收。一般情况下，一个控制器会对应多个路由，不同路由对应不同动作。动作搜集数据并把数据提供给视图。
+Let's start by adding a route to our routes file, `config/routes.rb`, at the
+top of the `Rails.application.routes.draw` block:
 
-视图以人类能看懂的格式显示数据。有一点要特别注意，数据是在控制器而不是视图中获取的，视图只是显示数据。默认情况下，视图模板使用 eRuby（嵌入式 Ruby）语言编写，经由 Rails 解析后，再发送给用户。
+```ruby
+Rails.application.routes.draw do
+  get "/articles", to: "articles#index"
 
-可以用控制器生成器来创建控制器。下面的命令告诉控制器生成器创建一个包含“index”动作的“Welcome”控制器：
-
-```sh
-$ bin/rails generate controller Welcome index
+  # For details on the DSL available within this file, see https://guides.rubyonrails.org/routing.html
+end
 ```
 
-上述命令让 Rails 生成了多个文件和一个路由：
+The route above declares that `GET /articles` requests are mapped to the `index`
+action of `ArticlesController`.
+
+To create `ArticlesController` and its `index` action, we'll run the controller
+generator (with the `--skip-routes` option because we already have an
+appropriate route):
+
+```bash
+$ bin/rails generate controller Articles index --skip-routes
+```
+
+Rails will create several files for you:
 
 ```
-create  app/controllers/welcome_controller.rb
- route  get 'welcome/index'
+create  app/controllers/articles_controller.rb
 invoke  erb
-create    app/views/welcome
-create    app/views/welcome/index.html.erb
+create    app/views/articles
+create    app/views/articles/index.html.erb
 invoke  test_unit
-create    test/controllers/welcome_controller_test.rb
+create    test/controllers/articles_controller_test.rb
 invoke  helper
-create    app/helpers/welcome_helper.rb
+create    app/helpers/articles_helper.rb
 invoke    test_unit
 invoke  assets
-invoke    coffee
-create      app/assets/javascripts/welcome.coffee
 invoke    scss
-create      app/assets/stylesheets/welcome.scss
+create      app/assets/stylesheets/articles.scss
 ```
 
-其中最重要的文件是控制器和视图，控制器位于 `app/controllers/welcome_controller.rb` 文件 ，视图位于 `app/views/welcome/index.html.erb` 文件 。
+The most important of these is the controller file,
+`app/controllers/articles_controller.rb`. Let's take a look at it:
 
-在文本编辑器中打开 `app/views/welcome/index.html.erb` 文件，删除所有代码，然后添加下面的代码：
+```ruby
+class ArticlesController < ApplicationController
+  def index
+  end
+end
+```
+
+The `index` action is empty. When an action does not explicitly render a view
+(or otherwise trigger an HTTP response), Rails will automatically render a view
+that matches the name of the controller and action. Convention Over
+Configuration! Views are located in the `app/views` directory. So the `index`
+action will render `app/views/articles/index.html.erb` by default.
+
+Let's open `app/views/articles/index.html.erb`, and replace its contents with:
 
 ```html
 <h1>Hello, Rails!</h1>
 ```
 
-<a class="anchor" id="setting-the-application-home-page"></a>
+If you previously stopped the web server to run the controller generator,
+restart it with `bin/rails server`. Now visit <http://localhost:3000/articles>,
+and see our text displayed!
 
-### 设置应用主页
+### Setting the Application Home Page
 
-现在我们已经创建了控制器和视图，还需要告诉 Rails 何时显示“Hello, Rails!”，我们希望在访问根地址  <http://localhost:3000> 时显示。目前根地址显示的还是默认的 Rails 欢迎页面。
+At the moment, <http://localhost:3000> still displays "Yay! You're on Rails!".
+Let's display our "Hello, Rails!" text at <http://localhost:3000> as well. To do
+so, we will add a route that maps the *root path* of our application to the
+appropriate controller and action.
 
-接下来需要告诉 Rails 真正的主页在哪里。
-
-在编辑器中打开 `config/routes.rb` 文件。
-
-```ruby
-Rails.application.routes.draw do
-  get 'welcome/index'
-
-  # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
-end
-```
-
-这是应用的路由文件，使用特殊的 DSL（Domain-Specific Language，领域专属语言）编写，告诉 Rails 把访问请求发往哪个控制器和动作。编辑这个文件，添加一行代码 `root 'welcome#index'`，此时文件内容应该变成下面这样：
+Let's open `config/routes.rb`, and add the following `root` route to the top of
+the `Rails.application.routes.draw` block:
 
 ```ruby
 Rails.application.routes.draw do
-  get 'welcome/index'
+  root "articles#index"
 
-  root 'welcome#index'
+  get "/articles", to: "articles#index"
 end
 ```
 
-`root 'welcome#index'` 告诉 Rails 对根路径的访问请求应该发往 welcome 控制器的 index 动作，`get 'welcome/index'` 告诉 Rails 对 <http://localhost:3000/welcome/index> 的访问请求应该发往 welcome 控制器的 index 动作。后者是之前使用控制器生成器创建控制器（`bin/rails generate controller Welcome index`）时自动生成的。
+Now we can see our "Hello, Rails!" text when we visit <http://localhost:3000>,
+confirming that the `root` route is also mapped to the `index` action of
+`ArticlesController`.
 
-如果在生成控制器时停止了服务器，请再次启动服务器（`bin/rails server`），然后在浏览器中访问  <http://localhost:3000>。我们会看到之前添加到 `app/views/welcome/index.html.erb` 文件 的“Hello, Rails!”信息，这说明新定义的路由确实把访问请求发往了 `WelcomeController` 的 `index` 动作，并正确渲染了视图。
+TIP: To learn more about routing, see [Rails Routing from the Outside In](
+routing.html).
 
-TIP: 关于路由的更多介绍，请参阅[Rails 路由全解](routing.html)。
+MVC and You
+-----------
 
-<a class="anchor" id="getting-up-and-running"></a>
+So far, we've discussed routes, controllers, actions, and views. All of these
+are typical pieces of a web application that follows the [MVC (Model-View-Controller)](
+https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller) pattern.
+MVC is a design pattern that divides the responsibilities of an application to
+make it easier to reason about. Rails follows this design pattern by convention.
 
-## 启动并运行起来
+Since we have a controller and a view to work with, let's generate the next
+piece: a model.
 
-前文已经介绍了如何创建控制器、动作和视图，接下来我们要创建一些更具实用价值的东西。
+### Generating a Model
 
-在 Blog 应用中创建一个资源（resource）。资源是一个术语，表示一系列类似对象的集合，如文章、人或动物。资源中的项目可以被创建、读取、更新和删除，这些操作简称 CRUD（Create, Read, Update, Delete）。
+A *model* is a Ruby class that is used to represent data. Additionally, models
+can interact with the application's database through a feature of Rails called
+*Active Record*.
 
-Rails 提供了 `resources` 方法，用于声明标准的 REST 资源。把 articles 资源添加到 `config/routes.rb` 文件，此时文件内容应该变成下面这样：
+To define a model, we will use the model generator:
+
+```bash
+$ bin/rails generate model Article title:string body:text
+```
+
+NOTE: Model names are **singular**, because an instantiated model represents a
+single data record. To help remember this convention, think of how you would
+call the model's constructor: we want to write `Article.new(...)`, **not**
+`Articles.new(...)`.
+
+This will create several files:
+
+```
+invoke  active_record
+create    db/migrate/<timestamp>_create_articles.rb
+create    app/models/article.rb
+invoke    test_unit
+create      test/models/article_test.rb
+create      test/fixtures/articles.yml
+```
+
+The two files we'll focus on are the migration file
+(`db/migrate/<timestamp>_create_articles.rb`) and the model file
+(`app/models/article.rb`).
+
+### Database Migrations
+
+*Migrations* are used to alter the structure of an application's database. In
+Rails applications, migrations are written in Ruby so that they can be
+database-agnostic.
+
+Let's take a look at the contents of our new migration file:
 
 ```ruby
-Rails.application.routes.draw do
-  get 'welcome/index'
-
-  resources :articles
-
-  root 'welcome#index'
-end
-```
-
-执行 `bin/rails routes` 命令，可以看到所有标准 REST 动作都具有对应的路由。输出结果中各列的意义稍后会作说明，现在只需注意  Rails 从 article 的单数形式推导出了它的复数形式，并进行了合理使用。
-
-```sh
-$ bin/rails routes
-      Prefix Verb   URI Pattern                  Controller#Action
-    articles GET    /articles(.:format)          articles#index
-             POST   /articles(.:format)          articles#create
- new_article GET    /articles/new(.:format)      articles#new
-edit_article GET    /articles/:id/edit(.:format) articles#edit
-     article GET    /articles/:id(.:format)      articles#show
-             PATCH  /articles/:id(.:format)      articles#update
-             PUT    /articles/:id(.:format)      articles#update
-             DELETE /articles/:id(.:format)      articles#destroy
-        root GET    /                            welcome#index
-```
-
-下一节，我们将为应用添加新建文章和查看文章的功能。这两个操作分别对应于 CRUD 的“C”和“R”：创建和读取。下面是用于新建文章的表单：
-
-![用于新建文章的表单](images/getting_started/new_article.png)
-
-表单看起来很简陋，不过没关系，之后我们再来美化。
-
-<a class="anchor" id="laying-down-the-ground-work"></a>
-
-### 打地基
-
-首先，应用需要一个页面用于新建文章，`/articles/new` 是个不错的选择。相关路由之前已经定义过了，可以直接访问。打开  <http://localhost:3000/articles/new>，会看到下面的路由错误：
-
-![路由错误，常量 ArticlesController 未初始化](images/getting_started/routing_error_no_controller.png)
-
-产生错误的原因是，用于处理该请求的控制器还没有定义。解决问题的方法很简单：创建 `Articles` 控制器。执行下面的命令：
-
-```sh
-$ bin/rails generate controller Articles
-```
-
-打开刚刚生成的 `app/controllers/articles_controller.rb` 文件，会看到一个空的控制器：
-
-```ruby
-class ArticlesController < ApplicationController
-end
-```
-
-控制器实际上只是一个继承自 `ApplicationController` 的类。接在来要在这个类中定义的方法也就是控制器的动作。这些动作对文章执行 CRUD 操作。
-
-NOTE: 在 Ruby 中，有 `public`、`private` 和 `protected` 三种方法，其中只有 `public` 方法才能作为控制器的动作。详情请参阅 [Programming Ruby](http://www.ruby-doc.org/docs/ProgrammingRuby/) 一书。
-
-现在刷新 <http://localhost:3000/articles/new>，会看到一个新错误：
-
-![未知动作，在 ArticlesController 中找不到 new 动作](images/getting_started/unknown_action_new_for_articles.png)
-
-这个错误的意思是，Rails 在刚刚生成的 `ArticlesController` 中找不到 new 动作。这是因为在 Rails 中生成控制器时，如果不指定想要的动作，生成的控制器就会是空的。
-
-在控制器中手动定义动作，只需要定义一个新方法。打开 `app/controllers/articles_controller.rb` 文件，在 `ArticlesController` 类中定义 `new` 方法，此时控制器应该变成下面这样：
-
-```ruby
-class ArticlesController < ApplicationController
-  def new
-  end
-end
-```
-
-在 `ArticlesController` 中定义 `new` 方法后，再次刷新 <http://localhost:3000/articles/new>，会看到另一个错误：
-
-![未知格式，缺少对应模板](images/getting_started/template_is_missing_articles_new.png)
-
-产生错误的原因是，Rails 要求这样的常规动作有用于显示数据的对应视图。如果没有视图可用，Rails 就会抛出异常。
-
-上图中下面的几行都被截断了，下面是完整信息：
-
-> ArticlesController#new is missing a template for this request format and variant. request.formats: ["text/html"] request.variant: [] NOTE! For XHR/Ajax or API requests, this action would normally respond with 204 No Content: an empty white screen. Since you&#8217;re loading it in a web browser, we assume that you expected to actually render a template, not… nothing, so we&#8217;re showing an error to be extra-clear. If you expect 204 No Content, carry on. That&#8217;s what you&#8217;ll get from an XHR or API request. Give it a shot.
-
-内容还真不少！让我们快速浏览一下，看看各部分是什么意思。
-
-第一部分说明缺少哪个模板，这里缺少的是 `articles/new` 模板。Rails 首先查找这个模板，如果找不到再查找 `application/new` 模板。之所以会查找后面这个模板，是因为 `ArticlesController` 继承自 `ApplicationController`。
-
-下一部分是 `request.formats`，说明响应使用的模板格式。当我们在浏览器中请求页面时，`request.formats` 的值是 `text/html`，因此 Rails 会查找 HTML 模板。`request.variant` 指明伺服的是何种物理设备，帮助 Rails 判断该使用哪个模板渲染响应。它的值是空的，因为没有为其提供信息。
-
-在本例中，能够工作的最简单的模板位于 `app/views/articles/new.html.erb` 文件中。文件的扩展名很重要：第一个扩展名是模板格式，第二个扩展名是模板处理器。Rails 会尝试在 `app/views` 文件夹中查找 `articles/new` 模板。这个模板的格式只能是 `html`，模板处理器只能是 `erb`、`builder` 和 `coffee` 中的一个。`:erb` 是最常用的 HTML 模板处理器，`:builder` 是 XML 模板处理器，`:coffee` 模板处理器用 CoffeeScript 创建 JavaScript 模板。因为我们要创建 HTML 表单，所以应该使用能够在 HTML 中嵌入 Ruby 的 `ERB` 语言。
-
-所以我们需要创建 `articles/new.html.erb` 文件，并把它放在应用的 `app/views` 文件夹中。
-
-现在让我们继续前进。新建 `app/views/articles/new.html.erb` 文件，添加下面的代码：
-
-```erb
-<h1>New Article</h1>
-```
-
-刷新 <http://localhost:3000/articles/new>，会看到页面有了标题。现在路由、控制器、动作和视图都可以协调地工作了！是时候创建用于新建文章的表单了。
-
-<a class="anchor" id="the-first-form"></a>
-
-### 第一个表单
-
-在模板中创建表单，可以使用表单构建器。Rails 中最常用的表单构建器是 `form_for` 辅助方法。让我们使用这个方法，在 `app/views/articles/new.html.erb` 文件中添加下面的代码：
-
-```erb
-<%= form_for :article do |f| %>
-  <p>
-    <%= f.label :title %><br>
-    <%= f.text_field :title %>
-  </p>
-
-  <p>
-    <%= f.label :text %><br>
-    <%= f.text_area :text %>
-  </p>
-
-  <p>
-    <%= f.submit %>
-  </p>
-<% end %>
-```
-
-现在刷新页面，会看到和前文截图一样的表单。在 Rails 中创建表单就是这么简单！
-
-调用 `form_for` 辅助方法时，需要为表单传递一个标识对象作为参数，这里是 `:article` 符号。这个符号告诉 `form_for` 辅助方法表单用于处理哪个对象。在 `form_for` 辅助方法的块中，`f` 表示 `FormBuilder` 对象，用于创建两个标签和两个文本字段，分别用于添加文章的标题和正文。最后在 `f` 对象上调用 `submit` 方法来为表单创建提交按钮。
-
-不过这个表单还有一个问题，查看 HTML 源代码会看到表单 `action` 属性的值是 `/articles/new`，指向的是当前页面，而当前页面只是用于显示新建文章的表单。
-
-应该把表单指向其他 URL，为此可以使用 `form_for` 辅助方法的 `:url` 选项。在 Rails 中习惯用 `create` 动作来处理提交的表单，因此应该把表单指向这个动作。
-
-修改 `app/views/articles/new.html.erb` 文件的 `form_for` 这一行，改为：
-
-```erb
-<%= form_for :article, url: articles_path do |f| %>
-```
-
-这里我们把 `articles_path` 辅助方法传递给 `:url` 选项。要想知道这个方法有什么用，我们可以回过头看一下 `bin/rails routes` 的输出结果：
-
-```sh
-$ bin/rails routes
-      Prefix Verb   URI Pattern                  Controller#Action
-    articles GET    /articles(.:format)          articles#index
-             POST   /articles(.:format)          articles#create
- new_article GET    /articles/new(.:format)      articles#new
-edit_article GET    /articles/:id/edit(.:format) articles#edit
-     article GET    /articles/:id(.:format)      articles#show
-             PATCH  /articles/:id(.:format)      articles#update
-             PUT    /articles/:id(.:format)      articles#update
-             DELETE /articles/:id(.:format)      articles#destroy
-        root GET    /                            welcome#index
-```
-
-`articles_path` 辅助方法告诉 Rails 把表单指向和 `articles` 前缀相关联的 URI 模式。默认情况下，表单会向这个路由发起 `POST` 请求。这个路由和当前控制器 `ArticlesController` 的 `create` 动作相关联。
-
-有了表单和与之相关联的路由，我们现在可以填写表单，然后点击提交按钮来新建文章了，请实际操作一下。提交表单后，会看到一个熟悉的错误：
-
-![未知动作，在 `ArticlesController` 中找不到 `create` 动作](images/getting_started/unknown_action_create_for_articles.png)
-
-解决问题的方法是在 `ArticlesController` 中创建 `create` 动作。
-
-<a class="anchor" id="creating-articles"></a>
-
-### 创建文章
-
-要消除“未知动作”错误，我们需要修改 `app/controllers/articles_controller.rb` 文件，在 `ArticlesController` 类的 `new` 动作之后添加 `create` 动作，就像下面这样：
-
-```ruby
-class ArticlesController < ApplicationController
-  def new
-  end
-
-  def create
-  end
-end
-```
-
-现在重新提交表单，会看到什么都没有改变。别着急！这是因为当我们没有说明动作的响应是什么时，Rails 默认返回 `204 No Content response`。我们刚刚添加了 `create` 动作，但没有说明响应是什么。这里，`create` 动作应该把新建文章保存到数据库中。
-
-表单提交后，其字段以参数形式传递给 Rails，然后就可以在控制器动作中引用这些参数，以执行特定任务。要想查看这些参数的内容，可以把 `create` 动作的代码修改成下面这样：
-
-```ruby
-def create
-  render plain: params[:article].inspect
-end
-```
-
-这里 `render` 方法接受了一个简单的散列（hash）作为参数，`:plain` 键的值是 `params[:article].inspect`。`params` 方法是代表表单提交的参数（或字段）的对象。`params` 方法返回 `ActionController::Parameters` 对象，这个对象允许使用字符串或符号访问散列的键。这里我们只关注通过表单提交的参数。
-
-TIP: 请确保牢固掌握 `params` 方法，这个方法很常用。让我们看一个示例 URL：`http://www.example.com/?username=dhh&email=dhh@email.com`。在这个 URL 中，`params[:username]` 的值是“dhh”，`params[:email]` 的值是“`dhh@email.com`”。
-
-如果再次提交表单，会看到下面这些内容：
-
-```
-<ActionController::Parameters {"title"=>"First Article!", "text"=>"This is my first article."} permitted: false>
-```
-
-`create` 动作把表单提交的参数都显示出来了，但这并没有什么用，只是看到了参数实际上却什么也没做。
-
-<a class="anchor" id="creating-the-article-model"></a>
-
-### 创建 Article 模型
-
-在 Rails 中，模型使用单数名称，对应的数据库表使用复数名称。Rails 提供了用于创建模型的生成器，大多数 Rails 开发者在新建模型时倾向于使用这个生成器。要想新建模型，请执行下面的命令：
-
-```
-$ bin/rails generate model Article title:string text:text
-```
-
-上面的命令告诉 Rails 创建 `Article` 模型，并使模型具有字符串类型的 `title` 属性和文本类型的 `text` 属性。这两个属性会自动添加到数据库的 `articles` 表中，并映射到 `Article` 模型上。
-
-为此 Rails 会创建一堆文件。这里我们只关注 `app/models/article.rb` 和 `db/migrate/20140120191729_create_articles.rb` 这两个文件 （后面这个文件名和你看到的可能会有点不一样）。后者负责创建数据库结构，下一节会详细说明。
-
-TIP: Active Record 很智能，能自动把数据表的字段名映射到模型属性上，因此无需在 Rails 模型中声明属性，让 Active Record 自动完成即可。
-
-<a class="anchor" id="running-a-migration"></a>
-
-### 运行迁移
-
-如前文所述，`bin/rails generate model` 命令会在 `db/migrate` 文件夹中生成数据库迁移文件。迁移是用于简化创建和修改数据库表操作的 Ruby 类。Rails 使用 rake 命令运行迁移，并且在迁移作用于数据库之后还可以撤销迁移操作。迁移的文件名包含了时间戳，以确保迁移按照创建时间顺序运行。
-
-让我们看一下 `db/migrate/YYYYMMDDHHMMSS_create_articles.rb` 文件（记住，你的文件名可能会有点不一样），会看到下面的内容：
-
-```ruby
-class CreateArticles < ActiveRecord::Migration[5.0]
+class CreateArticles < ActiveRecord::Migration[6.0]
   def change
     create_table :articles do |t|
       t.string :title
-      t.text :text
+      t.text :body
 
       t.timestamps
     end
@@ -482,143 +431,213 @@ class CreateArticles < ActiveRecord::Migration[5.0]
 end
 ```
 
-上面的迁移创建了 `change` 方法，在运行迁移时会调用这个方法。在 `change` 方法中定义的操作都是可逆的，在需要时 Rails 知道如何撤销这些操作。运行迁移后会创建 `articles` 表，这个表包括一个字符串字段和一个文本字段，以及两个用于跟踪文章创建和更新时间的时间戳字段。
+The call to `create_table` specifies how the `articles` table should be
+constructed. By default, the `create_table` method adds an `id` column as an
+auto-incrementing primary key. So the first record in the table will have an
+`id` of 1, the next record will have an `id` of 2, and so on.
 
-TIP: 关于迁移的更多介绍，请参阅[Active Record 迁移](active_record_migrations.html)。
+Inside the block for `create_table`, two columns are defined: `title` and
+`body`. These were added by the generator because we included them in our
+generate command (`bin/rails generate model Article title:string body:text`).
 
-现在可以使用 `bin/rails` 命令运行迁移了：
+On the last line of the block is a call to `t.timestamps`. This method defines
+two additional columns named `created_at` and `updated_at`. As we will see,
+Rails will manage these for us, setting the values when we create or update a
+model object.
 
-```sh
+Let's run our migration with the following command:
+
+```bash
 $ bin/rails db:migrate
 ```
 
-Rails 会执行迁移命令并告诉我们它创建了 Articles 表。
+The command will display output indicating that the table was created:
 
 ```
-==  CreateArticles: migrating ==================================================
+==  CreateArticles: migrating ===================================
 -- create_table(:articles)
-   -> 0.0019s
-==  CreateArticles: migrated (0.0020s) =========================================
+   -> 0.0018s
+==  CreateArticles: migrated (0.0018s) ==========================
 ```
 
-NOTE: 因为默认情况下我们是在开发环境中工作，所以上述命令应用于 `config/database.yml` 文件中 `development` 部分定义的的数据库。要想在其他环境中执行迁移，例如生产环境，就必须在调用命令时显式传递环境变量：`bin/rails db:migrate RAILS_ENV=production`。
+TIP: To learn more about migrations, see [Active Record Migrations](
+active_record_migrations.html).
 
-<a class="anchor" id="saving-data-in-the-controller"></a>
+Now we can interact with the table using our model.
 
-### 在控制器中保存数据
+### Using a Model to Interact with the Database
 
-回到 `ArticlesController`，修改 `create` 动作，使用新建的 `Article` 模型把数据保存到数据库。打开 `app/controllers/articles_controller.rb` 文件，像下面这样修改 `create` 动作：
+To play with our model a bit, we're going to use a feature of Rails called the
+*console*. The console is an interactive coding environment just like `irb`, but
+it also automatically loads Rails and our application code.
 
-```ruby
-def create
-  @article = Article.new(params[:article])
+Let's launch the console with this command:
 
-  @article.save
-  redirect_to @article
-end
+```bash
+$ bin/rails console
 ```
 
-让我们看一下上面的代码都做了什么：Rails 模型可以用相应的属性初始化，它们会自动映射到对应的数据库字段。`create` 动作中的第一行代码完成的就是这个操作（记住，`params[:article]` 包含了我们想要的属性）。接下来 `@article.save` 负责把模型保存到数据库。最后把页面重定向到 `show` 动作，这个 `show` 动作我们稍后再定义。
+You should see an `irb` prompt like:
 
-TIP: 你可能想知道，为什么在上面的代码中 `Article.new` 的 `A` 是大写的，而在本文的其他地方引用 articles 时大都是小写的。因为这里我们引用的是在 `app/models/article.rb` 文件中定义的 `Article` 类，而在 Ruby 中类名必须以大写字母开头。
-
-TIP: 之后我们会看到，`@article.save` 返回布尔值，以表明文章是否保存成功。
-
-现在访问 <http://localhost:3000/articles/new>，我们就快要能够创建文章了，但我们还会看到下面的错误：
-
-![禁用属性错误](images/getting_started/forbidden_attributes_for_new_article.png)
-
-Rails 提供了多种安全特性来帮助我们编写安全的应用，上面看到的就是一种安全特性。这个安全特性叫做 [健壮参数](action_controller_overview.html#strong-parameters)（strong parameter），要求我们明确地告诉 Rails 哪些参数允许在控制器动作中使用。
-
-为什么我们要这样自找麻烦呢？一次性获取所有控制器参数并自动赋值给模型显然更简单，但这样做会造成恶意使用的风险。设想一下，如果有人对服务器发起了一个精心设计的请求，看起来就像提交了一篇新文章，但同时包含了能够破坏应用完整性的额外字段和值，会怎么样？这些恶意数据会批量赋值给模型，然后和正常数据一起进入数据库，这样就有可能破坏我们的应用或者造成更大损失。
-
-所以我们只能为控制器参数设置白名单，以避免错误地批量赋值。这里，我们想在 `create` 动作中合法使用 `title` 和 `text` 参数，为此需要使用 `require` 和 `permit` 方法。像下面这样修改 `create` 动作中的一行代码：
-
-```ruby
-@article = Article.new(params.require(:article).permit(:title, :text))
+```irb
+Loading development environment (Rails 6.0.2.1)
+irb(main):001:0>
 ```
 
-上述代码通常被抽象为控制器类的一个方法，以便在控制器的多个动作中重用，例如在 `create` 和 `update` 动作中都会用到。除了批量赋值问题，为了禁止从外部调用这个方法，通常还要把它设置为 `private`。最后的代码像下面这样：
+At this prompt, we can initialize a new `Article` object:
 
-```ruby
-def create
-  @article = Article.new(article_params)
-
-  @article.save
-  redirect_to @article
-end
-
-private
-  def article_params
-    params.require(:article).permit(:title, :text)
-  end
+```irb
+irb> article = Article.new(title: "Hello Rails", body: "I am on Rails!")
 ```
 
-TIP: 关于键壮参数的更多介绍，请参阅上面提供的参考资料和[这篇博客](http://weblog.rubyonrails.org/2012/3/21/strong-parameters/)。
+It's important to note that we have only *initialized* this object. This object
+is not saved to the database at all. It's only available in the console at the
+moment. To save the object to the database, we must call [`save`](
+https://api.rubyonrails.org/classes/ActiveRecord/Persistence.html#method-i-save):
 
-<a class="anchor" id="showing-articles"></a>
-
-### 显示文章
-
-现在再次提交表单，Rails 会提示找不到 `show` 动作。尽管这个提示没有多大用处，但在继续前进之前我们还是先添加 `show` 动作吧。
-
-之前我们在 `bin/rails routes` 命令的输出结果中看到，`show` 动作对应的路由是：
-
+```irb
+irb> article.save
+(0.1ms)  begin transaction
+Article Create (0.4ms)  INSERT INTO "articles" ("title", "body", "created_at", "updated_at") VALUES (?, ?, ?, ?)  [["title", "Hello Rails"], ["body", "I am on Rails!"], ["created_at", "2020-01-18 23:47:30.734416"], ["updated_at", "2020-01-18 23:47:30.734416"]]
+(0.9ms)  commit transaction
+=> true
 ```
-article GET    /articles/:id(.:format)      articles#show
+
+The above output shows an `INSERT INTO "articles" ...` database query. This
+indicates that the article has been inserted into our table. And if we take a
+look at the `article` object again, we see something interesting has happened:
+
+```irb
+irb> article
+=> #<Article id: 1, title: "Hello Rails", body: "I am on Rails!", created_at: "2020-01-18 23:47:30", updated_at: "2020-01-18 23:47:30">
 ```
 
-特殊句法 `:id` 告诉 Rails 这个路由期望接受 `:id` 参数，在这里也就是文章的 ID。
+The `id`, `created_at`, and `updated_at` attributes of the object are now set.
+Rails did this for us when we saved the object.
 
-和前面一样，我们需要在 `app/controllers/articles_controller.rb` 文件中添加 `show` 动作，并创建对应的视图文件。
+When we want to fetch this article from the database, we can call [`find`](
+https://api.rubyonrails.org/classes/ActiveRecord/FinderMethods.html#method-i-find)
+on the model and pass the `id` as an argument:
 
-NOTE: 常见的做法是按照以下顺序在控制器中放置标准的 CRUD 动作：`index`，`show`，`new`，`edit`，`create`，`update` 和 `destroy`。你也可以按照自己的顺序放置这些动作，但要记住它们都是公开方法，如前文所述，必须放在私有方法之前才能正常工作。
+```irb
+irb> Article.find(1)
+=> #<Article id: 1, title: "Hello Rails", body: "I am on Rails!", created_at: "2020-01-18 23:47:30", updated_at: "2020-01-18 23:47:30">
+```
 
-有鉴于此，让我们像下面这样添加 `show` 动作：
+And when we want to fetch all articles from the database, we can call [`all`](
+https://api.rubyonrails.org/classes/ActiveRecord/Scoping/Named/ClassMethods.html#method-i-all)
+on the model:
+
+```irb
+irb> Article.all
+=> #<ActiveRecord::Relation [#<Article id: 1, title: "Hello Rails", body: "I am on Rails!", created_at: "2020-01-18 23:47:30", updated_at: "2020-01-18 23:47:30">]>
+```
+
+This method returns an [`ActiveRecord::Relation`](
+https://api.rubyonrails.org/classes/ActiveRecord/Relation.html) object, which
+you can think of as a super-powered array.
+
+TIP: To learn more about models, see [Active Record Basics](
+active_record_basics.html) and [Active Record Query Interface](
+active_record_querying.html).
+
+Models are the final piece of the MVC puzzle. Next, we will connect all of the
+pieces together.
+
+### Showing a List of Articles
+
+Let's go back to our controller in `app/controllers/articles_controller.rb`, and
+change the `index` action to fetch all articles from the database:
 
 ```ruby
 class ArticlesController < ApplicationController
-  def show
-    @article = Article.find(params[:id])
+  def index
+    @articles = Article.all
   end
-
-  def new
-  end
-
-  # 为了行文简洁，省略以下内容
+end
 ```
 
-上面的代码中有几个问题需要注意。我们使用 `Article.find` 来查找文章，并传入 `params[:id]` 以便从请求中获得 `:id` 参数。我们还使用实例变量（前缀为 `@`）保存对文章对象的引用。这样做是因为 Rails 会把所有实例变量传递给视图。
+Controller instance variables can be accessed by the view. That means we can
+reference `@articles` in `app/views/articles/index.html.erb`. Let's open that
+file, and replace its contents with:
 
-现在新建 `app/views/articles/show.html.erb` 文件，添加下面的代码：
+```html+erb
+<h1>Articles</h1>
 
-```erb
-<p>
-  <strong>Title:</strong>
-  <%= @article.title %>
-</p>
-
-<p>
-  <strong>Text:</strong>
-  <%= @article.text %>
-</p>
+<ul>
+  <% @articles.each do |article| %>
+    <li>
+      <%= article.title %>
+    </li>
+  <% end %>
+</ul>
 ```
 
-通过上面的修改，我们终于能够新建文章了。访问 <http://localhost:3000/articles/new>，自己试一试吧！
+The above code is a mixture of HTML and *ERB*. ERB is a templating system that
+evaluates Ruby code embedded in a document. Here, we can see two types of ERB
+tags: `<% %>` and `<%= %>`. The `<% %>` tag means "evaluate the enclosed Ruby
+code." The `<%= %>` tag means "evaluate the enclosed Ruby code, and output the
+value it returns." Anything you could write in a regular Ruby program can go
+inside these ERB tags, though it's usually best to keep the contents of ERB tags
+short, for readability.
 
-![显示文章](images/getting_started/show_action_for_articles.png)
+Since we don't want to output the value returned by `@articles.each`, we've
+enclosed that code in `<% %>`. But, since we *do* want to output the value
+returned by `article.title` (for each article), we've enclosed that code in
+`<%= %>`.
 
-<a class="anchor" id="listing-all-articles"></a>
+We can see the final result by visiting <http://localhost:3000>. (Remember that
+`bin/rails server` must be running!) Here's what happens when we do that:
 
-### 列出所有文章
+1. The browser makes a request: `GET http://localhost:3000`.
+2. Our Rails application receives this request.
+3. The Rails router maps the root route to the `index` action of `ArticlesController`.
+4. The `index` action uses the `Article` model to fetch all articles in the database.
+5. Rails automatically renders the `app/views/articles/index.html.erb` view.
+6. The ERB code in the view is evaluated to output HTML.
+7. The server sends a response containing the HTML back to the browser.
 
-我们还需要列出所有文章，下面就来完成这个功能。在 `bin/rails routes` 命令的输出结果中，和列出文章对应的路由是：
+We've connected all the MVC pieces together, and we have our first controller
+action! Next, we'll move on to the second action.
 
+CRUDit Where CRUDit Is Due
+--------------------------
+
+Almost all web applications involve [CRUD (Create, Read, Update, and Delete)](
+https://en.wikipedia.org/wiki/Create,_read,_update,_and_delete) operations. You
+may even find that the majority of the work your application does is CRUD. Rails
+acknowledges this, and provides many features to help simplify code doing CRUD.
+
+Let's begin exploring these features by adding more functionality to our
+application.
+
+### Showing a Single Article
+
+We currently have a view that lists all articles in our database. Let's add a
+new view that shows the title and body of a single article.
+
+We start by adding a new route that maps to a new controller action (which we
+will add next). Open `config/routes.rb`, and insert the last route shown here:
+
+```ruby
+Rails.application.routes.draw do
+  root "articles#index"
+
+  get "/articles", to: "articles#index"
+  get "/articles/:id", to: "articles#show"
+end
 ```
-articles GET    /articles(.:format)          articles#index
-```
 
-在 `app/controllers/articles_controller.rb` 文件的 `ArticlesController` 中为上述路由添加对应的 `index` 动作。在编写 `index` 动作时，常见的做法是把它作为控制器的第一个方法，就像下面这样：
+The new route is another `get` route, but it has something extra in its path:
+`:id`. This designates a route *parameter*. A route parameter captures a segment
+of the request's path, and puts that value into the `params` Hash, which is
+accessible by the controller action. For example, when handling a request like
+`GET http://localhost:3000/articles/1`, `1` would be captured as the value for
+`:id`, which would then be accessible as `params[:id]` in the `show` action of
+`ArticlesController`.
+
+Let's add that `show` action now, below the `index` action in
+`app/controllers/articles_controller.rb`:
 
 ```ruby
 class ArticlesController < ApplicationController
@@ -629,429 +648,138 @@ class ArticlesController < ApplicationController
   def show
     @article = Article.find(params[:id])
   end
-
-  def new
-  end
-
-  # 为了行文简洁，省略以下内容
+end
 ```
 
-最后，在 `app/views/articles/index.html.erb` 文件中为 `index` 动作添加视图：
+The `show` action calls `Article.find` ([mentioned
+previously](#using-a-model-to-interact-with-the-database)) with the ID captured
+by the route parameter. The returned article is stored in the `@article`
+instance variable, so it is accessible by the view. By default, the `show`
+action will render `app/views/articles/show.html.erb`.
 
-```erb
-<h1>Listing articles</h1>
+Let's create `app/views/articles/show.html.erb`, with the following contents:
 
-<table>
-  <tr>
-    <th>Title</th>
-    <th>Text</th>
-  </tr>
+```html+erb
+<h1><%= @article.title %></h1>
 
+<p><%= @article.body %></p>
+```
+
+Now we can see the article when we visit <http://localhost:3000/articles/1>!
+
+To finish up, let's add a convenient way to get to an article's page. We'll link
+each article's title in `app/views/articles/index.html.erb` to its page:
+
+```html+erb
+<h1>Articles</h1>
+
+<ul>
   <% @articles.each do |article| %>
-    <tr>
-      <td><%= article.title %></td>
-      <td><%= article.text %></td>
-      <td><%= link_to 'Show', article_path(article) %></td>
-    </tr>
+    <li>
+      <a href="/articles/<%= article.id %>">
+        <%= article.title %>
+      </a>
+    </li>
   <% end %>
-</table>
+</ul>
 ```
 
-现在访问 <http://localhost:3000/articles>，会看到已创建的所有文章的列表。
+### Resourceful Routing
 
-<a class="anchor" id="adding-links"></a>
+So far, we've covered the "R" (Read) of CRUD. We will eventually cover the "C"
+(Create), "U" (Update), and "D" (Delete). As you might have guessed, we will do
+so by adding new routes, controller actions, and views. Whenever we have such a
+combination of routes, controller actions, and views that work together to
+perform CRUD operations on an entity, we call that entity a *resource*. For
+example, in our application, we would say an article is a resource.
 
-### 添加链接
-
-至此，我们可以创建、显示、列出文章了。下面我们添加一些指向这些页面的链接。
-
-打开 `app/views/welcome/index.html.erb` 文件，修改成下面这样：
-
-```erb
-<h1>Hello, Rails!</h1>
-<%= link_to 'My Blog', controller: 'articles' %>
-```
-
-`link_to` 方法是 Rails 内置的视图辅助方法之一，用于创建基于链接文本和地址的超链接。在这里地址指的是文章列表页面的路径。
-
-接下来添加指向其他视图的链接。首先在 `app/views/articles/index.html.erb` 文件中添加“New Article”链接，把这个链接放在 `<table>` 标签之前：
-
-```erb
-<%= link_to 'New article', new_article_path %>
-```
-
-点击这个链接会打开用于新建文章的表单。
-
-接下来在 `app/views/articles/new.html.erb` 文件中添加返回 `index` 动作的链接，把这个链接放在表单之后：
-
-```erb
-<%= form_for :article, url: articles_path do |f| %>
-  ...
-<% end %>
-
-<%= link_to 'Back', articles_path %>
-```
-
-最后，在 `app/views/articles/show.html.erb` 模板中添加返回 `index` 动作的链接，这样用户看完一篇文章后就可以返回文章列表页面了：
-
-```erb
-<p>
-  <strong>Title:</strong>
-  <%= @article.title %>
-</p>
-
-<p>
-  <strong>Text:</strong>
-  <%= @article.text %>
-</p>
-
-<%= link_to 'Back', articles_path %>
-```
-
-TIP: 链接到当前控制器的动作时不需要指定 `:controller` 选项，因为 Rails 默认使用当前控制器。
-
-TIP: 在开发环境中（默认情况下我们是在开发环境中工作），Rails 针对每个浏览器请求都会重新加载应用，因此对应用进行修改之后不需要重启服务器。
-
-<a class="anchor" id="adding-some-validation"></a>
-
-### 添加验证
-
-`app/models/article.rb` 模型文件简单到只有两行代码：
+Rails provides a routes method named [`resources`](
+https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Resources.html#method-i-resources)
+that maps all of the conventional routes for a collection of resources, such as
+articles. So before we proceed to the "C", "U", and "D" sections, let's replace
+the two `get` routes in `config/routes.rb` with `resources`:
 
 ```ruby
-class Article < ApplicationRecord
+Rails.application.routes.draw do
+  root "articles#index"
+
+  resources :articles
 end
 ```
 
-虽然这个文件中代码很少，但请注意 `Article` 类继承自 `ApplicationRecord` 类，而 `ApplicationRecord` 类继承自 `ActiveRecord::Base` 类。正是 `ActiveRecord::Base` 类为 Rails 模型提供了大量功能，包括基本的数据库 CRUD 操作（创建、读取、更新、删除）、数据验证，以及对复杂搜索的支持和关联多个模型的能力。
+We can inspect what routes are mapped by running the `bin/rails routes` command:
 
-Rails 提供了许多方法用于验证传入模型的数据。打开 `app/models/article.rb` 文件，像下面这样修改：
-
-```ruby
-class Article < ApplicationRecord
-  validates :title, presence: true,
-                    length: { minimum: 5 }
-end
+```bash
+$ bin/rails routes
+      Prefix Verb   URI Pattern                  Controller#Action
+        root GET    /                            articles#index
+    articles GET    /articles(.:format)          articles#index
+ new_article GET    /articles/new(.:format)      articles#new
+     article GET    /articles/:id(.:format)      articles#show
+             POST   /articles(.:format)          articles#create
+edit_article GET    /articles/:id/edit(.:format) articles#edit
+             PATCH  /articles/:id(.:format)      articles#update
+             DELETE /articles/:id(.:format)      articles#destroy
 ```
 
-添加的代码用于确保每篇文章都有标题，并且标题长度不少于 5 个字符。在 Rails 模型中可以验证多种条件，包括字段是否存在、字段是否唯一、字段的格式、关联对象是否存在，等等。关于验证的更多介绍，请参阅[Active Record 数据验证](active_record_validations.html)。
+The `resources` method also sets up URL and path helper methods that we can use
+to keep our code from depending on a specific route configuration. The values
+in the "Prefix" column above plus a suffix of `_url` or `_path` form the names
+of these helpers. For example, the `article_path` helper returns
+`"/articles/#{article.id}"` when given an article. We can use it to tidy up our
+links in `app/views/articles/index.html.erb`:
 
-现在验证已经添加完毕，如果我们在调用 `@article.save` 时传递了无效的文章数据，验证就会返回 `false`。再次打开 `app/controllers/articles_controller.rb` 文件，会看到我们并没有在 `create` 动作中检查 `@article.save` 的调用结果。在这里如果 `@article.save` 失败了，就需要把表单再次显示给用户。为此，需要像下面这样修改 `app/controllers/articles_controller.rb` 文件中的 `new` 和 `create` 动作：
+```html+erb
+<h1>Articles</h1>
 
-```ruby
-def new
-  @article = Article.new
-end
-
-def create
-  @article = Article.new(article_params)
-
-  if @article.save
-    redirect_to @article
-  else
-    render 'new'
-  end
-end
-
-private
-  def article_params
-    params.require(:article).permit(:title, :text)
-  end
-```
-
-在上面的代码中，我们在 `new` 动作中创建了新的实例变量 `@article`，稍后你就会知道为什么要这样做。
-
-注意在 `create` 动作中，当 `save` 返回 `false` 时，我们用 `render` 代替了 `redirect_to`。使用 `render` 方法是为了把 `@article` 对象回传给 `new` 模板。这里渲染操作是在提交表单的这个请求中完成的，而 `redirect_to` 会告诉浏览器发起另一个请求。
-
-刷新 <http://localhost:3000/articles/new>，试着提交一篇没有标题的文章，Rails 会返回这个表单，但这种处理方式没有多大用处，更好的做法是告诉用户哪里出错了。为此需要修改 `app/views/articles/new.html.erb` 文件，添加显示错误信息的代码：
-
-```erb
-<%= form_for :article, url: articles_path do |f| %>
-
-  <% if @article.errors.any? %>
-    <div id="error_explanation">
-      <h2>
-        <%= pluralize(@article.errors.count, "error") %> prohibited
-        this article from being saved:
-      </h2>
-      <ul>
-        <% @article.errors.full_messages.each do |msg| %>
-          <li><%= msg %></li>
-        <% end %>
-      </ul>
-    </div>
-  <% end %>
-
-  <p>
-    <%= f.label :title %><br>
-    <%= f.text_field :title %>
-  </p>
-
-  <p>
-    <%= f.label :text %><br>
-    <%= f.text_area :text %>
-  </p>
-
-  <p>
-    <%= f.submit %>
-  </p>
-
-<% end %>
-
-<%= link_to 'Back', articles_path %>
-```
-
-上面我们添加了一些代码。我们使用 `@article.errors.any?` 检查是否有错误，如果有错误就使用 `@article.errors.full_messages` 列出所有错误信息。
-
-`pluralize` 是 Rails 提供的辅助方法，接受一个数字和一个字符串作为参数。如果数字比 1 大，字符串会被自动转换为复数形式。
-
-在 `ArticlesController` 中添加 `@article = Article.new` 是因为如果不这样做，在视图中 `@article` 的值就会是 `nil`，这样在调用 `@article.errors.any?` 时就会抛出错误。
-
-TIP: Rails 会自动用 div 包围含有错误信息的字段，并为这些 div 添加 `field_with_errors` 类。我们可以定义 CSS 规则突出显示错误信息。
-
-当我们再次访问 <http://localhost:3000/articles/new>，试着提交一篇没有标题的文章，就会看到友好的错误信息。
-
-![出错的表单](images/getting_started/form_with_errors.png)
-
-<a class="anchor" id="updating-articles"></a>
-
-### 更新文章
-
-我们已经介绍了 CRUD 操作中的“CR”两种操作，下面让我们看一下“U”操作，也就是更新文章。
-
-第一步要在 `ArticlesController` 中添加 `edit` 动作，通常把这个动作放在 `new` 动作和 `create` 动作之间，就像下面这样：
-
-```ruby
-def new
-  @article = Article.new
-end
-
-def edit
-  @article = Article.find(params[:id])
-end
-
-def create
-  @article = Article.new(article_params)
-
-  if @article.save
-    redirect_to @article
-  else
-    render 'new'
-  end
-end
-```
-
-接下来在视图中添加一个表单，这个表单类似于前文用于新建文章的表单。创建 `app/views/articles/edit.html.erb` 文件，添加下面的代码：
-
-```erb
-<h1>Edit article</h1>
-
-<%= form_for(@article) do |f| %>
-
-  <% if @article.errors.any? %>
-    <div id="error_explanation">
-      <h2>
-        <%= pluralize(@article.errors.count, "error") %> prohibited
-        this article from being saved:
-      </h2>
-      <ul>
-        <% @article.errors.full_messages.each do |msg| %>
-          <li><%= msg %></li>
-        <% end %>
-      </ul>
-    </div>
-  <% end %>
-
-  <p>
-    <%= f.label :title %><br>
-    <%= f.text_field :title %>
-  </p>
-
-  <p>
-    <%= f.label :text %><br>
-    <%= f.text_area :text %>
-  </p>
-
-  <p>
-    <%= f.submit %>
-  </p>
-
-<% end %>
-
-<%= link_to 'Back', articles_path %>
-```
-
-上面的代码把表单指向了 `update` 动作，这个动作稍后我们再来定义。
-
-传入 `@article` 对象后，会自动为表单创建 URL，用于提交编辑后的文章。
-
-`method: :patch` 选项告诉 Rails 使用 `PATCH` 方法提交表单。根据 REST 协议，`PATCH` 方法是**更新**资源时使用的 HTTP 方法。
-
-`form_for` 辅助方法的第一个参数可以是对象，例如 `@article`，`form_for` 辅助方法会用这个对象的字段来填充表单。如果传入和实例变量（`@article`）同名的符号（`:article`），也会自动产生相同效果，上面的代码使用的就是符号。关于 `form_for` 辅助方法参数的更多介绍，请参阅 [`form_for` 的文档](http://api.rubyonrails.org/classes/ActionView/Helpers/FormHelper.html#method-i-form_for)。
-
-接下来在 `app/controllers/articles_controller.rb` 文件中创建 `update` 动作，把这个动作放在 `create` 动作和 `private` 方法之间：
-
-```ruby
-def create
-  @article = Article.new(article_params)
-
-  if @article.save
-    redirect_to @article
-  else
-    render 'new'
-  end
-end
-
-def update
-  @article = Article.find(params[:id])
-
-  if @article.update(article_params)
-    redirect_to @article
-  else
-    render 'edit'
-  end
-end
-
-private
-  def article_params
-    params.require(:article).permit(:title, :text)
-  end
-```
-
-`update` 动作用于更新已有记录，它接受一个散列作为参数，散列中包含想要更新的属性。和之前一样，如果更新文章时发生错误，就需要把表单再次显示给用户。
-
-上面的代码重用了之前为 `create` 动作定义的 `article_params` 方法。
-
-TIP: 不用把所有属性都传递给 `update` 方法。例如，调用 `@article.update(title: 'A new title')` 时，Rails 只更新 `title` 属性而不修改其他属性。
-
-最后，我们想在文章列表中显示指向 `edit` 动作的链接。打开 `app/views/articles/index.html.erb` 文件，在 `Show` 链接后面添加 `Edit` 链接：
-
-```erb
-<table>
-  <tr>
-    <th>Title</th>
-    <th>Text</th>
-    <th colspan="2"></th>
-  </tr>
-
+<ul>
   <% @articles.each do |article| %>
-    <tr>
-      <td><%= article.title %></td>
-      <td><%= article.text %></td>
-      <td><%= link_to 'Show', article_path(article) %></td>
-      <td><%= link_to 'Edit', edit_article_path(article) %></td>
-    </tr>
+    <li>
+      <a href="<%= article_path(article) %>">
+        <%= article.title %>
+      </a>
+    </li>
   <% end %>
-</table>
+</ul>
 ```
 
-接着在 `app/views/articles/show.html.erb` 模板中添加 `Edit` 链接，这样文章页面也有 `Edit` 链接了。把这个链接添加到模板底部：
+However, we will take this one step further by using the [`link_to`](
+https://api.rubyonrails.org/classes/ActionView/Helpers/UrlHelper.html#method-i-link_to)
+helper. The `link_to` helper renders a link with its first argument as the
+link's text and its second argument as the link's destination. If we pass a
+model object as the second argument, `link_to` will call the appropriate path
+helper to convert the object to a path. For example, if we pass an article,
+`link_to` will call `article_path`. So `app/views/articles/index.html.erb`
+becomes:
 
-```erb
-...
+```html+erb
+<h1>Articles</h1>
 
-<%= link_to 'Edit', edit_article_path(@article) %> |
-<%= link_to 'Back', articles_path %>
-```
-
-下面是文章列表现在的样子：
-
-![文章列表](images/getting_started/index_action_with_edit_link.png)
-
-<a class="anchor" id="using-partials-to-clean-up-duplication-in-views"></a>
-
-### 使用局部视图去掉视图中的重复代码
-
-编辑文章页面和新建文章页面看起来很相似，实际上这两个页面用于显示表单的代码是相同的。现在我们要用局部视图来去掉这些重复代码。按照约定，局部视图的文件名以下划线开头。
-
-TIP: 关于局部视图的更多介绍，请参阅[Rails 布局和视图渲染](layouts_and_rendering.html)。
-
-新建 `app/views/articles/_form.html.erb` 文件，添加下面的代码：
-
-```erb
-<%= form_for @article do |f| %>
-
-  <% if @article.errors.any? %>
-    <div id="error_explanation">
-      <h2>
-        <%= pluralize(@article.errors.count, "error") %> prohibited
-        this article from being saved:
-      </h2>
-      <ul>
-        <% @article.errors.full_messages.each do |msg| %>
-          <li><%= msg %></li>
-        <% end %>
-      </ul>
-    </div>
+<ul>
+  <% @articles.each do |article| %>
+    <li>
+      <%= link_to article.title, article %>
+    </li>
   <% end %>
-
-  <p>
-    <%= f.label :title %><br>
-    <%= f.text_field :title %>
-  </p>
-
-  <p>
-    <%= f.label :text %><br>
-    <%= f.text_area :text %>
-  </p>
-
-  <p>
-    <%= f.submit %>
-  </p>
-
-<% end %>
+</ul>
 ```
 
-除了第一行 `form_for` 的用法变了之外，其他代码都和之前一样。之所以能用这个更短、更简单的 `form_for` 声明来代替新建文章页面和编辑文章页面的两个表单，是因为 `@article` 是一个资源，对应于一套 REST 式路由，Rails 能够推断出应该使用哪个地址和方法。关于 `form_for` 用法的更多介绍，请参阅“[面向资源的风格](http://api.rubyonrails.org/classes/ActionView/Helpers/FormHelper.html#method-i-form_for-label-Resource-oriented+style)”。
+Nice!
 
-现在更新 `app/views/articles/new.html.erb` 视图，以使用新建的局部视图。把文件内容替换为下面的代码：
+TIP: To learn more about routing, see [Rails Routing from the Outside In](
+routing.html).
 
-```erb
-<h1>New article</h1>
+### Creating a New Article
 
-<%= render 'form' %>
+Now we move on to the "C" (Create) of CRUD. Typically, in web applications,
+creating a new resource is a multi-step process. First, the user requests a form
+to fill out. Then, the user submits the form. If there are no errors, then the
+resource is created and some kind of confirmation is displayed. Else, the form
+is redisplayed with error messages, and the process is repeated.
 
-<%= link_to 'Back', articles_path %>
-```
-
-然后按照同样的方法修改 `app/views/articles/edit.html.erb` 视图：
-
-```erb
-<h1>Edit article</h1>
-
-<%= render 'form' %>
-
-<%= link_to 'Back', articles_path %>
-```
-
-<a class="anchor" id="deleting-articles"></a>
-
-### 删除文章
-
-现在该介绍 CRUD 中的“D”操作了，也就是从数据库删除文章。按照 REST 架构的约定，在 `bin/rails routes` 命令的输出结果中删除文章的路由是：
-
-```
-DELETE /articles/:id(.:format)      articles#destroy
-```
-
-删除资源的路由应该使用 `delete` 路由方法。如果在删除资源时仍然使用 `get` 路由，就可能给那些设计恶意地址的人提供可乘之机：
-
-```html
-<a href='http://example.com/articles/1/destroy'>look at this cat!</a>
-```
-
-我们用 `delete` 方法来删除资源，对应的路由会映射到 `app/controllers/articles_controller.rb` 文件中的 `destroy` 动作，稍后我们要创建这个动作。`destroy` 动作是控制器中的最后一个 CRUD 动作，和其他公共 CRUD 动作一样，这个动作应该放在 `private` 或 `protected` 方法之前。打开 `app/controllers/articles_controller.rb` 文件，添加下面的代码：
-
-```ruby
-def destroy
-  @article = Article.find(params[:id])
-  @article.destroy
-
-  redirect_to articles_path
-end
-```
-
-在 `app/controllers/articles_controller.rb` 文件中，`ArticlesController` 的完整代码应该像下面这样：
+In a Rails application, these steps are conventionally handled by a controller's
+`new` and `create` actions. Let's add a typical implementation of these actions
+to `app/controllers/articles_controller.rb`, below the `show` action:
 
 ```ruby
 class ArticlesController < ApplicationController
@@ -1067,8 +795,129 @@ class ArticlesController < ApplicationController
     @article = Article.new
   end
 
-  def edit
+  def create
+    @article = Article.new(title: "...", body: "...")
+
+    if @article.save
+      redirect_to @article
+    else
+      render :new
+    end
+  end
+end
+```
+
+The `new` action instantiates a new article, but does not save it. This article
+will be used in the view when building the form. By default, the `new` action
+will render `app/views/articles/new.html.erb`, which we will create next.
+
+The `create` action instantiates a new article with values for the title and
+body, and attempts to save it. If the article is saved successfully, the action
+redirects the browser to the article's page at `"http://localhost:3000/articles/#{@article.id}"`.
+Else, the action redisplays the form by rendering `app/views/articles/new.html.erb`.
+The title and body here are dummy values. After we create the form, we will come
+back and change these.
+
+NOTE: [`redirect_to`](https://api.rubyonrails.org/classes/ActionController/Redirecting.html#method-i-redirect_to)
+will cause the browser to make a new request,
+whereas [`render`](https://api.rubyonrails.org/classes/AbstractController/Rendering.html#method-i-render)
+renders the specified view for the current request.
+It is important to use `redirect_to` after mutating the database or application state.
+Otherwise, if the user refreshes the page, the browser will make the same request, and the mutation will be repeated.
+
+#### Using a Form Builder
+
+We will use a feature of Rails called a *form builder* to create our form. Using
+a form builder, we can write a minimal amount of code to output a form that is
+fully configured and follows Rails conventions.
+
+Let's create `app/views/articles/new.html.erb` with the following contents:
+
+```html+erb
+<h1>New Article</h1>
+
+<%= form_with model: @article do |form| %>
+  <div>
+    <%= form.label :title %><br>
+    <%= form.text_field :title %>
+  </div>
+
+  <div>
+    <%= form.label :body %><br>
+    <%= form.text_area :body %>
+  </div>
+
+  <div>
+    <%= form.submit %>
+  </div>
+<% end %>
+```
+
+The [`form_with`](https://api.rubyonrails.org/classes/ActionView/Helpers/FormHelper.html#method-i-form_with)
+helper method instantiates a form builder. In the `form_with` block we call
+methods like [`label`](https://api.rubyonrails.org/classes/ActionView/Helpers/FormBuilder.html#method-i-label)
+and [`text_field`](https://api.rubyonrails.org/classes/ActionView/Helpers/FormBuilder.html#method-i-text_field)
+on the form builder to output the appropriate form elements.
+
+The resulting output from our `form_with` call will look like:
+
+```html
+<form action="/articles" accept-charset="UTF-8" method="post">
+  <input type="hidden" name="authenticity_token" value="...">
+
+  <div>
+    <label for="article_title">Title</label><br>
+    <input type="text" name="article[title]" id="article_title">
+  </div>
+
+  <div>
+    <label for="article_body">Body</label><br>
+    <textarea name="article[body]" id="article_body"></textarea>
+  </div>
+
+  <div>
+    <input type="submit" name="commit" value="Create Article" data-disable-with="Create Article">
+  </div>
+</form>
+```
+
+TIP: To learn more about form builders, see [Action View Form Helpers](
+form_helpers.html).
+
+#### Using Strong Parameters
+
+Submitted form data is put into the `params` Hash, alongside captured route
+parameters. Thus, the `create` action can access the submitted title via
+`params[:article][:title]` and the submitted body via `params[:article][:body]`.
+We could pass these values individually to `Article.new`, but that would be
+verbose and possibly error-prone. And it would become worse as we add more
+fields.
+
+Instead, we will pass a single Hash that contains the values. However, we must
+still specify what values are allowed in that Hash. Otherwise, a malicious user
+could potentially submit extra form fields and overwrite private data. In fact,
+if we pass the unfiltered `params[:article]` Hash directly to `Article.new`,
+Rails will raise a `ForbiddenAttributesError` to alert us about the problem.
+So we will use a feature of Rails called *Strong Parameters* to filter `params`.
+Think of it as [strong typing](https://en.wikipedia.org/wiki/Strong_and_weak_typing)
+for `params`.
+
+Let's add a private method to the bottom of `app/controllers/articles_controller.rb`
+named `article_params` that filters `params`. And let's change `create` to use
+it:
+
+```ruby
+class ArticlesController < ApplicationController
+  def index
+    @articles = Article.all
+  end
+
+  def show
     @article = Article.find(params[:id])
+  end
+
+  def new
+    @article = Article.new
   end
 
   def create
@@ -1077,8 +926,176 @@ class ArticlesController < ApplicationController
     if @article.save
       redirect_to @article
     else
-      render 'new'
+      render :new
     end
+  end
+
+  private
+    def article_params
+      params.require(:article).permit(:title, :body)
+    end
+end
+```
+
+TIP: To learn more about Strong Parameters, see [Action Controller Overview §
+Strong Parameters](action_controller_overview.html#strong-parameters).
+
+#### Validations and Displaying Error Messages
+
+As we have seen, creating a resource is a multi-step process. Handling invalid
+user input is another step of that process. Rails provides a feature called
+*validations* to help us deal with invalid user input. Validations are rules
+that are checked before a model object is saved. If any of the checks fail, the
+save will be aborted, and appropriate error messages will be added to the
+`errors` attribute of the model object.
+
+Let's add some validations to our model in `app/models/article.rb`:
+
+```ruby
+class Article < ApplicationRecord
+  validates :title, presence: true
+  validates :body, presence: true, length: { minimum: 10 }
+end
+```
+
+The first validation declares that a `title` value must be present. Because
+`title` is a string, this means that the `title` value must contain at least one
+non-whitespace character.
+
+The second validation declares that a `body` value must also be present.
+Additionally, it declares that the `body` value must be at least 10 characters
+long.
+
+NOTE: You may be wondering where the `title` and `body` attributes are defined.
+Active Record automatically defines model attributes for every table column, so
+you don't have to declare those attributes in your model file.
+
+With our validations in place, let's modify `app/views/articles/new.html.erb` to
+display any error messages for `title` and `body`:
+
+```html+erb
+<h1>New Article</h1>
+
+<%= form_with model: @article do |form| %>
+  <div>
+    <%= form.label :title %><br>
+    <%= form.text_field :title %>
+    <%= @article.errors.full_messages_for(:title).each do |message| %>
+      <div><%= message %></div>
+    <% end %>
+  </div>
+
+  <div>
+    <%= form.label :body %><br>
+    <%= form.text_area :body %><br>
+    <%= @article.errors.full_messages_for(:body).each do |message| %>
+      <div><%= message %></div>
+    <% end %>
+  </div>
+
+  <div>
+    <%= form.submit %>
+  </div>
+<% end %>
+```
+
+The [`full_messages_for`](https://api.rubyonrails.org/classes/ActiveModel/Errors.html#method-i-full_messages_for)
+method returns an array of user-friendly error messages for a specified
+attribute. If there are no errors for that attribute, the array will be empty.
+
+To understand how all of this works together, let's take another look at the
+`new` and `create` controller actions:
+
+```ruby
+  def new
+    @article = Article.new
+  end
+
+  def create
+    @article = Article.new(article_params)
+
+    if @article.save
+      redirect_to @article
+    else
+      render :new
+    end
+  end
+```
+
+When we visit <http://localhost:3000/articles/new>, the `GET /articles/new`
+request is mapped to the `new` action. The `new` action does not attempt to save
+`@article`. Therefore, validations are not checked, and there will be no error
+messages.
+
+When we submit the form, the `POST /articles` request is mapped to the `create`
+action. The `create` action *does* attempt to save `@article`. Therefore,
+validations *are* checked. If any validation fails, `@article` will not be
+saved, and `app/views/articles/new.html.erb` will be rendered with error
+messages.
+
+TIP: To learn more about validations, see [Active Record Validations](
+active_record_validations.html). To learn more about validation error messages,
+see [Active Record Validations § Working with Validation Errors](
+active_record_validations.html#working-with-validation-errors).
+
+#### Finishing Up
+
+We can now create an article by visiting <http://localhost:3000/articles/new>.
+To finish up, let's link to that page from the bottom of
+`app/views/articles/index.html.erb`:
+
+```html+erb
+<h1>Articles</h1>
+
+<ul>
+  <% @articles.each do |article| %>
+    <li>
+      <%= link_to article.title, article %>
+    </li>
+  <% end %>
+</ul>
+
+<%= link_to "New Article", new_article_path %>
+```
+
+### Updating an Article
+
+We've covered the "CR" of CRUD. Now let's move on to the "U" (Update). Updating
+a resource is very similar to creating a resource. They are both multi-step
+processes. First, the user requests a form to edit the data. Then, the user
+submits the form. If there are no errors, then the resource is updated. Else,
+the form is redisplayed with error messages, and the process is repeated.
+
+These steps are conventionally handled by a controller's `edit` and `update`
+actions. Let's add a typical implementation of these actions to
+`app/controllers/articles_controller.rb`, below the `create` action:
+
+```ruby
+class ArticlesController < ApplicationController
+  def index
+    @articles = Article.all
+  end
+
+  def show
+    @article = Article.find(params[:id])
+  end
+
+  def new
+    @article = Article.new
+  end
+
+  def create
+    @article = Article.new(article_params)
+
+    if @article.save
+      redirect_to @article
+    else
+      render :new
+    end
+  end
+
+  def edit
+    @article = Article.find(params[:id])
   end
 
   def update
@@ -1087,7 +1104,157 @@ class ArticlesController < ApplicationController
     if @article.update(article_params)
       redirect_to @article
     else
-      render 'edit'
+      render :edit
+    end
+  end
+
+  private
+    def article_params
+      params.require(:article).permit(:title, :body)
+    end
+end
+```
+
+Notice how the `edit` and `update` actions resemble the `new` and `create`
+actions.
+
+The `edit` action fetches the article from the database, and stores it in
+`@article` so that it can be used when building the form. By default, the `edit`
+action will render `app/views/articles/edit.html.erb`.
+
+The `update` action (re-)fetches the article from the database, and attempts
+to update it with the submitted form data filtered by `article_params`. If no
+validations fail and the update is successful, the action redirects the browser
+to the article's page. Else, the action redisplays the form, with error
+messages, by rendering `app/views/articles/edit.html.erb`.
+
+#### Using Partials to Share View Code
+
+Our `edit` form will look the same as our `new` form. Even the code will be the
+same, thanks to the Rails form builder and resourceful routing. The form builder
+automatically configures the form to make the appropriate kind of request, based
+on whether the model object has been previously saved.
+
+Because the code will be the same, we're going to factor it out into a shared
+view called a *partial*. Let's create `app/views/articles/_form.html.erb` with
+the following contents:
+
+```html+erb
+<%= form_with model: article do |form| %>
+  <div>
+    <%= form.label :title %><br>
+    <%= form.text_field :title %>
+    <%= article.errors.full_messages_for(:title).each do |message| %>
+      <div><%= message %></div>
+    <% end %>
+  </div>
+
+  <div>
+    <%= form.label :body %><br>
+    <%= form.text_area :body %><br>
+    <%= article.errors.full_messages_for(:body).each do |message| %>
+      <div><%= message %></div>
+    <% end %>
+  </div>
+
+  <div>
+    <%= form.submit %>
+  </div>
+<% end %>
+```
+
+The above code is the same as our form in `app/views/articles/new.html.erb`,
+except that all occurrences of `@article` have been replaced with `article`.
+Because partials are shared code, it is best practice that they do not depend on
+specific instance variables set by a controller action. Instead, we will pass
+the article to the partial as a local variable.
+
+Let's update `app/views/articles/new.html.erb` to use the partial via [`render`](
+https://api.rubyonrails.org/classes/ActionView/Helpers/RenderingHelper.html#method-i-render):
+
+```html+erb
+<h1>New Article</h1>
+
+<%= render "form", article: @article %>
+```
+
+NOTE: A partial's filename must be prefixed **with** an underscore, e.g.
+`_form.html.erb`. But when rendering, it is referenced **without** the
+underscore, e.g. `render "form"`.
+
+And now, let's create a very similar `app/views/articles/edit.html.erb`:
+
+```html+erb
+<h1>Edit Article</h1>
+
+<%= render "form", article: @article %>
+```
+
+TIP: To learn more about partials, see [Layouts and Rendering in Rails § Using
+Partials](layouts_and_rendering.html#using-partials).
+
+#### Finishing Up
+
+We can now update an article by visiting its edit page, e.g.
+<http://localhost:3000/articles/1/edit>. To finish up, let's link to the edit
+page from the bottom of `app/views/articles/show.html.erb`:
+
+```html+erb
+<h1><%= @article.title %></h1>
+
+<p><%= @article.body %></p>
+
+<ul>
+  <li><%= link_to "Edit", edit_article_path(@article) %></li>
+</ul>
+```
+
+### Deleting an Article
+
+Finally, we arrive at the "D" (Delete) of CRUD. Deleting a resource is a simpler
+process than creating or updating. It only requires a route and a controller
+action. And our resourceful routing (`resources :articles`) already provides the
+route, which maps `DELETE /articles/:id` requests to the `destroy` action of
+`ArticlesController`.
+
+So, let's add a typical `destroy` action to `app/controllers/articles_controller.rb`,
+below the `update` action:
+
+```ruby
+class ArticlesController < ApplicationController
+  def index
+    @articles = Article.all
+  end
+
+  def show
+    @article = Article.find(params[:id])
+  end
+
+  def new
+    @article = Article.new
+  end
+
+  def create
+    @article = Article.new(article_params)
+
+    if @article.save
+      redirect_to @article
+    else
+      render :new
+    end
+  end
+
+  def edit
+    @article = Article.find(params[:id])
+  end
+
+  def update
+    @article = Article.find(params[:id])
+
+    if @article.update(article_params)
+      redirect_to @article
+    else
+      render :edit
     end
   end
 
@@ -1095,80 +1262,80 @@ class ArticlesController < ApplicationController
     @article = Article.find(params[:id])
     @article.destroy
 
-    redirect_to articles_path
+    redirect_to root_path
   end
 
   private
     def article_params
-      params.require(:article).permit(:title, :text)
+      params.require(:article).permit(:title, :body)
     end
 end
 ```
 
-在 Active Record 对象上调用 `destroy` 方法，就可从数据库中删除它们。注意，我们不需要为 `destroy` 动作添加视图，因为完成操作后它会重定向到 `index` 动作。
+The `destroy` action fetches the article from the database, and calls [`destroy`](
+https://api.rubyonrails.org/classes/ActiveRecord/Persistence.html#method-i-destroy)
+on it. Then, it redirects the browser to the root path.
 
-最后，在 `index` 动作的模板（`app/views/articles/index.html.erb`）中加上“Destroy”链接，这样就大功告成了：
+We have chosen to redirect to the root path because that is our main access
+point for articles. But, in other circumstances, you might choose to redirect to
+e.g. `articles_path`.
 
-```erb
-<h1>Listing Articles</h1>
-<%= link_to 'New article', new_article_path %>
-<table>
-  <tr>
-    <th>Title</th>
-    <th>Text</th>
-    <th colspan="3"></th>
-  </tr>
+Now let's add a link at the bottom of `app/views/articles/show.html.erb` so that
+we can delete an article from its own page:
 
-  <% @articles.each do |article| %>
-    <tr>
-      <td><%= article.title %></td>
-      <td><%= article.text %></td>
-      <td><%= link_to 'Show', article_path(article) %></td>
-      <td><%= link_to 'Edit', edit_article_path(article) %></td>
-      <td><%= link_to 'Destroy', article_path(article),
-              method: :delete,
-              data: { confirm: 'Are you sure?' } %></td>
-    </tr>
-  <% end %>
-</table>
+```html+erb
+<h1><%= @article.title %></h1>
+
+<p><%= @article.body %></p>
+
+<ul>
+  <li><%= link_to "Edit", edit_article_path(@article) %></li>
+  <li><%= link_to "Destroy", article_path(@article),
+                  method: :delete,
+                  data: { confirm: "Are you sure?" } %></li>
+</ul>
 ```
 
-在上面的代码中，`link_to` 辅助方法生成“Destroy”链接的用法有点不同，其中第二个参数是具名路由（named route），还有一些选项作为其他参数。`method: :delete` 和 `data: { confirm: 'Are you sure?' }` 选项用于设置链接的 HTML5 属性，这样点击链接后 Rails 会先向用户显示一个确认对话框，然后用 `delete` 方法发起请求。这些操作是通过 JavaScript 脚本 `rails-ujs` 实现的，这个脚本在生成应用骨架时已经被自动包含在了应用的布局中（`app/views/layouts/application.html.erb`）。如果没有这个脚本，确认对话框就无法显示。
+In the above code, we're passing a few additional options to `link_to`. The
+`method: :delete` option causes the link to make a `DELETE` request instead of a
+`GET` request. The `data: { confirm: "Are you sure?" }` option causes a
+confirmation dialog to appear when the link is clicked. If the user cancels the
+dialog, the request is aborted. Both of these options are powered by a feature
+of Rails called *Unobtrusive JavaScript* (UJS). The JavaScript file that
+implements these behaviors is included by default in fresh Rails applications.
 
-![确认对话框](images/getting_started/confirm_dialog.png)
+TIP: To learn more about Unobtrusive JavaScript, see [Working With JavaScript in
+Rails](working_with_javascript_in_rails.html).
 
-TIP: 关于非侵入式 JavaScript 的更多介绍，请参阅[在 Rails 中使用 JavaScript](working_with_javascript_in_rails.html)。
+And that's it! We can now list, show, create, update, and delete articles!
+InCRUDable!
 
-恭喜你！现在你已经可以创建、显示、列出、更新和删除文章了！
+Adding a Second Model
+---------------------
 
-TIP: 通常 Rails 鼓励用资源对象来代替手动声明路由。关于路由的更多介绍，请参阅[Rails 路由全解](routing.html)。
+It's time to add a second model to the application. The second model will handle
+comments on articles.
 
-<a class="anchor" id="adding-a-second-model"></a>
+### Generating a Model
 
-## 添加第二个模型
+We're going to see the same generator that we used before when creating
+the `Article` model. This time we'll create a `Comment` model to hold a
+reference to an article. Run this command in your terminal:
 
-现在是为应用添加第二个模型的时候了。这个模型用于处理文章评论。
-
-<a class="anchor" id="generating-a-model"></a>
-
-### 生成模型
-
-接下来将要使用的生成器，和之前用于创建 `Article` 模型的一样。这次我们要创建 `Comment` 模型，用于保存文章评论。在终端中执行下面的命令：
-
-```sh
+```bash
 $ bin/rails generate model Comment commenter:string body:text article:references
 ```
 
-上面的命令会生成 4 个文件：
+This command will generate four files:
 
-| 文件 | 用途  |
-|---|---|
-| `db/migrate/20140120201010_create_comments.rb` | 用于在数据库中创建 comments 表的迁移文件（你的文件名会包含不同的时间戳）  |
-| `app/models/comment.rb` | `Comment` 模型文件  |
-| `test/models/comment_test.rb` | `Comment` 模型的测试文件  |
-| `test/fixtures/comments.yml` | 用于测试的示例评论  |
+| File                                         | Purpose                                                                                                |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| db/migrate/20140120201010_create_comments.rb | Migration to create the comments table in your database (your name will include a different timestamp) |
+| app/models/comment.rb                        | The Comment model                                                                                      |
+| test/models/comment_test.rb                  | Testing harness for the comment model                                                                 |
+| test/fixtures/comments.yml                   | Sample comments for use in testing                                                                     |
 
-首先看一下 `app/models/comment.rb` 文件：
+First, take a look at `app/models/comment.rb`:
 
 ```ruby
 class Comment < ApplicationRecord
@@ -1176,19 +1343,25 @@ class Comment < ApplicationRecord
 end
 ```
 
-可以看到，`Comment` 模型文件的内容和之前的 `Article` 模型差不多，仅仅多了一行 `belongs_to :article`，这行代码用于建立 Active Record 关联。下一节会简单介绍关联。
+This is very similar to the `Article` model that you saw earlier. The difference
+is the line `belongs_to :article`, which sets up an Active Record _association_.
+You'll learn a little about associations in the next section of this guide.
 
-在上面的 Bash 命令中使用的 `:references` 关键字是一种特殊的模型数据类型，用于在数据表中新建字段。这个字段以提供的模型名加上 `_id` 后缀作为字段名，保存整数值。之后通过分析 `db/schema.rb` 文件可以更好地理解这些内容。
+The (`:references`) keyword used in the bash command is a special data type for models.
+It creates a new column on your database table with the provided model name appended with an `_id`
+that can hold integer values. To get a better understanding, analyze the
+`db/schema.rb` file after running the migration.
 
-除了模型文件，Rails 还生成了迁移文件，用于创建对应的数据表：
+In addition to the model, Rails has also made a migration to create the
+corresponding database table:
 
 ```ruby
-class CreateComments < ActiveRecord::Migration[5.0]
+class CreateComments < ActiveRecord::Migration[6.0]
   def change
     create_table :comments do |t|
       t.string :commenter
       t.text :body
-      t.references :article, foreign_key: true
+      t.references :article, null: false, foreign_key: true
 
       t.timestamps
     end
@@ -1196,13 +1369,16 @@ class CreateComments < ActiveRecord::Migration[5.0]
 end
 ```
 
-`t.references` 这行代码创建 `article_id` 整数字段，为这个字段建立索引，并建立指向 `articles` 表的 `id` 字段的外键约束。下面运行这个迁移：
+The `t.references` line creates an integer column called `article_id`, an index
+for it, and a foreign key constraint that points to the `id` column of the `articles`
+table. Go ahead and run the migration:
 
-```sh
+```bash
 $ bin/rails db:migrate
 ```
 
-Rails 很智能，只会运行针对当前数据库还没有运行过的迁移，运行结果像下面这样：
+Rails is smart enough to only execute the migrations that have not already been
+run against the current database, so in this case you will just see:
 
 ```
 ==  CreateComments: migrating =================================================
@@ -1211,16 +1387,18 @@ Rails 很智能，只会运行针对当前数据库还没有运行过的迁移�
 ==  CreateComments: migrated (0.0119s) ========================================
 ```
 
-<a class="anchor" id="associating-models"></a>
+### Associating Models
 
-### 模型关联
+Active Record associations let you easily declare the relationship between two
+models. In the case of comments and articles, you could write out the
+relationships this way:
 
-Active Record 关联让我们可以轻易地声明两个模型之间的关系。对于评论和文章，我们可以像下面这样声明：
+* Each comment belongs to one article.
+* One article can have many comments.
 
-*   每一条评论都属于某一篇文章
-*   一篇文章可以有多条评论
-
-实际上，这种表达方式和 Rails 用于声明模型关联的句法非常接近。前文我们已经看过 `Comment` 模型中用于声明模型关联的代码，这行代码用于声明每一条评论都属于某一篇文章：
+In fact, this is very close to the syntax that Rails uses to declare this
+association. You've already seen the line of code inside the `Comment` model
+(app/models/comment.rb) that makes each comment belong to an Article:
 
 ```ruby
 class Comment < ApplicationRecord
@@ -1228,94 +1406,110 @@ class Comment < ApplicationRecord
 end
 ```
 
-现在修改 `app/models/article.rb` 文件来添加模型关联的另一端：
+You'll need to edit `app/models/article.rb` to add the other side of the
+association:
 
 ```ruby
 class Article < ApplicationRecord
   has_many :comments
-  validates :title, presence: true,
-                    length: { minimum: 5 }
+
+  validates :title, presence: true
+  validates :body, presence: true, length: { minimum: 10 }
 end
 ```
 
-这两行声明能够启用一些自动行为。例如，如果 `@article` 实例变量表示一篇文章，就可以使用 `@article.comments` 以数组形式取回这篇文章的所有评论。
+These two declarations enable a good bit of automatic behavior. For example, if
+you have an instance variable `@article` containing an article, you can retrieve
+all the comments belonging to that article as an array using
+`@article.comments`.
 
-TIP: 关于模型关联的更多介绍，请参阅[Active Record 关联](association_basics.html)。
+TIP: For more information on Active Record associations, see the [Active Record
+Associations](association_basics.html) guide.
 
-<a class="anchor" id="adding-a-route-for-comments"></a>
+### Adding a Route for Comments
 
-### 为评论添加路由
-
-和 `welcome` 控制器一样，在添加路由之后 Rails 才知道在哪个地址上查看评论。再次打开 `config/routes.rb` 文件，像下面这样进行修改：
+As with the `welcome` controller, we will need to add a route so that Rails
+knows where we would like to navigate to see `comments`. Open up the
+`config/routes.rb` file again, and edit it as follows:
 
 ```ruby
-resources :articles do
-  resources :comments
+Rails.application.routes.draw do
+  root "articles#index"
+
+  resources :articles do
+    resources :comments
+  end
 end
 ```
 
-上面的代码在 `articles` 资源中创建 `comments` 资源，这种方式被称为嵌套资源。这是表明文章和评论之间层级关系的另一种方式。
+This creates `comments` as a _nested resource_ within `articles`. This is
+another part of capturing the hierarchical relationship that exists between
+articles and comments.
 
-TIP: 关于路由的更多介绍，请参阅[Rails 路由全解](routing.html)。
+TIP: For more information on routing, see the [Rails Routing](routing.html)
+guide.
 
-<a class="anchor" id="generating-a-controller"></a>
+### Generating a Controller
 
-### 生成控制器
+With the model in hand, you can turn your attention to creating a matching
+controller. Again, we'll use the same generator we used before:
 
-有了模型，下面应该创建对应的控制器了。还是使用前面用过的生成器：
-
-```sh
+```bash
 $ bin/rails generate controller Comments
 ```
 
-上面的命令会创建 5 个文件和一个空文件夹：
+This creates four files and one empty directory:
 
-| 文件/文件夹 | 用途  |
-|---|---|
-| `app/controllers/comments_controller.rb` | Comments 控制器文件  |
-| `app/views/comments/` | 控制器的视图保存在这里  |
-| `test/controllers/comments_controller_test.rb` | 控制器的测试文件  |
-| `app/helpers/comments_helper.rb` | 视图辅助方法文件  |
-| `app/assets/javascripts/comments.coffee` | 控制器的 CoffeeScript 文件  |
-| `app/assets/stylesheets/comments.scss` | 控制器的样式表文件  |
+| File/Directory                               | Purpose                                  |
+| -------------------------------------------- | ---------------------------------------- |
+| app/controllers/comments_controller.rb       | The Comments controller                  |
+| app/views/comments/                          | Views of the controller are stored here  |
+| test/controllers/comments_controller_test.rb | The test for the controller              |
+| app/helpers/comments_helper.rb               | A view helper file                       |
+| app/assets/stylesheets/comments.scss         | Cascading style sheet for the controller |
 
-在博客中，读者看完文章后可以直接发表评论，并且马上可以看到这些评论是否在页面上显示出来了。我们的博客采取同样的设计。这里 `CommentsController` 需要提供创建评论和删除垃圾评论的方法。
+Like with any blog, our readers will create their comments directly after
+reading the article, and once they have added their comment, will be sent back
+to the article show page to see their comment now listed. Due to this, our
+`CommentsController` is there to provide a method to create comments and delete
+spam comments when they arrive.
 
-首先修改显示文章的模板（`app/views/articles/show.html.erb`），添加发表评论的功能：
+So first, we'll wire up the Article show template
+(`app/views/articles/show.html.erb`) to let us make a new comment:
 
-```erb
-<p>
-  <strong>Title:</strong>
-  <%= @article.title %>
-</p>
+```html+erb
+<h1><%= @article.title %></h1>
 
-<p>
-  <strong>Text:</strong>
-  <%= @article.text %>
-</p>
+<p><%= @article.body %></p>
+
+<ul>
+  <li><%= link_to "Edit", edit_article_path(@article) %></li>
+  <li><%= link_to "Destroy", article_path(@article),
+                  method: :delete,
+                  data: { confirm: "Are you sure?" } %></li>
+</ul>
 
 <h2>Add a comment:</h2>
-<%= form_for([@article, @article.comments.build]) do |f| %>
+<%= form_with model: [ @article, @article.comments.build ] do |form| %>
   <p>
-    <%= f.label :commenter %><br>
-    <%= f.text_field :commenter %>
+    <%= form.label :commenter %><br>
+    <%= form.text_field :commenter %>
   </p>
   <p>
-    <%= f.label :body %><br>
-    <%= f.text_area :body %>
+    <%= form.label :body %><br>
+    <%= form.text_area :body %>
   </p>
   <p>
-    <%= f.submit %>
+    <%= form.submit %>
   </p>
 <% end %>
-
-<%= link_to 'Edit', edit_article_path(@article) %> |
-<%= link_to 'Back', articles_path %>
 ```
 
-上面的代码在显示文章的页面中添加了用于新建评论的表单，通过调用 `CommentsController` 的 `create` 动作来发表评论。这里 `form_for` 辅助方法以数组为参数，会创建嵌套路由，例如 `/articles/1/comments`。
+This adds a form on the `Article` show page that creates a new comment by
+calling the `CommentsController` `create` action. The `form_with` call here uses
+an array, which will build a nested route, such as `/articles/1/comments`.
 
-接下来在 `app/controllers/comments_controller.rb` 文件中添加 `create` 动作：
+Let's wire up the `create` in `app/controllers/comments_controller.rb`:
 
 ```ruby
 class CommentsController < ApplicationController
@@ -1332,22 +1526,34 @@ class CommentsController < ApplicationController
 end
 ```
 
-上面的代码比 `Articles` 控制器的代码复杂得多，这是嵌套带来的副作用。对于每一个发表评论的请求，都必须记录这条评论属于哪篇文章，因此需要在 `Article` 模型上调用 `find` 方法来获取文章对象。
+You'll see a bit more complexity here than you did in the controller for
+articles. That's a side-effect of the nesting that you've set up. Each request
+for a comment has to keep track of the article to which the comment is attached,
+thus the initial call to the `find` method of the `Article` model to get the
+article in question.
 
-此外，上面的代码还利用了关联特有的方法，在 `@article.comments` 上调用 `create` 方法来创建和保存评论，同时自动把评论和对应的文章关联起来。
+In addition, the code takes advantage of some of the methods available for an
+association. We use the `create` method on `@article.comments` to create and
+save the comment. This will automatically link the comment so that it belongs to
+that particular article.
 
-添加评论后，我们使用 `article_path(@article)` 辅助方法把用户带回原来的文章页面。如前文所述，这里调用了 `ArticlesController` 的 `show` 动作来渲染 `show.html.erb` 模板，因此需要修改 `app/views/articles/show.html.erb` 文件来显示评论：
+Once we have made the new comment, we send the user back to the original article
+using the `article_path(@article)` helper. As we have already seen, this calls
+the `show` action of the `ArticlesController` which in turn renders the
+`show.html.erb` template. This is where we want the comment to show, so let's
+add that to the `app/views/articles/show.html.erb`.
 
-```erb
-<p>
-  <strong>Title:</strong>
-  <%= @article.title %>
-</p>
+```html+erb
+<h1><%= @article.title %></h1>
 
-<p>
-  <strong>Text:</strong>
-  <%= @article.text %>
-</p>
+<p><%= @article.body %></p>
+
+<ul>
+  <li><%= link_to "Edit", edit_article_path(@article) %></li>
+  <li><%= link_to "Destroy", article_path(@article),
+                  method: :delete,
+                  data: { confirm: "Are you sure?" } %></li>
+</ul>
 
 <h2>Comments</h2>
 <% @article.comments.each do |comment| %>
@@ -1363,41 +1569,40 @@ end
 <% end %>
 
 <h2>Add a comment:</h2>
-<%= form_for([@article, @article.comments.build]) do |f| %>
+<%= form_with model: [ @article, @article.comments.build ] do |form| %>
   <p>
-    <%= f.label :commenter %><br>
-    <%= f.text_field :commenter %>
+    <%= form.label :commenter %><br>
+    <%= form.text_field :commenter %>
   </p>
   <p>
-    <%= f.label :body %><br>
-    <%= f.text_area :body %>
+    <%= form.label :body %><br>
+    <%= form.text_area :body %>
   </p>
   <p>
-    <%= f.submit %>
+    <%= form.submit %>
   </p>
 <% end %>
-
-<%= link_to 'Edit', edit_article_path(@article) %> |
-<%= link_to 'Back', articles_path %>
 ```
 
-现在可以在我们的博客中为文章添加评论了，评论添加后就会显示在正确的位置上。
+Now you can add articles and comments to your blog and have them show up in the
+right places.
 
-![带有评论的文章](images/getting_started/article_with_comments.png)
+![Article with Comments](images/getting_started/article_with_comments.png)
 
-<a class="anchor" id="refactoring"></a>
+Refactoring
+-----------
 
-## 重构
+Now that we have articles and comments working, take a look at the
+`app/views/articles/show.html.erb` template. It is getting long and awkward. We
+can use partials to clean it up.
 
-现在博客的文章和评论都已经正常工作，打开 `app/views/articles/show.html.erb` 文件，会看到文件代码变得又长又不美观。因此下面我们要用局部视图来重构代码。
+### Rendering Partial Collections
 
-<a class="anchor" id="rendering-partial-collections"></a>
+First, we will make a comment partial to extract showing all the comments for
+the article. Create the file `app/views/comments/_comment.html.erb` and put the
+following into it:
 
-### 渲染局部视图集合
-
-首先创建评论的局部视图，把显示文章评论的代码抽出来。创建 `app/views/comments/_comment.html.erb` 文件，添加下面的代码：
-
-```erb
+```html+erb
 <p>
   <strong>Commenter:</strong>
   <%= comment.commenter %>
@@ -1409,101 +1614,272 @@ end
 </p>
 ```
 
-然后像下面这样修改 `app/views/articles/show.html.erb` 文件：
+Then you can change `app/views/articles/show.html.erb` to look like the
+following:
 
-```erb
-<p>
-  <strong>Title:</strong>
-  <%= @article.title %>
-</p>
+```html+erb
+<h1><%= @article.title %></h1>
 
-<p>
-  <strong>Text:</strong>
-  <%= @article.text %>
-</p>
+<p><%= @article.body %></p>
+
+<ul>
+  <li><%= link_to "Edit", edit_article_path(@article) %></li>
+  <li><%= link_to "Destroy", article_path(@article),
+                  method: :delete,
+                  data: { confirm: "Are you sure?" } %></li>
+</ul>
 
 <h2>Comments</h2>
 <%= render @article.comments %>
 
 <h2>Add a comment:</h2>
-<%= form_for([@article, @article.comments.build]) do |f| %>
+<%= form_with model: [ @article, @article.comments.build ] do |form| %>
   <p>
-    <%= f.label :commenter %><br>
-    <%= f.text_field :commenter %>
+    <%= form.label :commenter %><br>
+    <%= form.text_field :commenter %>
   </p>
   <p>
-    <%= f.label :body %><br>
-    <%= f.text_area :body %>
+    <%= form.label :body %><br>
+    <%= form.text_area :body %>
   </p>
   <p>
-    <%= f.submit %>
-  </p>
-<% end %>
-
-<%= link_to 'Edit', edit_article_path(@article) %> |
-<%= link_to 'Back', articles_path %>
-```
-
-这样对于 `@article.comments` 集合中的每条评论，都会渲染 `app/views/comments/_comment.html.erb` 文件中的局部视图。`render` 方法会遍历 `@article.comments` 集合，把每条评论赋值给局部视图中的同名局部变量，也就是这里的 `comment` 变量。
-
-<a class="anchor" id="rendering-a-partial-form"></a>
-
-### 渲染局部视图表单
-
-我们把添加评论的代码也移到局部视图中。创建 `app/views/comments/_form.html.erb` 文件，添加下面的代码：
-
-```erb
-<%= form_for([@article, @article.comments.build]) do |f| %>
-  <p>
-    <%= f.label :commenter %><br>
-    <%= f.text_field :commenter %>
-  </p>
-  <p>
-    <%= f.label :body %><br>
-    <%= f.text_area :body %>
-  </p>
-  <p>
-    <%= f.submit %>
+    <%= form.submit %>
   </p>
 <% end %>
 ```
 
-然后像下面这样修改 `app/views/articles/show.html.erb` 文件：
+This will now render the partial in `app/views/comments/_comment.html.erb` once
+for each comment that is in the `@article.comments` collection. As the `render`
+method iterates over the `@article.comments` collection, it assigns each
+comment to a local variable named the same as the partial, in this case
+`comment`, which is then available in the partial for us to show.
 
-```erb
-<p>
-  <strong>Title:</strong>
-  <%= @article.title %>
-</p>
+### Rendering a Partial Form
 
-<p>
-  <strong>Text:</strong>
-  <%= @article.text %>
-</p>
+Let us also move that new comment section out to its own partial. Again, you
+create a file `app/views/comments/_form.html.erb` containing:
+
+```html+erb
+<%= form_with model: [ @article, @article.comments.build ] do |form| %>
+  <p>
+    <%= form.label :commenter %><br>
+    <%= form.text_field :commenter %>
+  </p>
+  <p>
+    <%= form.label :body %><br>
+    <%= form.text_area :body %>
+  </p>
+  <p>
+    <%= form.submit %>
+  </p>
+<% end %>
+```
+
+Then you make the `app/views/articles/show.html.erb` look like the following:
+
+```html+erb
+<h1><%= @article.title %></h1>
+
+<p><%= @article.body %></p>
+
+<ul>
+  <li><%= link_to "Edit", edit_article_path(@article) %></li>
+  <li><%= link_to "Destroy", article_path(@article),
+                  method: :delete,
+                  data: { confirm: "Are you sure?" } %></li>
+</ul>
 
 <h2>Comments</h2>
 <%= render @article.comments %>
 
 <h2>Add a comment:</h2>
 <%= render 'comments/form' %>
-
-<%= link_to 'Edit', edit_article_path(@article) %> |
-<%= link_to 'Back', articles_path %>
 ```
 
-上面的代码中第二个 `render` 方法的参数就是我们刚刚定义的 `comments/form` 局部视图。Rails 很智能，能够发现字符串中的斜线，并意识到我们想渲染 `app/views/comments` 文件夹中的 `_form.html.erb` 文件。
+The second render just defines the partial template we want to render,
+`comments/form`. Rails is smart enough to spot the forward slash in that
+string and realize that you want to render the `_form.html.erb` file in
+the `app/views/comments` directory.
 
-`@article` 是实例变量，因此在所有局部视图中都可以使用。
+The `@article` object is available to any partials rendered in the view because
+we defined it as an instance variable.
 
-<a class="anchor" id="deleting-comments"></a>
 
-## 删除评论
+### Using Concerns
 
-博客还有一个重要功能是删除垃圾评论。为了实现这个功能，我们需要在视图中添加一个链接，并在 `CommentsController` 中添加 `destroy` 动作。
+Concerns are a way to make large controllers or models easier to understand and manage. This also has the advantage of reusability when multiple models (or controllers) share the same concerns. Concerns are implemented using modules that contain methods representing a well-defined slice of the functionality that a model or controller is responsible for. In other languages, modules are often known as mixins.
 
-首先在 `app/views/comments/_comment.html.erb` 局部视图中添加删除评论的链接：
+You can use concerns in your controller or model the same way you would use any module. When you first created your app with `rails new blog`, two folders were created within `app/` along with the rest:
 
-```erb
+ ```
+ app/controllers/concerns
+ app/models/concerns
+ ```
+
+A given blog article might have various statuses - for instance, it might be visible to everyone (i.e. `public`), or only visible to the author (i.e. `private`). It may also be hidden to all but still retrievable (i.e. `archived`). Comments may similarly be hidden or visible. This could be represented using a `status` column in each model.
+
+Within the `article` model, after running a migration to add a `status` column, you might add:
+
+```ruby
+class Article < ApplicationRecord
+  has_many :comments
+
+  validates :title, presence: true
+  validates :body, presence: true, length: { minimum: 10 }
+
+  VALID_STATUSES = ['public', 'private', 'archived']
+
+  validates :status, in: VALID_STATUSES
+
+  def archived?
+    status == 'archived'
+  end
+end
+```
+
+and in the `Comment` model:
+
+```ruby
+class Comment < ApplicationRecord
+  belongs_to :article
+
+  VALID_STATUSES = ['public', 'private', 'archived']
+
+  validates :status, in: VALID_STATUSES
+
+  def archived?
+    status == 'archived'
+  end
+end
+```
+
+Then, in our `index` action template (`app/views/articles/index.html.erb`) we would use the `archived?` method to avoid displaying any article that is archived:
+
+```html+erb
+<h1>Articles</h1>
+
+<ul>
+  <% @articles.each do |article| %>
+    <% unless article.archived? %>
+      <li>
+        <%= link_to article.title, article %>
+      </li>
+    <% end %>
+  <% end %>
+</ul>
+
+<%= link_to "New Article", new_article_path %>
+```
+
+However, if you look again at our models now, you can see that the logic is duplicated. If in the future we increase the functionality of our blog - to include private messages, for instance -  we might find ourselves duplicating the logic yet again. This is where concerns come in handy.
+
+A concern is only responsible for a focused subset of the model's responsibility; the methods in our concern will all be related to the visibility of a model. Let's call our new concern (module) `Visible`. We can create a new file inside `app/models/concerns` called `visible.rb` , and store all of the status methods that were duplicated in the models.
+
+`app/models/concerns/visible.rb`
+
+```ruby
+module Visible
+  def archived?
+    status == 'archived'
+  end
+end
+```
+
+We can add our status validation to the concern, but this is slightly more complex as validations are methods called at the class level. The `ActiveSupport::Concern` ([API Guide](https://api.rubyonrails.org/classes/ActiveSupport/Concern.html)) gives us a simpler way to include them:
+
+```ruby
+module Visible
+  extend ActiveSupport::Concern
+
+  included do
+    VALID_STATUSES = ['public', 'private', 'archived']
+
+    validates :status, in: VALID_STATUSES
+  end
+
+  def archived?
+    status == 'archived'
+  end
+end
+```
+
+Now, we can remove the duplicated logic from each model and instead include our new `Visible` module:
+
+
+In `app/models/article.rb`:
+
+```ruby
+class Article < ApplicationRecord
+  include Visible
+  has_many :comments
+
+  validates :title, presence: true
+  validates :body, presence: true, length: { minimum: 10 }
+end
+```
+
+and in `app/models/comment.rb`:
+
+```ruby
+class Comment < ApplicationRecord
+  include Visible
+  belongs_to :article
+end
+```
+
+Class methods can also be added to concerns. If we want a count of public articles or comments to display on our main page, we might add a class method to Visible as follows:
+
+```ruby
+module Visible
+  extend ActiveSupport::Concern
+
+  VALID_STATUSES = ['public', 'private', 'archived']
+
+  included do
+    validates :status, in: VALID_STATUSES
+  end
+
+  class_methods do
+    def public_count
+      where(status: 'public').count
+    end
+  end
+
+  def archived?
+    status == 'archived'
+  end
+end
+```
+
+Then in the view, you can call it like any class method:
+
+```html+erb
+<h1>Articles</h1>
+
+Our blog has <%= Article.public_count %> articles and counting!
+
+<ul>
+  <% @articles.each do |article| %>
+    <li>
+      <%= link_to article.title, article %>
+    </li>
+  <% end %>
+</ul>
+
+<%= link_to "New Article", new_article_path %>
+```
+
+Deleting Comments
+-----------------
+
+Another important feature of a blog is being able to delete spam comments. To do
+this, we need to implement a link of some sort in the view and a `destroy`
+action in the `CommentsController`.
+
+So first, let's add the delete link in the
+`app/views/comments/_comment.html.erb` partial:
+
+```html+erb
 <p>
   <strong>Commenter:</strong>
   <%= comment.commenter %>
@@ -1517,11 +1893,14 @@ end
 <p>
   <%= link_to 'Destroy Comment', [comment.article, comment],
                method: :delete,
-               data: { confirm: 'Are you sure?' } %>
+               data: { confirm: "Are you sure?" } %>
 </p>
 ```
 
-点击“Destroy Comment”链接后，会向 `CommentsController` 发起 `DELETE /articles/:article_id/comments/:id` 请求，这个请求将用于删除指定评论。下面在控制器（`app/controllers/comments_controller.rb`）中添加 `destroy` 动作：
+Clicking this new "Destroy Comment" link will fire off a `DELETE
+/articles/:article_id/comments/:id` to our `CommentsController`, which can then
+use this to find the comment we want to delete, so let's add a `destroy` action
+to our controller (`app/controllers/comments_controller.rb`):
 
 ```ruby
 class CommentsController < ApplicationController
@@ -1545,37 +1924,49 @@ class CommentsController < ApplicationController
 end
 ```
 
-`destroy` 动作首先找到指定文章，然后在 `@article.comments` 集合中找到指定评论，接着从数据库删除这条评论，最后重定向到显示文章的页面。
+The `destroy` action will find the article we are looking at, locate the comment
+within the `@article.comments` collection, and then remove it from the
+database and send us back to the show action for the article.
 
-<a class="anchor" id="deleting-associated-objects"></a>
 
-### 删除关联对象
+### Deleting Associated Objects
 
-如果要删除一篇文章，文章的相关评论也需要删除，否则这些评论还会占用数据库空间。在 Rails 中可以使用关联的 `dependent` 选项来完成这一工作。像下面这样修改 `app/models/article.rb` 文件中的 `Article` 模型：
+If you delete an article, its associated comments will also need to be
+deleted, otherwise they would simply occupy space in the database. Rails allows
+you to use the `dependent` option of an association to achieve this. Modify the
+Article model, `app/models/article.rb`, as follows:
 
 ```ruby
 class Article < ApplicationRecord
+  include Visible
+
   has_many :comments, dependent: :destroy
-  validates :title, presence: true,
-                    length: { minimum: 5 }
+
+  validates :title, presence: true
+  validates :body, presence: true, length: { minimum: 10 }
 end
 ```
 
-<a class="anchor" id="security"></a>
+Security
+--------
 
-## 安全
+### Basic Authentication
 
-<a class="anchor" id="basic-authentication"></a>
+If you were to publish your blog online, anyone would be able to add, edit and
+delete articles or delete comments.
 
-### 基本身份验证
+Rails provides an HTTP authentication system that will work nicely in
+this situation.
 
-现在如果我们把博客放在网上，任何人都能够添加、修改、删除文章或删除评论。
+In the `ArticlesController` we need to have a way to block access to the
+various actions if the person is not authenticated. Here we can use the Rails
+`http_basic_authenticate_with` method, which allows access to the requested
+action if that method allows it.
 
-Rails 提供了一个非常简单的 HTTP 身份验证系统，可以很好地解决这个问题。
-
-我们需要一种方法来禁止未认证用户访问 `ArticlesController` 的动作。这里我们可以使用 Rails 的 `http_basic_authenticate_with` 方法，通过这个方法的认证后才能访问所请求的动作。
-
-要使用这个身份验证系统，可以在 `app/controllers/articles_controller` 文件中的 `ArticlesController` 的顶部进行指定。这里除了 `index` 和 `show` 动作，其他动作都要通过身份验证才能访问，为此要像下面这样添加代码：
+To use the authentication system, we specify it at the top of our
+`ArticlesController` in `app/controllers/articles_controller.rb`. In our case,
+we want the user to be authenticated on every action except `index` and `show`,
+so we write that:
 
 ```ruby
 class ArticlesController < ApplicationController
@@ -1586,10 +1977,11 @@ class ArticlesController < ApplicationController
     @articles = Article.all
   end
 
-  # 为了行文简洁，省略以下内容
+  # snippet for brevity
 ```
 
-同时只有通过身份验证的用户才能删除评论，为此要在 `CommentsController`（`app/controllers/comments_controller.rb`）中像下面这样添加代码：
+We also want to allow only authenticated users to delete comments, so in the
+`CommentsController` (`app/controllers/comments_controller.rb`) we write:
 
 ```ruby
 class CommentsController < ApplicationController
@@ -1601,43 +1993,71 @@ class CommentsController < ApplicationController
     # ...
   end
 
-  # 为了行文简洁，省略以下内容
+  # snippet for brevity
 ```
 
-现在如果我们试着新建文章，就会看到 HTTP 基本身份验证对话框：
+Now if you try to create a new article, you will be greeted with a basic HTTP
+Authentication challenge:
 
-![HTTP 基本身份验证对话框](images/getting_started/challenge.png)
+![Basic HTTP Authentication Challenge](images/getting_started/challenge.png)
 
-此外，还可以在 Rails 中使用其他身份验证方法。在众多选择中，[Devise](https://github.com/plataformatec/devise) 和 [Authlogic](https://github.com/binarylogic/authlogic) 是两个流行的 Rails 身份验证扩展。
+Other authentication methods are available for Rails applications. Two popular
+authentication add-ons for Rails are the
+[Devise](https://github.com/plataformatec/devise) rails engine and
+the [Authlogic](https://github.com/binarylogic/authlogic) gem,
+along with a number of others.
 
-<a class="anchor" id="other-security-considerations"></a>
 
-### 其他安全注意事项
+### Other Security Considerations
 
-安全，尤其是 Web 应用的安全，是一个广泛和值得深入研究的领域。关于 Rails 应用安全的更多介绍，请参阅[Ruby on Rails 安全指南](security.html)。
+Security, especially in web applications, is a broad and detailed area. Security
+in your Rails application is covered in more depth in
+the [Ruby on Rails Security Guide](security.html).
 
-<a class="anchor" id="whats-next"></a>
 
-## 接下来做什么？
+What's Next?
+------------
 
-至此，我们已经完成了第一个 Rails 应用，请在此基础上尽情修改、试验。
+Now that you've seen your first Rails application, you should feel free to
+update it and experiment on your own.
 
-记住你不需要独自完成一切，在安装和运行 Rails 时如果需要帮助，请随时使用下面的资源：
+Remember, you don't have to do everything without help. As you need assistance
+getting up and running with Rails, feel free to consult these support
+resources:
 
-*   [Ruby on Rails 指南](http://rails.guide)
-*   [Ruby on Rails 教程](http://railstutorial-china.org)
-*   [Ruby on Rails 邮件列表](http://groups.google.com/group/rubyonrails-talk)
-*   irc.freenode.net 中的 [#rubyonrails](irc://irc.freenode.net/#rubyonrails) 频道
+* The [Ruby on Rails Guides](index.html)
+* The [Ruby on Rails mailing list](https://discuss.rubyonrails.org/c/rubyonrails-talk)
+* The [#rubyonrails](irc://irc.freenode.net/#rubyonrails) channel on irc.freenode.net
 
-<a class="anchor" id="configuration-gotchas"></a>
 
-## 配置问题
+Configuration Gotchas
+---------------------
 
-在 Rails 中，储存外部数据最好都使用 UTF-8 编码。虽然 Ruby 库和 Rails 通常都能将使用其他编码的外部数据转换为 UTF-8 编码，但并非总是能可靠地工作，所以最好还是确保所有的外部数据都使用 UTF-8 编码。
+The easiest way to work with Rails is to store all external data as UTF-8. If
+you don't, Ruby libraries and Rails will often be able to convert your native
+data into UTF-8, but this doesn't always work reliably, so you're better off
+ensuring that all external data is UTF-8.
 
-编码出错的最常见症状是在浏览器中出现带有问号的黑色菱形块，另一个常见症状是本该出现“ü”字符的地方出现了“Ã¼”字符。Rails 内部采取了许多步骤来解决常见的可以自动检测和纠正的编码问题。尽管如此，如果不使用 UTF-8 编码来储存外部数据，偶尔还是会出现无法自动检测和纠正的编码问题。
+If you have made a mistake in this area, the most common symptom is a black
+diamond with a question mark inside appearing in the browser. Another common
+symptom is characters like "Ã¼" appearing instead of "ü". Rails takes a number
+of internal steps to mitigate common causes of these problems that can be
+automatically detected and corrected. However, if you have external data that is
+not stored as UTF-8, it can occasionally result in these kinds of issues that
+cannot be automatically detected by Rails and corrected.
 
-下面是非 UTF-8 编码数据的两种常见来源：
+Two very common sources of data that are not UTF-8:
 
-*   文本编辑器：大多数文本编辑器（例如 TextMate）默认使用 UTF-8 编码保存文件。如果你的文本编辑器未使用 UTF-8 编码，就可能导致在模板中输入的特殊字符（例如 é）在浏览器中显示为带有问号的黑色菱形块。这个问题也会出现在 i18n 翻译文件中。大多数未默认使用 UTF-8 编码的文本编辑器（例如 Dreamweaver 的某些版本）提供了将默认编码修改为 UTF-8 的方法，别忘了进行修改。
-*   数据库：默认情况下，Rails 会把从数据库中取出的数据转换成 UTF-8 格式。尽管如此，如果数据库内部不使用 UTF-8 编码，就有可能无法保存用户输入的所有字符。例如，如果数据库内部使用 Latin-1 编码，而用户输入了俄语、希伯来语或日语字符，那么在把数据保存到数据库时就会造成数据永久丢失。因此，只要可能，就请在数据库内部使用 UTF-8 编码。
+* Your text editor: Most text editors (such as TextMate), default to saving
+  files as UTF-8. If your text editor does not, this can result in special
+  characters that you enter in your templates (such as é) to appear as a diamond
+  with a question mark inside in the browser. This also applies to your i18n
+  translation files. Most editors that do not already default to UTF-8 (such as
+  some versions of Dreamweaver) offer a way to change the default to UTF-8. Do
+  so.
+* Your database: Rails defaults to converting data from your database into UTF-8
+  at the boundary. However, if your database is not using UTF-8 internally, it
+  may not be able to store all characters that your users enter. For instance,
+  if your database is using Latin-1 internally, and your user enters a Russian,
+  Hebrew, or Japanese character, the data will be lost forever once it enters
+  the database. If possible, use UTF-8 as the internal storage of your database.

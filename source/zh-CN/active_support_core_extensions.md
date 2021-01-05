@@ -1,117 +1,107 @@
-# Active Support 核心扩展
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-Active Support 是 Ruby on Rails 的一个组件，扩展了 Ruby 语言，提供了一些实用功能。
+Active Support Core Extensions
+==============================
 
-Active Support 丰富了 Rails 使用的编程语言，目的是便于开发 Rails 应用以及 Rails 本身。
+Active Support is the Ruby on Rails component responsible for providing Ruby language extensions, utilities, and other transversal stuff.
 
-读完本文后，您将学到：
+It offers a richer bottom-line at the language level, targeted both at the development of Rails applications, and at the development of Ruby on Rails itself.
 
-*   核心扩展是什么；
-*   如何加载所有扩展；
-*   如何按需加载想用的扩展；
-*   Active Support 提供了哪些扩展。
+After reading this guide, you will know:
 
------------------------------------------------------------------------------
+* What Core Extensions are.
+* How to load all extensions.
+* How to cherry-pick just the extensions you want.
+* What extensions Active Support provides.
 
-<a class="anchor" id="how-to-load-core-extensions"></a>
+--------------------------------------------------------------------------------
 
-## 如何加载核心扩展
+How to Load Core Extensions
+---------------------------
 
-<a class="anchor" id="stand-alone-active-support"></a>
+### Stand-Alone Active Support
 
-### 独立的 Active Support
+In order to have a near-zero default footprint, Active Support does not load anything by default. It is broken in small pieces so that you can load just what you need, and also has some convenience entry points to load related extensions in one shot, even everything.
 
-为了减轻应用的负担，默认情况下 Active Support 不会加载任何功能。Active Support 中的各部分功能是相对独立的，可以只加载需要的功能，也可以方便地加载相互联系的功能，或者加载全部功能。
-
-因此，只编写下面这个 `require` 语句，对象甚至无法响应 `blank?` 方法：
-
-```ruby
-require 'active_support'
-```
-
-我们来看一下到底应该如何加载。
-
-<a class="anchor" id="cherry-picking-a-definition"></a>
-
-#### 按需加载
-
-获取 `blank?` 方法最轻便的做法是按需加载其定义所在的文件。
-
-本文为核心扩展中的每个方法都做了说明，告知是在哪个文件中定义的。对 `blank?` 方法而言，说明如下：
-
-NOTE: 在 `active_support/core_ext/object/blank.rb` 文件中定义。
-
-因此 `blank?` 方法要这么加载：
+Thus, after a simple require like:
 
 ```ruby
-require 'active_support'
-require 'active_support/core_ext/object/blank'
+require "active_support"
 ```
 
-Active Support 的设计方式精良，确保按需加载时真的只加载所需的扩展。
+objects do not even respond to [`blank?`][Object#blank?]. Let's see how to load its definition.
 
-<a class="anchor" id="loading-grouped-core-extensions"></a>
+#### Cherry-picking a Definition
 
-#### 成组加载核心扩展
+The most lightweight way to get `blank?` is to cherry-pick the file that defines it.
 
-下一层级是加载 `Object` 对象的所有扩展。一般来说，对 `SomeClass` 的扩展都保存在 `active_support/core_ext/some_class` 文件夹中。
+For every single method defined as a core extension this guide has a note that says where such a method is defined. In the case of `blank?` the note reads:
 
-因此，加载 `Object` 对象的所有扩展（包括 `balnk?` 方法）可以这么做：
+NOTE: Defined in `active_support/core_ext/object/blank.rb`.
+
+That means that you can require it like this:
 
 ```ruby
-require 'active_support'
-require 'active_support/core_ext/object'
+require "active_support"
+require "active_support/core_ext/object/blank"
 ```
 
-<a class="anchor" id="loading-all-core-extensions"></a>
+Active Support has been carefully revised so that cherry-picking a file loads only strictly needed dependencies, if any.
 
-#### 加载所有扩展
+#### Loading Grouped Core Extensions
 
-如果想加载所有核心扩展，可以这么做：
+The next level is to simply load all extensions to `Object`. As a rule of thumb, extensions to `SomeClass` are available in one shot by loading `active_support/core_ext/some_class`.
+
+Thus, to load all extensions to `Object` (including `blank?`):
 
 ```ruby
-require 'active_support'
-require 'active_support/core_ext'
+require "active_support"
+require "active_support/core_ext/object"
 ```
 
-<a class="anchor" id="loading-all-active-support"></a>
+#### Loading All Core Extensions
 
-#### 加载 Active Support 提供的所有功能
-
-最后，如果想使用 Active Support 提供的所有功能，可以这么做：
+You may prefer just to load all core extensions, there is a file for that:
 
 ```ruby
-require 'active_support/all'
+require "active_support"
+require "active_support/core_ext"
 ```
 
-其实，这么做并不会把整个 Active Support 载入内存，有些功能通过 `autoload` 加载，所以真正使用时才会加载。
+#### Loading All Active Support
 
-<a class="anchor" id="active-support-within-a-ruby-on-rails-application"></a>
+And finally, if you want to have all Active Support available just issue:
 
-### 在 Rails 应用中使用 Active Support
+```ruby
+require "active_support/all"
+```
 
-除非把 `config.active_support.bare` 设为 `true`，否则 Rails 应用不会加载 Active Support 提供的所有功能。即便全部加载，应用也会根据框架的设置按需加载所需功能，而且应用开发者还可以根据需要做更细化的选择，方法如前文所述。
+That does not even put the entire Active Support in memory upfront indeed, some stuff is configured via `autoload`, so it is only loaded if used.
 
-<a class="anchor" id="extensions-to-all-objects"></a>
+### Active Support Within a Ruby on Rails Application
 
-## 所有对象皆可使用的扩展
+A Ruby on Rails application loads all Active Support unless `config.active_support.bare` is true. In that case, the application will only load what the framework itself cherry-picks for its own needs, and can still cherry-pick itself at any granularity level, as explained in the previous section.
 
-<a class="anchor" id="blank-questionmark-and-present-questionmark"></a>
+Extensions to All Objects
+-------------------------
 
-### `blank?` 和 `present?`
+### `blank?` and `present?`
 
-在 Rails 应用中，下面这些值表示空值：
+The following values are considered to be blank in a Rails application:
 
-*   `nil` 和 `false`；
-*   只有空白的字符串（注意下面的说明）；
-*   空数组和空散列；
-*   其他能响应 `empty?` 方法，而且返回值为 `true` 的对象；
+* `nil` and `false`,
 
-TIP: 判断字符串是否为空使用的是能理解 Unicode 字符的 `[:space:]`，所以 `U+2029`（分段符）会被视为空白。
+* strings composed only of whitespace (see note below),
 
-WARNING: 注意，这里并没有提到数字。特别说明，`0` 和 `0.0` 不是空值。
+* empty arrays and hashes, and
 
-例如，`ActionController::HttpAuthentication::Token::ControllerMethods` 定义的这个方法使用 `blank?` 检查是否有令牌：
+* any other object that responds to `empty?` and is empty.
+
+INFO: The predicate for strings uses the Unicode-aware character class `[:space:]`, so for example U+2029 (paragraph separator) is considered to be whitespace.
+
+WARNING: Note that numbers are not mentioned. In particular, 0 and 0.0 are **not** blank.
+
+For example, this method from `ActionController::HttpAuthentication::Token::ControllerMethods` uses [`blank?`][Object#blank?] for checking whether a token is present:
 
 ```ruby
 def authenticate(controller, &login_procedure)
@@ -122,7 +112,7 @@ def authenticate(controller, &login_procedure)
 end
 ```
 
-`present?` 方法等价于 `!blank?`。下面这个方法摘自 `ActionDispatch::Http::Cache::Response`：
+The method [`present?`][Object#present?] is equivalent to `!blank?`. This example is taken from `ActionDispatch::Http::Cache::Response`:
 
 ```ruby
 def set_conditional_cache_control!
@@ -131,64 +121,54 @@ def set_conditional_cache_control!
 end
 ```
 
-NOTE: 在 `active_support/core_ext/object/blank.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/blank.rb`.
 
-<a class="anchor" id="presence"></a>
+[Object#blank?]: https://api.rubyonrails.org/classes/Object.html#method-i-blank-3F
+[Object#present?]: https://api.rubyonrails.org/classes/Object.html#method-i-present-3F
 
 ### `presence`
 
-如果 `present?` 方法返回 `true`，`presence` 方法的返回值为调用对象，否则返回 `nil`。惯用法如下：
+The [`presence`][Object#presence] method returns its receiver if `present?`, and `nil` otherwise. It is useful for idioms like this:
 
 ```ruby
 host = config[:host].presence || 'localhost'
 ```
 
-NOTE: 在 `active_support/core_ext/object/blank.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/blank.rb`.
 
-<a class="anchor" id="duplicable-questionmark"></a>
+[Object#presence]: https://api.rubyonrails.org/classes/Object.html#method-i-presence
 
 ### `duplicable?`
 
-Ruby 中很多基本的对象是单例。例如，在应用的整个生命周期内，整数 1 始终表示同一个实例：
+As of Ruby 2.5, most objects can be duplicated via `dup` or `clone`:
 
 ```ruby
-1.object_id                 # => 3
-Math.cos(0).to_i.object_id  # => 3
+"foo".dup           # => "foo"
+"".dup              # => ""
+Rational(1).dup     # => (1/1)
+Complex(0).dup      # => (0+0i)
+1.method(:+).dup    # => TypeError (allocator undefined for Method)
 ```
 
-因此，这些对象无法通过 `dup` 或 `clone` 方法复制：
+Active Support provides [`duplicable?`][Object#duplicable?] to query an object about this:
 
 ```ruby
-true.dup  # => TypeError: can't dup TrueClass
+"foo".duplicable?           # => true
+"".duplicable?              # => true
+Rational(1).duplicable?     # => true
+Complex(1).duplicable?      # => true
+1.method(:+).duplicable?    # => false
 ```
 
-有些数字虽然不是单例，但也不能复制：
+WARNING: Any class can disallow duplication by removing `dup` and `clone` or raising exceptions from them. Thus only `rescue` can tell whether a given arbitrary object is duplicable. `duplicable?` depends on the hard-coded list above, but it is much faster than `rescue`. Use it only if you know the hard-coded list is enough in your use case.
 
-```ruby
-0.0.clone        # => allocator undefined for Float
-(2**1024).clone  # => allocator undefined for Bignum
-```
+NOTE: Defined in `active_support/core_ext/object/duplicable.rb`.
 
-Active Support 提供的 `duplicable?` 方法用于查询对象是否可以复制：
-
-```ruby
-"foo".duplicable? # => true
-"".duplicable?    # => true
-0.0.duplicable?   # => false
-false.duplicable? # => false
-```
-
-按照定义，除了 `nil`、`false`、`true`、符号、数字、类、模块和方法对象之外，其他对象都可以复制。
-
-WARNING: 任何类都可以禁止对象复制，只需删除 `dup` 和 `clone` 两个方法，或者在这两个方法中抛出异常。因此只能在 `rescue` 语句中判断对象是否可复制。`duplicable?` 方法直接检查对象是否在上述列表中，因此比 `rescue` 的速度快。仅当你知道上述列表能满足需求时才应该使用 `duplicable?` 方法。
-
-NOTE: 在 `active_support/core_ext/object/duplicable.rb` 文件中定义。
-
-<a class="anchor" id="deep-dup"></a>
+[Object#duplicable?]: https://api.rubyonrails.org/classes/Object.html#method-i-duplicable-3F
 
 ### `deep_dup`
 
-`deep_dup` 方法深拷贝指定的对象。一般情况下，复制包含其他对象的对象时，Ruby 不会复制内部对象，这叫做浅拷贝。假如有一个由字符串组成的数组，浅拷贝的行为如下：
+The [`deep_dup`][Object#deep_dup] method returns a deep copy of a given object. Normally, when you `dup` an object that contains other objects, Ruby does not `dup` them, so it creates a shallow copy of the object. If you have an array with a string, for example, it will look like this:
 
 ```ruby
 array     = ['string']
@@ -196,20 +176,20 @@ duplicate = array.dup
 
 duplicate.push 'another-string'
 
-# 创建了对象副本，因此元素只添加到副本中
+# the object was duplicated, so the element was added only to the duplicate
 array     # => ['string']
 duplicate # => ['string', 'another-string']
 
 duplicate.first.gsub!('string', 'foo')
 
-# 第一个元素没有副本，因此两个数组都会变
+# first element was not duplicated, it will be changed in both arrays
 array     # => ['foo']
 duplicate # => ['foo', 'another-string']
 ```
 
-如上所示，复制数组后得到了一个新对象，修改新对象后原对象没有变化。但对数组中的元素来说情况就不一样了。因为 `dup` 方法不是深拷贝，所以数组中的字符串是同一个对象。
+As you can see, after duplicating the `Array` instance, we got another object, therefore we can modify it and the original object will stay unchanged. This is not true for array's elements, however. Since `dup` does not make a deep copy, the string inside the array is still the same object.
 
-如果想深拷贝一个对象，应该使用 `deep_dup` 方法。举个例子：
+If you need a deep copy of an object, you should use `deep_dup`. Here is an example:
 
 ```ruby
 array     = ['string']
@@ -221,7 +201,7 @@ array     # => ['string']
 duplicate # => ['foo']
 ```
 
-如果对象不可复制，`deep_dup` 方法直接返回对象本身：
+If the object is not duplicable, `deep_dup` will just return it:
 
 ```ruby
 number = 1
@@ -229,27 +209,27 @@ duplicate = number.deep_dup
 number.object_id == duplicate.object_id   # => true
 ```
 
-NOTE: 在 `active_support/core_ext/object/deep_dup.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/deep_dup.rb`.
 
-<a class="anchor" id="try"></a>
+[Object#deep_dup]: https://api.rubyonrails.org/classes/Object.html#method-i-deep_dup
 
 ### `try`
 
-如果只想当对象不为 `nil` 时在其上调用方法，最简单的方式是使用条件语句，但这么做把代码变复杂了。你可以使用 `try` 方法。`try` 方法和 `Object#send` 方法类似，但如果在 `nil` 上调用，返回值为 `nil`。
+When you want to call a method on an object only if it is not `nil`, the simplest way to achieve it is with conditional statements, adding unnecessary clutter. The alternative is to use [`try`][Object#try]. `try` is like `Object#send` except that it returns `nil` if sent to `nil`.
 
-举个例子：
+Here is an example:
 
 ```ruby
-# 不使用 try
+# without try
 unless @number.nil?
   @number.next
 end
 
-# 使用 try
+# with try
 @number.try(:next)
 ```
 
-下面这个例子摘自 `ActiveRecord::ConnectionAdapters::AbstractAdapter`，实例变量 `@logger` 有可能为 `nil`。可以看出，使用 `try` 方法可以避免不必要的检查。
+Another example is this code from `ActiveRecord::ConnectionAdapters::AbstractAdapter` where `@logger` could be `nil`. You can see that the code uses `try` and avoids an unnecessary check.
 
 ```ruby
 def log_info(sql, name, ms)
@@ -260,26 +240,27 @@ def log_info(sql, name, ms)
 end
 ```
 
-`try` 方法也可接受代码块，仅当对象不为 `nil` 时才会执行其中的代码：
+`try` can also be called without arguments but a block, which will only be executed if the object is not nil:
 
 ```ruby
 @person.try { |p| "#{p.first_name} #{p.last_name}" }
 ```
 
-注意，`try` 会吞没没有方法错误，返回 `nil`。如果想避免此类问题，应该使用 `try!`：
+Note that `try` will swallow no-method errors, returning nil instead. If you want to protect against typos, use [`try!`][Object#try!] instead:
 
 ```ruby
 @number.try(:nest)  # => nil
 @number.try!(:nest) # NoMethodError: undefined method `nest' for 1:Integer
 ```
 
-NOTE: 在 `active_support/core_ext/object/try.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/try.rb`.
 
-<a class="anchor" id="class-eval-args-block"></a>
+[Object#try]: https://api.rubyonrails.org/classes/Object.html#method-i-try
+[Object#try!]: https://api.rubyonrails.org/classes/Object.html#method-i-try-21
 
 ### `class_eval(*args, &block)`
 
-使用 `class_eval` 方法可以在对象的单例类上下文中执行代码：
+You can evaluate code in the context of any object's singleton class using [`class_eval`][Kernel#class_eval]:
 
 ```ruby
 class Proc
@@ -296,56 +277,56 @@ class Proc
 end
 ```
 
-NOTE: 在 `active_support/core_ext/kernel/singleton_class.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/kernel/singleton_class.rb`.
 
-<a class="anchor" id="acts-like-questionmark-duck"></a>
+[Kernel#class_eval]: https://api.rubyonrails.org/classes/Kernel.html#method-i-class_eval
 
 ### `acts_like?(duck)`
 
-`acts_like?` 方法检查一个类的行为是否与另一个类相似。比较是基于一个简单的约定：如果在某个类中定义了下面这个方法，就说明其接口与字符串一样。
+The method [`acts_like?`][Object#acts_like?] provides a way to check whether some class acts like some other class based on a simple convention: a class that provides the same interface as `String` defines
 
 ```ruby
 def acts_like_string?
 end
 ```
 
-这个方法只是一个标记，其定义体和返回值不影响效果。开发者可使用下面这种方式判断两个类的表现是否类似：
+which is only a marker, its body or return value are irrelevant. Then, client code can query for duck-type-safeness this way:
 
 ```ruby
 some_klass.acts_like?(:string)
 ```
 
-Rails 使用这种约定定义了行为与 `Date` 和 `Time` 相似的类。
+Rails has classes that act like `Date` or `Time` and follow this contract.
 
-NOTE: 在 `active_support/core_ext/object/acts_like.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/acts_like.rb`.
 
-<a class="anchor" id="to-param"></a>
+[Object#acts_like?]: https://api.rubyonrails.org/classes/Object.html#method-i-acts_like-3F
 
 ### `to_param`
 
-Rails 中的所有对象都能响应 `to_param` 方法。`to_param` 方法的返回值表示查询字符串的值，或者 URL 片段。
+All objects in Rails respond to the method [`to_param`][Object#to_param], which is meant to return something that represents them as values in a query string, or as URL fragments.
 
-默认情况下，`to_param` 方法直接调用 `to_s` 方法：
+By default `to_param` just calls `to_s`:
 
 ```ruby
 7.to_param # => "7"
 ```
 
-`to_param` 方法的返回值**不应该**转义：
+The return value of `to_param` should **not** be escaped:
 
 ```ruby
 "Tom & Jerry".to_param # => "Tom & Jerry"
 ```
 
-Rails 中的很多类都覆盖了这个方法。
+Several classes in Rails overwrite this method.
 
-例如，`nil`、`true` 和 `false` 返回自身。`Array#to_param` 在各个元素上调用 `to_param` 方法，然后使用 `"/"` 合并：
+For example `nil`, `true`, and `false` return themselves. [`Array#to_param`][Array#to_param] calls `to_param` on the elements and joins the result with "/":
 
 ```ruby
 [0, true, String].to_param # => "0/true/String"
 ```
 
-注意，Rails 的路由系统在模型上调用 `to_param` 方法获取占位符 `:id` 的值。`ActiveRecord::Base#to_param` 返回模型的 `id`，不过可以在模型中重新定义。例如，按照下面的方式重新定义：
+Notably, the Rails routing system calls `to_param` on models to get a value for the `:id` placeholder. `ActiveRecord::Base#to_param` returns the `id` of a model, but you can redefine that method in your models. For example, given
 
 ```ruby
 class User
@@ -355,21 +336,22 @@ class User
 end
 ```
 
-效果如下：
+we get:
 
 ```ruby
 user_path(@user) # => "/users/357-john-smith"
 ```
 
-WARNING: 应该让控制器知道重新定义了 `to_param` 方法，因为接收到上面这种请求后，`params[:id]` 的值为 `"357-john-smith"`。
+WARNING. Controllers need to be aware of any redefinition of `to_param` because when a request like that comes in "357-john-smith" is the value of `params[:id]`.
 
-NOTE: 在 `active_support/core_ext/object/to_param.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/to_param.rb`.
 
-<a class="anchor" id="to-query"></a>
+[Array#to_param]: https://api.rubyonrails.org/classes/Array.html#method-i-to_param
+[Object#to_param]: https://api.rubyonrails.org/classes/Object.html#method-i-to_param
 
 ### `to_query`
 
-除散列之外，传入未转义的 `key`，`to_query` 方法把 `to_param` 方法的返回值赋值给 `key`，组成查询字符串。例如，重新定义了 `to_param` 方法：
+The [`to_query`][Object#to_query] method constructs a query string that associates a given `key` with the return value of `to_param`. For example, with the following `to_param` definition:
 
 ```ruby
 class User
@@ -379,50 +361,51 @@ class User
 end
 ```
 
-效果如下：
+we get:
 
 ```ruby
-current_user.to_query('user') # => user=357-john-smith
+current_user.to_query('user') # => "user=357-john-smith"
 ```
 
-`to_query` 方法会根据需要转义键和值：
+This method escapes whatever is needed, both for the key and the value:
 
 ```ruby
 account.to_query('company[name]')
 # => "company%5Bname%5D=Johnson+%26+Johnson"
 ```
 
-因此得到的值可以作为查询字符串使用。
+so its output is ready to be used in a query string.
 
-`Array#to_query` 方法在各个元素上调用 `to_query` 方法，键为 `key[]`，然后使用 `"&"` 合并：
+Arrays return the result of applying `to_query` to each element with `key[]` as key, and join the result with "&":
 
 ```ruby
 [3.4, -45.6].to_query('sample')
 # => "sample%5B%5D=3.4&sample%5B%5D=-45.6"
 ```
 
-散列也响应 `to_query` 方法，但处理方式不一样。如果不传入参数，先在各个元素上调用 `to_query(key)`，得到一系列键值对赋值字符串，然后按照键的顺序排列，再使用 `"&"` 合并：
+Hashes also respond to `to_query` but with a different signature. If no argument is passed a call generates a sorted series of key/value assignments calling `to_query(key)` on its values. Then it joins the result with "&":
 
 ```ruby
 {c: 3, b: 2, a: 1}.to_query # => "a=1&b=2&c=3"
 ```
 
-`Hash#to_query` 方法还有一个可选参数，用于指定键的命名空间：
+The method [`Hash#to_query`][Hash#to_query] accepts an optional namespace for the keys:
 
-```rb
+```ruby
 {id: 89, name: "John Smith"}.to_query('user')
 # => "user%5Bid%5D=89&user%5Bname%5D=John+Smith"
 ```
 
-NOTE: 在 `active_support/core_ext/object/to_query.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/to_query.rb`.
 
-<a class="anchor" id="with-options"></a>
+[Hash#to_query]: https://api.rubyonrails.org/classes/Hash.html#method-i-to_query
+[Object#to_query]: https://api.rubyonrails.org/classes/Object.html#method-i-to_query
 
 ### `with_options`
 
-`with_options` 方法把一系列方法调用中的通用选项提取出来。
+The method [`with_options`][Object#with_options] provides a way to factor out common options in a series of method calls.
 
-使用散列指定通用选项后，`with_options` 方法会把一个代理对象拽入代码块。在代码块中，代理对象调用的方法会转发给调用者，并合并选项。例如，如下的代码
+Given a default options hash, `with_options` yields a proxy object to a block. Within the block, methods called on the proxy are forwarded to the receiver with their options merged. For example, you get rid of the duplication in:
 
 ```ruby
 class Account < ApplicationRecord
@@ -433,7 +416,7 @@ class Account < ApplicationRecord
 end
 ```
 
-其中的重复可以使用 `with_options` 方法去除：
+this way:
 
 ```ruby
 class Account < ApplicationRecord
@@ -446,7 +429,7 @@ class Account < ApplicationRecord
 end
 ```
 
-这种用法还可形成一种分组方式。假如想根据用户使用的语言发送不同的电子报，在邮件发送程序中可以根据用户的区域设置分组：
+That idiom may convey _grouping_ to the reader as well. For example, say you want to send a newsletter whose language depends on the user. Somewhere in the mailer you could group locale-dependent bits like this:
 
 ```ruby
 I18n.with_options locale: user.locale, scope: "newsletter" do |i18n|
@@ -455,29 +438,26 @@ I18n.with_options locale: user.locale, scope: "newsletter" do |i18n|
 end
 ```
 
-TIP: `with_options` 方法会把方法调用转发给调用者，因此可以嵌套使用。每层嵌套都会合并上一层的选项。
+TIP: Since `with_options` forwards calls to its receiver they can be nested. Each nesting level will merge inherited defaults in addition to their own.
 
-NOTE: 在 `active_support/core_ext/object/with_options.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/with_options.rb`.
 
-<a class="anchor" id="json-support"></a>
+[Object#with_options]: https://api.rubyonrails.org/classes/Object.html#method-i-with_options
 
-### 对 JSON 的支持
+### JSON support
 
-Active Support 实现的 `to_json` 方法比 `json` gem 更好用，这是因为 `Hash`、`OrderedHash` 和 `Process::Status` 等类转换成 JSON 时要做特别处理。
+Active Support provides a better implementation of `to_json` than the `json` gem ordinarily provides for Ruby objects. This is because some classes, like `Hash`, `OrderedHash` and `Process::Status` need special handling in order to provide a proper JSON representation.
 
-NOTE: 在 `active_support/core_ext/object/json.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/json.rb`.
 
-<a class="anchor" id="instance-variables"></a>
+### Instance Variables
 
-### 实例变量
-
-Active Support 提供了很多便于访问实例变量的方法。
-
-<a class="anchor" id="instance-values"></a>
+Active Support provides several methods to ease access to instance variables.
 
 #### `instance_values`
 
-`instance_values` 方法返回一个散列，把实例变量的名称（不含前面的 `@` 符号）映射到其值上，键是字符串：
+The method [`instance_values`][Object#instance_values] returns a hash that maps instance variable names without "@" to their
+corresponding values. Keys are strings:
 
 ```ruby
 class C
@@ -489,13 +469,13 @@ end
 C.new(0, 1).instance_values # => {"x" => 0, "y" => 1}
 ```
 
-NOTE: 在 `active_support/core_ext/object/instance_variables.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/instance_variables.rb`.
 
-<a class="anchor" id="instance-variable-names"></a>
+[Object#instance_values]: https://api.rubyonrails.org/classes/Object.html#method-i-instance_values
 
 #### `instance_variable_names`
 
-`instance_variable_names` 方法返回一个数组，实例变量的名称前面包含 `@` 符号。
+The method [`instance_variable_names`][Object#instance_variable_names] returns an array. Each name includes the "@" sign.
 
 ```ruby
 class C
@@ -507,36 +487,38 @@ end
 C.new(0, 1).instance_variable_names # => ["@x", "@y"]
 ```
 
-NOTE: 在 `active_support/core_ext/object/instance_variables.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/instance_variables.rb`.
 
-<a class="anchor" id="silencing-warnings-and-exceptions"></a>
+[Object#instance_variable_names]: https://api.rubyonrails.org/classes/Object.html#method-i-instance_variable_names
 
-### 静默警告和异常
+### Silencing Warnings and Exceptions
 
-`silence_warnings` 和 `enable_warnings` 方法修改各自代码块的 `$VERBOSE` 全局变量，代码块结束后恢复原值：
+The methods [`silence_warnings`][Kernel#silence_warnings] and [`enable_warnings`][Kernel#enable_warnings] change the value of `$VERBOSE` accordingly for the duration of their block, and reset it afterwards:
 
 ```ruby
 silence_warnings { Object.const_set "RAILS_DEFAULT_LOGGER", logger }
 ```
 
-异常消息也可静默，使用 `suppress` 方法即可。`suppress` 方法可接受任意个异常类。如果执行代码块的过程中抛出异常，而且异常属于（`kind_of?`）参数指定的类，`suppress` 方法会静默该异常类的消息，否则抛出异常：
+Silencing exceptions is also possible with [`suppress`][Kernel#suppress]. This method receives an arbitrary number of exception classes. If an exception is raised during the execution of the block and is `kind_of?` any of the arguments, `suppress` captures it and returns silently. Otherwise the exception is not captured:
 
 ```ruby
-# 如果用户锁定了，访问次数不增加也没关系
+# If the user is locked, the increment is lost, no big deal.
 suppress(ActiveRecord::StaleObjectError) do
   current_user.increment! :visits
 end
 ```
 
-NOTE: 在 `active_support/core_ext/kernel/reporting.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/kernel/reporting.rb`.
 
-<a class="anchor" id="in-questionmark"></a>
+[Kernel#enable_warnings]: https://api.rubyonrails.org/classes/Kernel.html#method-i-enable_warnings
+[Kernel#silence_warnings]: https://api.rubyonrails.org/classes/Kernel.html#method-i-silence_warnings
+[Kernel#suppress]: https://api.rubyonrails.org/classes/Kernel.html#method-i-suppress
 
 ### `in?`
 
-`in?` 方法测试某个对象是否在另一个对象中。如果传入的对象不能响应 `include?` 方法，抛出 `ArgumentError` 异常。
+The predicate [`in?`][Object#in?] tests if an object is included in another object. An `ArgumentError` exception will be raised if the argument passed does not respond to `include?`.
 
-`in?` 方法使用举例：
+Examples of `in?`:
 
 ```ruby
 1.in?([1,2])        # => true
@@ -545,59 +527,56 @@ NOTE: 在 `active_support/core_ext/kernel/reporting.rb` 文件中定义。
 1.in?(1)            # => ArgumentError
 ```
 
-NOTE: 在 `active_support/core_ext/object/inclusion.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/inclusion.rb`.
 
-<a class="anchor" id="extensions-to-module"></a>
+[Object#in?]: https://api.rubyonrails.org/classes/Object.html#method-i-in-3F
 
-## `Module` 的扩展
+Extensions to `Module`
+----------------------
 
-<a class="anchor" id="attributes"></a>
-
-### 属性
-
-<a class="anchor" id="alias-attribute"></a>
+### Attributes
 
 #### `alias_attribute`
 
-模型的属性有读值方法、设值方法和判断方法。`alias_attribute` 方法可以一次性为这三种方法创建别名。和其他创建别名的方法一样，`alias_attribute` 方法的第一个参数是新属性名，第二个参数是旧属性名（我是这样记的，参数的顺序和赋值语句一样）：
+Model attributes have a reader, a writer, and a predicate. You can alias a model attribute having the corresponding three methods all defined for you by using [`alias_attribute`][Module#alias_attribute]. As in other aliasing methods, the new name is the first argument, and the old name is the second (one mnemonic is that they go in the same order as if you did an assignment):
 
 ```ruby
 class User < ApplicationRecord
-  # 可以使用 login 指代 email 列
-  # 在身份验证代码中可以这样做
+  # You can refer to the email column as "login".
+  # This can be meaningful for authentication code.
   alias_attribute :login, :email
 end
 ```
 
-NOTE: 在 `active_support/core_ext/module/aliasing.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/module/aliasing.rb`.
 
-<a class="anchor" id="internal-attributes"></a>
+[Module#alias_attribute]: https://api.rubyonrails.org/classes/Module.html#method-i-alias_attribute
 
-#### 内部属性
+#### Internal Attributes
 
-如果在父类中定义属性，有可能会出现命名冲突。代码库一定要注意这个问题。
+When you are defining an attribute in a class that is meant to be subclassed, name collisions are a risk. That's remarkably important for libraries.
 
-Active Support 提供了 `attr_internal_reader`、`attr_internal_writer` 和 `attr_internal_accessor` 三个方法，其行为与 Ruby 内置的 `attr_*` 方法类似，但使用其他方式命名实例变量，从而减少重名的几率。
+Active Support defines the macros [`attr_internal_reader`][Module#attr_internal_reader], [`attr_internal_writer`][Module#attr_internal_writer], and [`attr_internal_accessor`][Module#attr_internal_accessor]. They behave like their Ruby built-in `attr_*` counterparts, except they name the underlying instance variable in a way that makes collisions less likely.
 
-`attr_internal` 方法是 `attr_internal_accessor` 方法的别名：
+The macro [`attr_internal`][Module#attr_internal] is a synonym for `attr_internal_accessor`:
 
 ```ruby
-# 库
+# library
 class ThirdPartyLibrary::Crawler
   attr_internal :log_level
 end
 
-# 客户代码
+# client code
 class MyCrawler < ThirdPartyLibrary::Crawler
   attr_accessor :log_level
 end
 ```
 
-在上面的例子中，`:log_level` 可能不属于代码库的公开接口，只在开发过程中使用。开发者并不知道潜在的重名风险，创建了子类，并在子类中定义了 `:log_level`。幸好用了 `attr_internal` 方法才不会出现命名冲突。
+In the previous example it could be the case that `:log_level` does not belong to the public interface of the library and it is only used for development. The client code, unaware of the potential conflict, subclasses and defines its own `:log_level`. Thanks to `attr_internal` there's no collision.
 
-默认情况下，内部变量的名字前面有个下划线，上例中的内部变量名为 `@_log_level`。不过可使用 `Module.attr_internal_naming_format` 重新设置，可以传入任何 `sprintf` 方法能理解的格式，开头加上 `@` 符号，并在某处放入 `%s`（代表原变量名）。默认的设置为 `"@_%s"`。
+By default the internal instance variable is named with a leading underscore, `@_log_level` in the example above. That's configurable via `Module.attr_internal_naming_format` though, you can pass any `sprintf`-like format string with a leading `@` and a `%s` somewhere, which is where the name will be placed. The default is `"@_%s"`.
 
-Rails 的代码很多地方都用到了内部属性，例如，在视图相关的代码中有如下代码：
+Rails uses internal attributes in a few spots, for examples for views:
 
 ```ruby
 module ActionView
@@ -609,15 +588,18 @@ module ActionView
 end
 ```
 
-NOTE: 在 `active_support/core_ext/module/attr_internal.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/module/attr_internal.rb`.
 
-<a class="anchor" id="module-attributes"></a>
+[Module#attr_internal]: https://api.rubyonrails.org/classes/Module.html#method-i-attr_internal
+[Module#attr_internal_accessor]: https://api.rubyonrails.org/classes/Module.html#method-i-attr_internal_accessor
+[Module#attr_internal_reader]: https://api.rubyonrails.org/classes/Module.html#method-i-attr_internal_reader
+[Module#attr_internal_writer]: https://api.rubyonrails.org/classes/Module.html#method-i-attr_internal_writer
 
-#### 模块属性
+#### Module Attributes
 
-方法 `mattr_reader`、`mattr_writer` 和 `mattr_accessor` 类似于为类定义的 `cattr_*` 方法。其实 `cattr_*` 方法就是 `mattr_*` 方法的别名。参见 [类属性](#class-attributes)。
+The macros [`mattr_reader`][Module#mattr_reader], [`mattr_writer`][Module#mattr_writer], and [`mattr_accessor`][Module#mattr_accessor] are the same as the `cattr_*` macros defined for class. In fact, the `cattr_*` macros are just aliases for the `mattr_*` macros. Check [Class Attributes](#class-attributes).
 
-例如，依赖机制就用到了这些方法：
+For example, the dependencies mechanism uses them:
 
 ```ruby
 module ActiveSupport
@@ -636,42 +618,17 @@ module ActiveSupport
 end
 ```
 
-NOTE: 在 `active_support/core_ext/module/attribute_accessors.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/module/attribute_accessors.rb`.
 
-<a class="anchor" id="extensions-to-module-parents"></a>
+[Module#mattr_accessor]: https://api.rubyonrails.org/classes/Module.html#method-i-mattr_accessor
+[Module#mattr_reader]: https://api.rubyonrails.org/classes/Module.html#method-i-mattr_reader
+[Module#mattr_writer]: https://api.rubyonrails.org/classes/Module.html#method-i-mattr_writer
 
-### 父级
+### Parents
 
-<a class="anchor" id="parent"></a>
+#### `module_parent`
 
-#### `parent`
-
-在嵌套的具名模块上调用 `parent` 方法，返回包含对应常量的模块：
-
-```ruby
-module X
-  module Y
-    module Z
-    end
-  end
-end
-M = X::Y::Z
-
-X::Y::Z.parent # => X::Y
-M.parent       # => X::Y
-```
-
-如果是匿名模块或者位于顶层，`parent` 方法返回 `Object`。
-
-WARNING: 此时，`parent_name` 方法返回 `nil`。
-
-NOTE: 在 `active_support/core_ext/module/introspection.rb` 文件中定义。
-
-<a class="anchor" id="parent-name"></a>
-
-#### `parent_name`
-
-在嵌套的具名模块上调用 `parent_name` 方法，返回包含对应常量的完全限定模块名：
+The [`module_parent`][Module#module_parent] method on a nested named module returns the module that contains its corresponding constant:
 
 ```ruby
 module X
@@ -682,21 +639,21 @@ module X
 end
 M = X::Y::Z
 
-X::Y::Z.parent_name # => "X::Y"
-M.parent_name       # => "X::Y"
+X::Y::Z.module_parent # => X::Y
+M.module_parent       # => X::Y
 ```
 
-如果是匿名模块或者位于顶层，`parent_name` 方法返回 `nil`。
+If the module is anonymous or belongs to the top-level, `module_parent` returns `Object`.
 
-WARNING: 注意，此时 `parent` 方法返回 `Object`。
+WARNING: Note that in that case `module_parent_name` returns `nil`.
 
-NOTE: 在 `active_support/core_ext/module/introspection.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/module/introspection.rb`.
 
-<a class="anchor" id="extensions-to-module-parents-parents"></a>
+[Module#module_parent]: https://api.rubyonrails.org/classes/Module.html#method-i-module_parent
 
-#### `parents`
+#### `module_parent_name`
 
-`parents` 方法在调用者上调用 `parent` 方法，直至 `Object` 为止。返回的结果是一个数组，由底而上：
+The [`module_parent_name`][Module#module_parent_name] method on a nested named module returns the fully qualified name of the module that contains its corresponding constant:
 
 ```ruby
 module X
@@ -707,57 +664,42 @@ module X
 end
 M = X::Y::Z
 
-X::Y::Z.parents # => [X::Y, X, Object]
-M.parents       # => [X::Y, X, Object]
+X::Y::Z.module_parent_name # => "X::Y"
+M.module_parent_name       # => "X::Y"
 ```
 
-NOTE: 在 `active_support/core_ext/module/introspection.rb` 文件中定义。
+For top-level or anonymous modules `module_parent_name` returns `nil`.
 
-<a class="anchor" id="reachable"></a>
+WARNING: Note that in that case `module_parent` returns `Object`.
 
-### 可达性
+NOTE: Defined in `active_support/core_ext/module/introspection.rb`.
 
-如果把具名模块存储在相应的常量中，模块是可达的，意即可以通过常量访问模块对象。
+[Module#module_parent_name]: https://api.rubyonrails.org/classes/Module.html#method-i-module_parent_name
 
-通常，模块都是如此。如果有名为“M”的模块，`M` 常量就存在，指代那个模块：
+#### `module_parents`
+
+The method [`module_parents`][Module#module_parents] calls `module_parent` on the receiver and upwards until `Object` is reached. The chain is returned in an array, from bottom to top:
 
 ```ruby
-module M
+module X
+  module Y
+    module Z
+    end
+  end
 end
+M = X::Y::Z
 
-M.reachable? # => true
+X::Y::Z.module_parents # => [X::Y, X, Object]
+M.module_parents       # => [X::Y, X, Object]
 ```
 
-但是，常量和模块其实是解耦的，因此模块对象也许不可达：
+NOTE: Defined in `active_support/core_ext/module/introspection.rb`.
 
-```ruby
-module M
-end
+[Module#module_parents]: https://api.rubyonrails.org/classes/Module.html#method-i-module_parents
 
-orphan = Object.send(:remove_const, :M)
+### Anonymous
 
-# 现在模块对象是孤儿，但它仍有名称
-orphan.name # => "M"
-
-# 不能通过常量 M 访问，因为这个常量不存在
-orphan.reachable? # => false
-
-# 再定义一个名为“M”的模块
-module M
-end
-
-# 现在常量 M 存在了，而且存储名为“M”的常量对象
-# 但这是一个新实例
-orphan.reachable? # => false
-```
-
-NOTE: 在 `active_support/core_ext/module/reachable.rb` 文件中定义。
-
-<a class="anchor" id="anonymous"></a>
-
-### 匿名
-
-模块可能有也可能没有名称：
+A module may or may not have a name:
 
 ```ruby
 module M
@@ -770,7 +712,7 @@ N.name # => "N"
 Module.new.name # => nil
 ```
 
-可以使用 `anonymous?` 方法判断模块有没有名称：
+You can check whether a module has a name with the predicate [`anonymous?`][Module#anonymous?]:
 
 ```ruby
 module M
@@ -780,7 +722,7 @@ M.anonymous? # => false
 Module.new.anonymous? # => true
 ```
 
-注意，不可达不意味着就是匿名的：
+Note that being unreachable does not imply being anonymous:
 
 ```ruby
 module M
@@ -788,21 +730,22 @@ end
 
 m = Object.send(:remove_const, :M)
 
-m.reachable? # => false
 m.anonymous? # => false
 ```
 
-但是按照定义，匿名模块是不可达的。
+though an anonymous module is unreachable by definition.
 
-NOTE: 在 `active_support/core_ext/module/anonymous.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/module/anonymous.rb`.
 
-<a class="anchor" id="method-delegation"></a>
+[Module#anonymous?]: https://api.rubyonrails.org/classes/Module.html#method-i-anonymous-3F
 
-### 方法委托
+### Method Delegation
 
-`delegate` 方法提供一种便利的方法转发方式。
+#### `delegate`
 
-假设在一个应用中，用户的登录信息存储在 `User` 模型中，而名字和其他数据存储在 `Profile` 模型中：
+The macro [`delegate`][Module#delegate] offers an easy way to forward methods.
+
+Let's imagine that users in some application have login information in the `User` model but name and other data in a separate `Profile` model:
 
 ```ruby
 class User < ApplicationRecord
@@ -810,7 +753,7 @@ class User < ApplicationRecord
 end
 ```
 
-此时，要通过个人资料获取用户的名字，即 `user.profile.name`。不过，若能直接访问这些信息更为便利：
+With that configuration you get a user's name via their profile, `user.profile.name`, but it could be handy to still be able to access such attribute directly:
 
 ```ruby
 class User < ApplicationRecord
@@ -822,7 +765,7 @@ class User < ApplicationRecord
 end
 ```
 
-`delegate` 方法正是为这种需求而生的：
+That is what `delegate` does for you:
 
 ```ruby
 class User < ApplicationRecord
@@ -832,79 +775,110 @@ class User < ApplicationRecord
 end
 ```
 
-这样写出的代码更简洁，而且意图更明显。
+It is shorter, and the intention more obvious.
 
-委托的方法在目标中必须是公开的。
+The method must be public in the target.
 
-`delegate` 方法可接受多个参数，委托多个方法：
+The `delegate` macro accepts several methods:
 
 ```ruby
 delegate :name, :age, :address, :twitter, to: :profile
 ```
 
-内插到字符串中时，`:to` 选项的值应该能求值为方法委托的对象。通常，使用字符串或符号。这个选项的值在接收者的上下文中求值：
+When interpolated into a string, the `:to` option should become an expression that evaluates to the object the method is delegated to. Typically a string or symbol. Such an expression is evaluated in the context of the receiver:
 
 ```ruby
-# 委托给 Rails 常量
+# delegates to the Rails constant
 delegate :logger, to: :Rails
 
-# 委托给接收者所属的类
+# delegates to the receiver's class
 delegate :table_name, to: :class
 ```
 
-WARNING: 如果 `:prefix` 选项的值为 `true`，不能这么做。参见下文。
+WARNING: If the `:prefix` option is `true` this is less generic, see below.
 
-默认情况下，如果委托导致 `NoMethodError` 抛出，而且目标是 `nil`，这个异常会向上冒泡。可以指定 `:allow_nil` 选项，遇到这种情况时返回 `nil`：
+By default, if the delegation raises `NoMethodError` and the target is `nil` the exception is propagated. You can ask that `nil` is returned instead with the `:allow_nil` option:
 
 ```ruby
 delegate :name, to: :profile, allow_nil: true
 ```
 
-设定 `:allow_nil` 选项后，如果用户没有个人资料，`user.name` 返回 `nil`。
+With `:allow_nil` the call `user.name` returns `nil` if the user has no profile.
 
-`:prefix` 选项在生成的方法前面添加一个前缀。如果想起个更好的名称，就可以使用这个选项：
+The option `:prefix` adds a prefix to the name of the generated method. This may be handy for example to get a better name:
 
 ```ruby
 delegate :street, to: :address, prefix: true
 ```
 
-上述示例生成的方法是 `address_street`，而不是 `street`。
+The previous example generates `address_street` rather than `street`.
 
-WARNING: 此时，生成的方法名由目标对象和目标方法的名称构成，因此 `:to` 选项必须是一个方法名。
+WARNING: Since in this case the name of the generated method is composed of the target object and target method names, the `:to` option must be a method name.
 
-此外，还可以自定义前缀：
+A custom prefix may also be configured:
 
 ```ruby
 delegate :size, to: :attachment, prefix: :avatar
 ```
 
-在这个示例中，生成的方法是 `avatar_size`，而不是 `size`。
+In the previous example the macro generates `avatar_size` rather than `size`.
 
-NOTE: 在 `active_support/core_ext/module/delegation.rb` 文件中定义。
+The option `:private` changes methods scope:
 
-<a class="anchor" id="redefining-methods"></a>
+```ruby
+delegate :date_of_birth, to: :profile, private: true
+```
 
-### 重新定义方法
+The delegated methods are public by default. Pass `private: true` to change that.
 
-有时需要使用 `define_method` 定义方法，但却不知道那个方法名是否已经存在。如果存在，而且启用了警告消息，会发出警告。这没什么，但却不够利落。
+NOTE: Defined in `active_support/core_ext/module/delegation.rb`
 
-`redefine_method` 方法能避免这种警告，如果需要，会把现有的方法删除。
+[Module#delegate]: https://api.rubyonrails.org/classes/Module.html#method-i-delegate
 
-NOTE: 在 `active_support/core_ext/module/remove_method.rb` 文件中定义。
+#### `delegate_missing_to`
 
-<a class="anchor" id="extensions-to-class"></a>
+Imagine you would like to delegate everything missing from the `User` object,
+to the `Profile` one. The [`delegate_missing_to`][Module#delegate_missing_to] macro lets you implement this
+in a breeze:
 
-## `Class` 的扩展
+```ruby
+class User < ApplicationRecord
+  has_one :profile
 
-<a class="anchor" id="class-attributes"></a>
+  delegate_missing_to :profile
+end
+```
 
-### 类属性
+The target can be anything callable within the object, e.g. instance variables,
+methods, constants, etc. Only the public methods of the target are delegated.
 
-<a class="anchor" id="class-attribute"></a>
+NOTE: Defined in `active_support/core_ext/module/delegation.rb`.
+
+[Module#delegate_missing_to]: https://api.rubyonrails.org/classes/Module.html#method-i-delegate_missing_to
+
+### Redefining Methods
+
+There are cases where you need to define a method with `define_method`, but don't know whether a method with that name already exists. If it does, a warning is issued if they are enabled. No big deal, but not clean either.
+
+The method [`redefine_method`][Module#redefine_method] prevents such a potential warning, removing the existing method before if needed.
+
+You can also use [`silence_redefinition_of_method`][Module#silence_redefinition_of_method] if you need to define
+the replacement method yourself (because you're using `delegate`, for
+example).
+
+NOTE: Defined in `active_support/core_ext/module/redefine_method.rb`.
+
+[Module#redefine_method]: https://api.rubyonrails.org/classes/Module.html#method-i-redefine_method
+[Module#silence_redefinition_of_method]: https://api.rubyonrails.org/classes/Module.html#method-i-silence_redefinition_of_method
+
+Extensions to `Class`
+---------------------
+
+### Class Attributes
 
 #### `class_attribute`
 
-`class_attribute` 方法声明一个或多个可继承的类属性，它们可以在继承树的任一层级覆盖。
+The method [`class_attribute`][Class#class_attribute] declares one or more inheritable class attributes that can be overridden at any level down the hierarchy.
 
 ```ruby
 class A
@@ -928,7 +902,7 @@ A.x # => :a
 B.x # => :b
 ```
 
-例如，`ActionMailer::Base` 定义了：
+For example `ActionMailer::Base` defines:
 
 ```ruby
 class_attribute :default_params
@@ -940,7 +914,7 @@ self.default_params = {
 }.freeze
 ```
 
-类属性还可以通过实例访问和覆盖：
+They can also be accessed and overridden at the instance level.
 
 ```ruby
 A.x = 1
@@ -953,20 +927,19 @@ a1.x # => 1, comes from A
 a2.x # => 2, overridden in a2
 ```
 
-把 `:instance_writer` 选项设为 `false`，不生成设值实例方法：
+The generation of the writer instance method can be prevented by setting the option `:instance_writer` to `false`.
 
 ```ruby
 module ActiveRecord
   class Base
-    class_attribute :table_name_prefix, instance_writer: false
-    self.table_name_prefix = ""
+    class_attribute :table_name_prefix, instance_writer: false, default: "my"
   end
 end
 ```
 
-模型可以使用这个选项，禁止批量赋值属性。
+A model may find that option useful as a way to prevent mass-assignment from setting the attribute.
 
-把 `:instance_reader` 选项设为 `false`，不生成读值实例方法：
+The generation of the reader instance method can be prevented by setting the option `:instance_reader` to `false`.
 
 ```ruby
 class A
@@ -977,78 +950,76 @@ A.new.x = 1
 A.new.x # NoMethodError
 ```
 
-为了方便，`class_attribute` 还会定义实例判断方法，对实例读值方法的返回值做双重否定。在上例中，判断方法是 `x?`。
+For convenience `class_attribute` also defines an instance predicate which is the double negation of what the instance reader returns. In the examples above it would be called `x?`.
 
-如果 `:instance_reader` 的值是 `false`，实例判断方法与读值方法一样，返回 `NoMethodError`。
+When `:instance_reader` is `false`, the instance predicate returns a `NoMethodError` just like the reader method.
 
-如果不想要实例判断方法，传入 `instance_predicate: false`，这样就不会定义了。
+If you do not want the instance predicate, pass `instance_predicate: false` and it will not be defined.
 
-NOTE: 在 `active_support/core_ext/class/attribute.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/class/attribute.rb`.
 
-<a class="anchor" id="cattr-reader-cattr-writer-and-cattr-accessor"></a>
+[Class#class_attribute]: https://api.rubyonrails.org/classes/Class.html#method-i-class_attribute
 
-#### `cattr_reader`、`cattr_writer` 和 `cattr_accessor`
+#### `cattr_reader`, `cattr_writer`, and `cattr_accessor`
 
-`cattr_reader`、`cattr_writer` 和 `cattr_accessor` 的作用与相应的 `attr_*` 方法类似，不过是针对类的。它们声明的类属性，初始值为 `nil`，除非在此之前类属性已经存在，而且会生成相应的访问方法：
+The macros [`cattr_reader`][Module#cattr_reader], [`cattr_writer`][Module#cattr_writer], and [`cattr_accessor`][Module#cattr_accessor] are analogous to their `attr_*` counterparts but for classes. They initialize a class variable to `nil` unless it already exists, and generate the corresponding class methods to access it:
 
 ```ruby
 class MysqlAdapter < AbstractAdapter
-  # 生成访问 @@emulate_booleans 的类方法
+  # Generates class methods to access @@emulate_booleans.
   cattr_accessor :emulate_booleans
-  self.emulate_booleans = true
 end
 ```
 
-为了方便，也会生成实例方法，这些实例方法只是类属性的代理。因此，实例可以修改类属性，但是不能覆盖——这与 `class_attribute` 不同（参见上文）。例如：
+Also, you can pass a block to `cattr_*` to set up the attribute with a default value:
+
+```ruby
+class MysqlAdapter < AbstractAdapter
+  # Generates class methods to access @@emulate_booleans with default value of true.
+  cattr_accessor :emulate_booleans, default: true
+end
+```
+
+Instance methods are created as well for convenience, they are just proxies to the class attribute. So, instances can change the class attribute, but cannot override it as it happens with `class_attribute` (see above). For example given
 
 ```ruby
 module ActionView
   class Base
-    cattr_accessor :field_error_proc
-    @@field_error_proc = Proc.new{ ... }
+    cattr_accessor :field_error_proc, default: Proc.new { ... }
   end
 end
 ```
 
-这样，我们便可以在视图中访问 `field_error_proc`。
+we can access `field_error_proc` in views.
 
-此外，可以把一个块传给 `cattr_*` 方法，设定属性的默认值：
-
-```ruby
-class MysqlAdapter < AbstractAdapter
-  # 生成访问 @@emulate_booleans 的类方法，其默认值为 true
-  cattr_accessor(:emulate_booleans) { true }
-end
-```
-
-把 `:instance_reader` 设为 `false`，不生成实例读值方法，把 `:instance_writer` 设为 `false`，不生成实例设值方法，把 `:instance_accessor` 设为 `false`，实例读值和设置方法都不生成。此时，这三个选项的值都必须是 `false`，而不能是假值。
+The generation of the reader instance method can be prevented by setting `:instance_reader` to `false` and the generation of the writer instance method can be prevented by setting `:instance_writer` to `false`. Generation of both methods can be prevented by setting `:instance_accessor` to `false`. In all cases, the value must be exactly `false` and not any false value.
 
 ```ruby
 module A
   class B
-    # 不生成实例读值方法 first_name
+    # No first_name instance reader is generated.
     cattr_accessor :first_name, instance_reader: false
-    # 不生成实例设值方法 last_name=
+    # No last_name= instance writer is generated.
     cattr_accessor :last_name, instance_writer: false
-    # 不生成实例读值方法 surname 和实例设值方法 surname=
+    # No surname instance reader or surname= writer is generated.
     cattr_accessor :surname, instance_accessor: false
   end
 end
 ```
 
-在模型中可以把 `:instance_accessor` 设为 `false`，防止批量赋值属性。
+A model may find it useful to set `:instance_accessor` to `false` as a way to prevent mass-assignment from setting the attribute.
 
-NOTE: 在 `active_support/core_ext/module/attribute_accessors.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/module/attribute_accessors.rb`.
 
-<a class="anchor" id="subclasses-descendants"></a>
+[Module#cattr_accessor]: https://api.rubyonrails.org/classes/Module.html#method-i-cattr_accessor
+[Module#cattr_reader]: https://api.rubyonrails.org/classes/Module.html#method-i-cattr_reader
+[Module#cattr_writer]: https://api.rubyonrails.org/classes/Module.html#method-i-cattr_writer
 
-### 子类和后代
-
-<a class="anchor" id="subclasses"></a>
+### Subclasses & Descendants
 
 #### `subclasses`
 
-`subclasses` 方法返回接收者的子类：
+The [`subclasses`][Class#subclasses] method returns the subclasses of the receiver:
 
 ```ruby
 class C; end
@@ -1064,15 +1035,15 @@ class D < C; end
 C.subclasses # => [B, D]
 ```
 
-返回的子类没有特定顺序。
+The order in which these classes are returned is unspecified.
 
-NOTE: 在 `active_support/core_ext/class/subclasses.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/class/subclasses.rb`.
 
-<a class="anchor" id="descendants"></a>
+[Class#subclasses]: https://api.rubyonrails.org/classes/Class.html#method-i-subclasses
 
 #### `descendants`
 
-`descendants` 方法返回接收者的后代：
+The [`descendants`][Class#descendants] method returns all classes that are `<` than its receiver:
 
 ```ruby
 class C; end
@@ -1088,44 +1059,39 @@ class D < C; end
 C.descendants # => [B, A, D]
 ```
 
-返回的后代没有特定顺序。
+The order in which these classes are returned is unspecified.
 
-NOTE: 在 `active_support/core_ext/class/subclasses.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/class/subclasses.rb`.
 
-<a class="anchor" id="extensions-to-string"></a>
+[Class#descendants]: https://api.rubyonrails.org/classes/Class.html#method-i-descendants
 
-## `String` 的扩展
+Extensions to `String`
+----------------------
 
-<a class="anchor" id="output-safety"></a>
+### Output Safety
 
-### 输出的安全性
+#### Motivation
 
-<a class="anchor" id="motivation"></a>
+Inserting data into HTML templates needs extra care. For example, you can't just interpolate `@review.title` verbatim into an HTML page. For one thing, if the review title is "Flanagan & Matz rules!" the output won't be well-formed because an ampersand has to be escaped as "&amp;amp;". What's more, depending on the application, that may be a big security hole because users can inject malicious HTML setting a hand-crafted review title. Check out the section about cross-site scripting in the [Security guide](security.html#cross-site-scripting-xss) for further information about the risks.
 
-#### 引子
+#### Safe Strings
 
-把数据插入 HTML 模板要格外小心。例如，不能原封不动地把 `@review.title` 内插到 HTML 页面中。假如标题是“Flanagan &amp; Matz rules!”，得到的输出格式就不对，因为 &amp; 会转义成“&amp;amp;”。更糟的是，如果应用编写不当，这可能留下严重的安全漏洞，因为用户可以注入恶意的 HTML，设定精心编造的标题。关于这个问题的详情，请阅读 [跨站脚本（XSS）](security.html#cross-site-scripting-xss)对跨站脚本的说明。
+Active Support has the concept of _(html) safe_ strings. A safe string is one that is marked as being insertable into HTML as is. It is trusted, no matter whether it has been escaped or not.
 
-<a class="anchor" id="safe-strings"></a>
-
-#### 安全字符串
-
-Active Support 提出了安全字符串（对 HTML 而言）这一概念。安全字符串是对字符串做的一种标记，表示可以原封不动地插入 HTML。这种字符串是可信赖的，不管会不会转义。
-
-默认，字符串被认为是不安全的：
+Strings are considered to be _unsafe_ by default:
 
 ```ruby
 "".html_safe? # => false
 ```
 
-可以使用 `html_safe` 方法把指定的字符串标记为安全的：
+You can obtain a safe string from a given one with the [`html_safe`][String#html_safe] method:
 
 ```ruby
 s = "".html_safe
 s.html_safe? # => true
 ```
 
-注意，无论如何，`html_safe` 不会执行转义操作，它的作用只是一种断定：
+It is important to understand that `html_safe` performs no escaping whatsoever, it is just an assertion:
 
 ```ruby
 s = "<script>...</script>".html_safe
@@ -1133,39 +1099,39 @@ s.html_safe? # => true
 s            # => "<script>...</script>"
 ```
 
-你要自己确定该不该在某个字符串上调用 `html_safe`。
+It is your responsibility to ensure calling `html_safe` on a particular string is fine.
 
-如果把字符串追加到安全字符串上，不管是就地修改，还是使用 `concat`/`<<` 或 `+`，结果都是一个安全字符串。不安全的字符会转义：
+If you append onto a safe string, either in-place with `concat`/`<<`, or with `+`, the result is a safe string. Unsafe arguments are escaped:
 
 ```ruby
 "".html_safe + "<" # => "&lt;"
 ```
 
-安全的字符直接追加：
+Safe arguments are directly appended:
 
 ```ruby
 "".html_safe + "<".html_safe # => "<"
 ```
 
-在常规的视图中不应该使用这些方法。不安全的值会自动转义：
+These methods should not be used in ordinary views. Unsafe values are automatically escaped:
 
 ```erb
-<%= @review.title %> <%# 可以这么做，如果需要会转义 %>
+<%= @review.title %> <%# fine, escaped if needed %>
 ```
 
-如果想原封不动地插入值，不能调用 `html_safe`，而要使用 `raw` 辅助方法：
+To insert something verbatim use the [`raw`][] helper rather than calling `html_safe`:
 
 ```erb
-<%= raw @cms.current_template %> <%# 原封不动地插入 @cms.current_template %>
+<%= raw @cms.current_template %> <%# inserts @cms.current_template as is %>
 ```
 
-或者，可以使用等效的 `<%==`：
+or, equivalently, use `<%==`:
 
 ```erb
-<%== @cms.current_template %> <%# 原封不动地插入 @cms.current_template %>
+<%== @cms.current_template %> <%# inserts @cms.current_template as is %>
 ```
 
-`raw` 辅助方法已经调用 `html_safe` 了：
+The `raw` helper calls `html_safe` for you:
 
 ```ruby
 def raw(stringish)
@@ -1173,81 +1139,76 @@ def raw(stringish)
 end
 ```
 
-NOTE: 在 `active_support/core_ext/string/output_safety.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/output_safety.rb`.
 
-<a class="anchor" id="transformation"></a>
+[`raw`]: https://api.rubyonrails.org/classes/ActionView/Helpers/OutputSafetyHelper.html#method-i-raw
+[String#html_safe]: https://api.rubyonrails.org/classes/String.html#method-i-html_safe
 
-#### 转换
+#### Transformation
 
-通常，修改字符串的方法都返回不安全的字符串，前文所述的拼接除外。例如，`downcase`、`gsub`、`strip`、`chomp`、`underscore`，等等。
+As a rule of thumb, except perhaps for concatenation as explained above, any method that may change a string gives you an unsafe string. These are `downcase`, `gsub`, `strip`, `chomp`, `underscore`, etc.
 
-就地转换接收者，如 `gsub!`，其本身也变成不安全的了。
+In the case of in-place transformations like `gsub!` the receiver itself becomes unsafe.
 
-TIP: 不管是否修改了自身，安全性都丧失了。
+INFO: The safety bit is lost always, no matter whether the transformation actually changed something.
 
-<a class="anchor" id="conversion-and-coercion"></a>
+#### Conversion and Coercion
 
-#### 类型转换和强制转换
+Calling `to_s` on a safe string returns a safe string, but coercion with `to_str` returns an unsafe string.
 
-在安全字符串上调用 `to_s`，得到的还是安全字符串，但是使用 `to_str` 强制转换，得到的是不安全的字符串。
+#### Copying
 
-<a class="anchor" id="copying"></a>
-
-#### 复制
-
-在安全字符串上调用 `dup` 或 `clone`，得到的还是安全字符串。
-
-<a class="anchor" id="remove"></a>
+Calling `dup` or `clone` on safe strings yields safe strings.
 
 ### `remove`
 
-`remove` 方法删除匹配模式的所有内容：
+The method [`remove`][String#remove] will remove all occurrences of the pattern:
 
 ```ruby
 "Hello World".remove(/Hello /) # => "World"
 ```
 
-也有破坏性版本，`String#remove!`。
+There's also the destructive version `String#remove!`.
 
-NOTE: 在 `active_support/core_ext/string/filters.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/filters.rb`.
 
-<a class="anchor" id="squish"></a>
+[String#remove]: https://api.rubyonrails.org/classes/String.html#method-i-remove
 
 ### `squish`
 
-`squish` 方法把首尾的空白去掉，还会把多个空白压缩成一个：
+The method [`squish`][String#squish] strips leading and trailing whitespace, and substitutes runs of whitespace with a single space each:
 
 ```ruby
 " \n  foo\n\r \t bar \n".squish # => "foo bar"
 ```
 
-也有破坏性版本，`String#squish!`。
+There's also the destructive version `String#squish!`.
 
-注意，既能处理 ASCII 空白，也能处理 Unicode 空白。
+Note that it handles both ASCII and Unicode whitespace.
 
-NOTE: 在 `active_support/core_ext/string/filters.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/filters.rb`.
 
-<a class="anchor" id="truncate"></a>
+[String#squish]: https://api.rubyonrails.org/classes/String.html#method-i-squish
 
 ### `truncate`
 
-`truncate` 方法在指定长度处截断接收者，返回一个副本：
+The method [`truncate`][String#truncate] returns a copy of its receiver truncated after a given `length`:
 
 ```ruby
 "Oh dear! Oh dear! I shall be late!".truncate(20)
 # => "Oh dear! Oh dear!..."
 ```
 
-省略号可以使用 `:omission` 选项自定义：
+Ellipsis can be customized with the `:omission` option:
 
 ```ruby
 "Oh dear! Oh dear! I shall be late!".truncate(20, omission: '&hellip;')
 # => "Oh dear! Oh &hellip;"
 ```
 
-尤其要注意，截断长度包含省略字符串。
+Note in particular that truncation takes into account the length of the omission string.
 
-设置 `:separator` 选项，以自然的方式截断：
+Pass a `:separator` to truncate the string at a natural break:
 
 ```ruby
 "Oh dear! Oh dear! I shall be late!".truncate(18)
@@ -1256,82 +1217,102 @@ NOTE: 在 `active_support/core_ext/string/filters.rb` 文件中定义。
 # => "Oh dear! Oh..."
 ```
 
-`:separator` 选项的值可以是一个正则表达式：
+The option `:separator` can be a regexp:
 
 ```ruby
 "Oh dear! Oh dear! I shall be late!".truncate(18, separator: /\s/)
 # => "Oh dear! Oh..."
 ```
 
-在上述示例中，本该在“dear”中间截断，但是 `:separator` 选项进行了阻止。
+In above examples "dear" gets cut first, but then `:separator` prevents it.
 
-NOTE: 在 `active_support/core_ext/string/filters.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/filters.rb`.
 
-<a class="anchor" id="truncate-words"></a>
+[String#truncate]: https://api.rubyonrails.org/classes/String.html#method-i-truncate
+
+### `truncate_bytes`
+
+The method [`truncate_bytes`][String#truncate_bytes] returns a copy of its receiver truncated to at most `bytesize` bytes:
+
+```ruby
+"👍👍👍👍".truncate_bytes(15)
+# => "👍👍👍…"
+```
+
+Ellipsis can be customized with the `:omission` option:
+
+```ruby
+"👍👍👍👍".truncate_bytes(15, omission: "🖖")
+# => "👍👍🖖"
+```
+
+NOTE: Defined in `active_support/core_ext/string/filters.rb`.
+
+[String#truncate_bytes]: https://api.rubyonrails.org/classes/String.html#method-i-truncate_bytes
 
 ### `truncate_words`
 
-`truncate_words` 方法在指定个单词处截断接收者，返回一个副本：
+The method [`truncate_words`][String#truncate_words] returns a copy of its receiver truncated after a given number of words:
 
 ```ruby
 "Oh dear! Oh dear! I shall be late!".truncate_words(4)
 # => "Oh dear! Oh dear!..."
 ```
 
-省略号可以使用 `:omission` 选项自定义：
+Ellipsis can be customized with the `:omission` option:
 
 ```ruby
 "Oh dear! Oh dear! I shall be late!".truncate_words(4, omission: '&hellip;')
 # => "Oh dear! Oh dear!&hellip;"
 ```
 
-设置 `:separator` 选项，以自然的方式截断：
+Pass a `:separator` to truncate the string at a natural break:
 
 ```ruby
 "Oh dear! Oh dear! I shall be late!".truncate_words(3, separator: '!')
 # => "Oh dear! Oh dear! I shall be late..."
 ```
 
-`:separator` 选项的值可以是一个正则表达式：
+The option `:separator` can be a regexp:
 
 ```ruby
 "Oh dear! Oh dear! I shall be late!".truncate_words(4, separator: /\s/)
 # => "Oh dear! Oh dear!..."
 ```
 
-NOTE: 在 `active_support/core_ext/string/filters.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/filters.rb`.
 
-<a class="anchor" id="inquiry"></a>
+[String#truncate_words]: https://api.rubyonrails.org/classes/String.html#method-i-truncate_words
 
 ### `inquiry`
 
-`inquiry` 方法把字符串转换成 `StringInquirer` 对象，这样可以使用漂亮的方式检查相等性：
+The [`inquiry`][String#inquiry] method converts a string into a `StringInquirer` object making equality checks prettier.
 
 ```ruby
 "production".inquiry.production? # => true
 "active".inquiry.inactive?       # => false
 ```
 
-<a class="anchor" id="starts-with-questionmark-and-ends-with-questionmark"></a>
+NOTE: Defined in `active_support/core_ext/string/inquiry.rb`.
 
-### `starts_with?` 和 `ends_with?`
+[String#inquiry]: https://api.rubyonrails.org/classes/String.html#method-i-inquiry
 
-Active Support 为 `String#start_with?` 和 `String#end_with?` 定义了第三人称版本：
+### `starts_with?` and `ends_with?`
+
+Active Support defines 3rd person aliases of `String#start_with?` and `String#end_with?`:
 
 ```ruby
 "foo".starts_with?("f") # => true
 "foo".ends_with?("o")   # => true
 ```
 
-NOTE: 在 `active_support/core_ext/string/starts_ends_with.rb` 文件中定义。
-
-<a class="anchor" id="strip-heredoc"></a>
+NOTE: Defined in `active_support/core_ext/string/starts_ends_with.rb`.
 
 ### `strip_heredoc`
 
-`strip_heredoc` 方法去掉 here 文档中的缩进。
+The method [`strip_heredoc`][String#strip_heredoc] strips indentation in heredocs.
 
-例如：
+For example in
 
 ```ruby
 if options[:usage]
@@ -1345,17 +1326,18 @@ if options[:usage]
 end
 ```
 
-用户看到的消息会靠左边对齐。
+the user would see the usage message aligned against the left margin.
 
-从技术层面来说，这个方法寻找整个字符串中的最小缩进量，然后删除那么多的前导空白。
+Technically, it looks for the least indented line in the whole string, and removes
+that amount of leading whitespace.
 
-NOTE: 在 `active_support/core_ext/string/strip.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/strip.rb`.
 
-<a class="anchor" id="indent"></a>
+[String#strip_heredoc]: https://api.rubyonrails.org/classes/String.html#method-i-strip_heredoc
 
 ### `indent`
 
-按指定量缩进接收者：
+The [`indent`][String#indent] method indents the lines in the receiver:
 
 ```ruby
 <<EOS.indent(2)
@@ -1369,7 +1351,7 @@ EOS
   end
 ```
 
-第二个参数，`indent_string`，指定使用什么字符串缩进。默认值是 `nil`，让这个方法根据第一个缩进行做猜测，如果第一行没有缩进，则使用空白。
+The second argument, `indent_string`, specifies which indent string to use. The default is `nil`, which tells the method to make an educated guess peeking at the first indented line, and fallback to a space if there is none.
 
 ```ruby
 "  foo".indent(2)        # => "    foo"
@@ -1377,28 +1359,27 @@ EOS
 "foo".indent(2, "\t")    # => "\t\tfoo"
 ```
 
-`indent_string` 的值虽然经常设为一个空格或一个制表符，但是可以使用任何字符串。
+While `indent_string` is typically one space or tab, it may be any string.
 
-第三个参数，`indent_empty_lines`，是个旗标，指明是否缩进空行。默认值是 `false`。
+The third argument, `indent_empty_lines`, is a flag that says whether empty lines should be indented. Default is false.
 
 ```ruby
 "foo\n\nbar".indent(2)            # => "  foo\n\n  bar"
 "foo\n\nbar".indent(2, nil, true) # => "  foo\n  \n  bar"
 ```
 
-`indent!` 方法就地执行缩进。
+The [`indent!`][String#indent!] method performs indentation in-place.
 
-NOTE: 在 `active_support/core_ext/string/indent.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/indent.rb`.
 
-<a class="anchor" id="access"></a>
+[String#indent!]: https://api.rubyonrails.org/classes/String.html#method-i-indent-21
+[String#indent]: https://api.rubyonrails.org/classes/String.html#method-i-indent
 
-### 访问
-
-<a class="anchor" id="at-position"></a>
+### Access
 
 #### `at(position)`
 
-返回字符串中 `position` 位置上的字符：
+The [`at`][String#at] method returns the character of the string at position `position`:
 
 ```ruby
 "hello".at(0)  # => "h"
@@ -1407,13 +1388,13 @@ NOTE: 在 `active_support/core_ext/string/indent.rb` 文件中定义。
 "hello".at(10) # => nil
 ```
 
-NOTE: 在 `active_support/core_ext/string/access.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/access.rb`.
 
-<a class="anchor" id="from-position"></a>
+[String#at]: https://api.rubyonrails.org/classes/String.html#method-i-at
 
 #### `from(position)`
 
-返回子串，从 `position` 位置开始：
+The [`from`][String#from] method returns the substring of the string starting at position `position`:
 
 ```ruby
 "hello".from(0)  # => "hello"
@@ -1422,13 +1403,13 @@ NOTE: 在 `active_support/core_ext/string/access.rb` 文件中定义。
 "hello".from(10) # => nil
 ```
 
-NOTE: 在 `active_support/core_ext/string/access.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/access.rb`.
 
-<a class="anchor" id="to-position"></a>
+[String#from]: https://api.rubyonrails.org/classes/String.html#method-i-from
 
 #### `to(position)`
 
-返回子串，到 `position` 位置为止：
+The [`to`][String#to] method returns the substring of the string up to position `position`:
 
 ```ruby
 "hello".to(0)  # => "h"
@@ -1437,33 +1418,35 @@ NOTE: 在 `active_support/core_ext/string/access.rb` 文件中定义。
 "hello".to(10) # => "hello"
 ```
 
-NOTE: 在 `active_support/core_ext/string/access.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/access.rb`.
 
-<a class="anchor" id="first-limit-1"></a>
+[String#to]: https://api.rubyonrails.org/classes/String.html#method-i-to
 
 #### `first(limit = 1)`
 
-如果 `n` &gt; 0，`str.first(n)` 的作用与 `str.to(n-1)` 一样；如果 `n` == 0，返回一个空字符串。
+The [`first`][String#first] method returns a substring containing the first `limit` characters of the string.
 
-NOTE: 在 `active_support/core_ext/string/access.rb` 文件中定义。
+The call `str.first(n)` is equivalent to `str.to(n-1)` if `n` > 0, and returns an empty string for `n` == 0.
 
-<a class="anchor" id="last-limit-1"></a>
+NOTE: Defined in `active_support/core_ext/string/access.rb`.
+
+[String#first]: https://api.rubyonrails.org/classes/String.html#method-i-first
 
 #### `last(limit = 1)`
 
-如果 `n` &gt; 0，`str.last(n)` 的作用与 `str.from(-n)` 一样；如果 `n` == 0，返回一个空字符串。
+The [`last`][String#last] method returns a substring containing the last `limit` characters of the string.
 
-NOTE: 在 `active_support/core_ext/string/access.rb` 文件中定义。
+The call `str.last(n)` is equivalent to `str.from(-n)` if `n` > 0, and returns an empty string for `n` == 0.
 
-<a class="anchor" id="inflections"></a>
+NOTE: Defined in `active_support/core_ext/string/access.rb`.
 
-### 词形变化
+[String#last]: https://api.rubyonrails.org/classes/String.html#method-i-last
 
-<a class="anchor" id="pluralize"></a>
+### Inflections
 
 #### `pluralize`
 
-`pluralize` 方法返回接收者的复数形式：
+The method [`pluralize`][String#pluralize] returns the plural of its receiver:
 
 ```ruby
 "table".pluralize     # => "tables"
@@ -1471,9 +1454,9 @@ NOTE: 在 `active_support/core_ext/string/access.rb` 文件中定义。
 "equipment".pluralize # => "equipment"
 ```
 
-如上例所示，Active Support 知道如何处理不规则的复数形式和不可数名词。内置的规则可以在 `config/initializers/inflections.rb` 文件中扩展。那个文件是由 `rails` 命令生成的，里面的注释说明了该怎么做。
+As the previous example shows, Active Support knows some irregular plurals and uncountable nouns. Built-in rules can be extended in `config/initializers/inflections.rb`. This file is generated by default, by the `rails new` command and has instructions in comments.
 
-`pluralize` 还可以接受可选的 `count` 参数。如果 `count == 1`，返回单数形式。把 `count` 设为其他值，都会返回复数形式：
+`pluralize` can also take an optional `count` parameter. If `count == 1` the singular form will be returned. For any other value of `count` the plural form will be returned:
 
 ```ruby
 "dude".pluralize(0) # => "dudes"
@@ -1481,7 +1464,7 @@ NOTE: 在 `active_support/core_ext/string/access.rb` 文件中定义。
 "dude".pluralize(2) # => "dudes"
 ```
 
-Active Record 使用这个方法计算模型对应的默认表名：
+Active Record uses this method to compute the default table name that corresponds to a model:
 
 ```ruby
 # active_record/model_schema.rb
@@ -1491,13 +1474,13 @@ def undecorated_table_name(class_name = base_class.name)
 end
 ```
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-<a class="anchor" id="singularize"></a>
+[String#pluralize]: https://api.rubyonrails.org/classes/String.html#method-i-pluralize
 
 #### `singularize`
 
-作用与 `pluralize` 相反：
+The [`singularize`][String#singularize] method is the inverse of `pluralize`:
 
 ```ruby
 "tables".singularize    # => "table"
@@ -1505,7 +1488,7 @@ NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
 "equipment".singularize # => "equipment"
 ```
 
-关联使用这个方法计算默认的关联类：
+Associations compute the name of the corresponding default associated class using this method:
 
 ```ruby
 # active_record/reflection.rb
@@ -1516,26 +1499,26 @@ def derive_class_name
 end
 ```
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-<a class="anchor" id="camelize"></a>
+[String#singularize]: https://api.rubyonrails.org/classes/String.html#method-i-singularize
 
 #### `camelize`
 
-`camelize` 方法把接收者变成驼峰式：
+The method [`camelize`][String#camelize] returns its receiver in camel case:
 
 ```ruby
 "product".camelize    # => "Product"
 "admin_user".camelize # => "AdminUser"
 ```
 
-一般来说，你可以把这个方法的作用想象为把路径转换成 Ruby 类或模块名的方式（使用斜线分隔命名空间）：
+As a rule of thumb you can think of this method as the one that transforms paths into Ruby class or module names, where slashes separate namespaces:
 
 ```ruby
 "backoffice/session".camelize # => "Backoffice::Session"
 ```
 
-例如，Action Pack 使用这个方法加载提供特定会话存储功能的类：
+For example, Action Pack uses this method to load the class that provides a certain session store:
 
 ```ruby
 # action_controller/metal/session_management.rb
@@ -1546,15 +1529,15 @@ def session_store=(store)
 end
 ```
 
-`camelize` 接受一个可选的参数，其值可以是 `:upper`（默认值）或 `:lower`。设为后者时，第一个字母是小写的：
+`camelize` accepts an optional argument, it can be `:upper` (default), or `:lower`. With the latter the first letter becomes lowercase:
 
 ```ruby
 "visual_effect".camelize(:lower) # => "visualEffect"
 ```
 
-为使用这种风格的语言计算方法名时可以这么设定，例如 JavaScript。
+That may be handy to compute method names in a language that follows that convention, for example JavaScript.
 
-TIP: 一般来说，可以把 `camelize` 视作 `underscore` 的逆操作，不过也有例外：`"SSLError".underscore.camelize` 的结果是 `"SslError"`。为了支持这种情况，Active Support 允许你在 `config/initializers/inflections.rb` 文件中指定缩略词。
+INFO: As a rule of thumb you can think of `camelize` as the inverse of `underscore`, though there are cases where that does not hold: `"SSLError".underscore.camelize` gives back `"SslError"`. To support cases such as this, Active Support allows you to specify acronyms in `config/initializers/inflections.rb`:
 
 ```ruby
 ActiveSupport::Inflector.inflections do |inflect|
@@ -1564,37 +1547,37 @@ end
 "SSLError".underscore.camelize # => "SSLError"
 ```
 
+`camelize` is aliased to [`camelcase`][String#camelcase].
 
-`camelcase` 是 `camelize` 的别名。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
-
-<a class="anchor" id="underscore"></a>
+[String#camelcase]: https://api.rubyonrails.org/classes/String.html#method-i-camelcase
+[String#camelize]: https://api.rubyonrails.org/classes/String.html#method-i-camelize
 
 #### `underscore`
 
-`underscore` 方法的作用相反，把驼峰式变成蛇底式：
+The method [`underscore`][String#underscore] goes the other way around, from camel case to paths:
 
 ```ruby
 "Product".underscore   # => "product"
 "AdminUser".underscore # => "admin_user"
 ```
 
-还会把 `"::"` 转换成 `"/"`：
+Also converts "::" back to "/":
 
 ```ruby
 "Backoffice::Session".underscore # => "backoffice/session"
 ```
 
-也能理解以小写字母开头的字符串：
+and understands strings that start with lowercase:
 
 ```ruby
 "visualEffect".underscore # => "visual_effect"
 ```
 
-不过，`underscore` 不接受任何参数。
+`underscore` accepts no argument though.
 
-Rails 自动加载类和模块的机制使用 `underscore` 推断可能定义缺失的常量的文件的相对路径（不带扩展名）：
+Rails class and module autoloading uses `underscore` to infer the relative path without extension of a file that would define a given missing constant:
 
 ```ruby
 # active_support/dependencies.rb
@@ -1606,37 +1589,38 @@ def load_missing_constant(from_mod, const_name)
 end
 ```
 
-TIP: 一般来说，可以把 `underscore` 视作 `camelize` 的逆操作，不过也有例外。例如，`"SSLError".underscore.camelize` 的结果是 `"SslError"`。
+INFO: As a rule of thumb you can think of `underscore` as the inverse of `camelize`, though there are cases where that does not hold. For example, `"SSLError".underscore.camelize` gives back `"SslError"`.
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-<a class="anchor" id="titleize"></a>
+[String#underscore]: https://api.rubyonrails.org/classes/String.html#method-i-underscore
 
 #### `titleize`
 
-`titleize` 方法把接收者中的单词首字母变成大写：
+The method [`titleize`][String#titleize] capitalizes the words in the receiver:
 
 ```ruby
 "alice in wonderland".titleize # => "Alice In Wonderland"
 "fermat's enigma".titleize     # => "Fermat's Enigma"
 ```
 
-`titlecase` 是 `titleize` 的别名。
+`titleize` is aliased to [`titlecase`][String#titlecase].
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-<a class="anchor" id="dasherize"></a>
+[String#titlecase]: https://api.rubyonrails.org/classes/String.html#method-i-titlecase
+[String#titleize]: https://api.rubyonrails.org/classes/String.html#method-i-titleize
 
 #### `dasherize`
 
-`dasherize` 方法把接收者中的下划线替换成连字符：
+The method [`dasherize`][String#dasherize] replaces the underscores in the receiver with dashes:
 
 ```ruby
 "name".dasherize         # => "name"
 "contact_data".dasherize # => "contact-data"
 ```
 
-模型的 XML 序列化程序使用这个方法处理节点名：
+The XML serializer of models uses this method to dasherize node names:
 
 ```ruby
 # active_model/serializers/xml.rb
@@ -1646,13 +1630,13 @@ def reformat_name(name)
 end
 ```
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-<a class="anchor" id="demodulize"></a>
+[String#dasherize]: https://api.rubyonrails.org/classes/String.html#method-i-dasherize
 
 #### `demodulize`
 
-`demodulize` 方法返回限定常量名的常量名本身，即最右边那一部分：
+Given a string with a qualified constant name, [`demodulize`][String#demodulize] returns the very constant name, that is, the rightmost part of it:
 
 ```ruby
 "Product".demodulize                        # => "Product"
@@ -1660,9 +1644,10 @@ NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
 "Admin::Hotel::ReservationUtils".demodulize # => "ReservationUtils"
 "::Inflections".demodulize                  # => "Inflections"
 "".demodulize                               # => ""
+
 ```
 
-例如，Active Record 使用这个方法计算计数器缓存列的名称：
+Active Record for example uses this method to compute the name of a counter cache column:
 
 ```ruby
 # active_record/reflection.rb
@@ -1675,13 +1660,13 @@ def counter_cache_column
 end
 ```
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-<a class="anchor" id="deconstantize"></a>
+[String#demodulize]: https://api.rubyonrails.org/classes/String.html#method-i-demodulize
 
 #### `deconstantize`
 
-`deconstantize` 方法去掉限定常量引用表达式的最右侧部分，留下常量的容器：
+Given a string with a qualified constant reference expression, [`deconstantize`][String#deconstantize] removes the rightmost segment, generally leaving the name of the constant's container:
 
 ```ruby
 "Product".deconstantize                        # => ""
@@ -1689,42 +1674,40 @@ NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
 "Admin::Hotel::ReservationUtils".deconstantize # => "Admin::Hotel"
 ```
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-<a class="anchor" id="parameterize"></a>
+[String#deconstantize]: https://api.rubyonrails.org/classes/String.html#method-i-deconstantize
 
 #### `parameterize`
 
-`parameterize` 方法对接收者做整形，以便在精美的 URL 中使用。
+The method [`parameterize`][String#parameterize] normalizes its receiver in a way that can be used in pretty URLs.
 
 ```ruby
 "John Smith".parameterize # => "john-smith"
 "Kurt Gödel".parameterize # => "kurt-godel"
 ```
 
-如果想保留大小写，把 `preserve_case` 参数设为 `true`。这个参数的默认值是 `false`。
+To preserve the case of the string, set the `preserve_case` argument to true. By default, `preserve_case` is set to false.
 
 ```ruby
 "John Smith".parameterize(preserve_case: true) # => "John-Smith"
 "Kurt Gödel".parameterize(preserve_case: true) # => "Kurt-Godel"
 ```
 
-如果想使用自定义的分隔符，覆盖 `separator` 参数。
+To use a custom separator, override the `separator` argument.
 
 ```ruby
 "John Smith".parameterize(separator: "_") # => "john\_smith"
 "Kurt Gödel".parameterize(separator: "_") # => "kurt\_godel"
 ```
 
-其实，得到的字符串包装在 `ActiveSupport::Multibyte::Chars` 实例中。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
-
-<a class="anchor" id="tableize"></a>
+[String#parameterize]: https://api.rubyonrails.org/classes/String.html#method-i-parameterize
 
 #### `tableize`
 
-`tableize` 方法相当于先调用 `underscore`，再调用 `pluralize`。
+The method [`tableize`][String#tableize] is `underscore` followed by `pluralize`.
 
 ```ruby
 "Person".tableize      # => "people"
@@ -1732,15 +1715,15 @@ NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
 "InvoiceLine".tableize # => "invoice_lines"
 ```
 
-一般来说，`tableize` 返回简单模型对应的表名。Active Record 真正的实现方式不是只使用 `tableize`，还会使用 `demodulize`，再检查一些可能影响返回结果的选项。
+As a rule of thumb, `tableize` returns the table name that corresponds to a given model for simple cases. The actual implementation in Active Record is not straight `tableize` indeed, because it also demodulizes the class name and checks a few options that may affect the returned string.
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-<a class="anchor" id="classify"></a>
+[String#tableize]: https://api.rubyonrails.org/classes/String.html#method-i-tableize
 
 #### `classify`
 
-`classify` 方法的作用与 `tableize` 相反，返回表名对应的类名：
+The method [`classify`][String#classify] is the inverse of `tableize`. It gives you the class name corresponding to a table name:
 
 ```ruby
 "people".classify        # => "Person"
@@ -1748,21 +1731,21 @@ NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
 "invoice_lines".classify # => "InvoiceLine"
 ```
 
-这个方法能处理限定的表名：
+The method understands qualified table names:
 
 ```ruby
 "highrise_production.companies".classify # => "Company"
 ```
 
-注意，`classify` 方法返回的类名是字符串。你可以调用 `constantize` 方法，得到真正的类对象，如下一节所述。
+Note that `classify` returns a class name as a string. You can get the actual class object by invoking `constantize` on it, explained next.
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-<a class="anchor" id="constantize"></a>
+[String#classify]: https://api.rubyonrails.org/classes/String.html#method-i-classify
 
 #### `constantize`
 
-`constantize` 方法解析接收者中的常量引用表达式：
+The method [`constantize`][String#constantize] resolves the constant reference expression in its receiver:
 
 ```ruby
 "Integer".constantize # => Integer
@@ -1773,9 +1756,9 @@ end
 "M::X".constantize # => 1
 ```
 
-如果结果是未知的常量，或者根本不是有效的常量名，`constantize` 抛出 `NameError` 异常。
+If the string evaluates to no known constant, or its content is not even a valid constant name, `constantize` raises `NameError`.
 
-即便开头没有 `::`，`constantize` 也始终从顶层的 `Object` 解析常量名。
+Constant name resolution by `constantize` starts always at the top-level `Object` even if there is no leading "::".
 
 ```ruby
 X = :in_Object
@@ -1788,37 +1771,38 @@ module M
 end
 ```
 
-因此，通常这与 Ruby 的处理方式不同，Ruby 会求值真正的常量。
+So, it is in general not equivalent to what Ruby would do in the same spot, had a real constant be evaluated.
 
-邮件程序测试用例使用 `constantize` 方法从测试用例的名称中获取要测试的邮件程序：
+Mailer test cases obtain the mailer being tested from the name of the test class using `constantize`:
 
 ```ruby
 # action_mailer/test_case.rb
 def determine_default_mailer(name)
-  name.sub(/Test$/, '').constantize
+  name.delete_suffix("Test").constantize
 rescue NameError => e
   raise NonInferrableMailerError.new(name)
 end
 ```
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-<a class="anchor" id="humanize"></a>
+[String#constantize]: https://api.rubyonrails.org/classes/String.html#method-i-constantize
 
 #### `humanize`
 
-`humanize` 方法对属性名做调整，以便显示给终端用户查看。
+The method [`humanize`][String#humanize] tweaks an attribute name for display to end users.
 
-这个方法所做的转换如下：
+Specifically, it performs these transformations:
 
-*   根据参数做对人类友好的词形变化
-*   删除前导下划线（如果有）
-*   删除“_id”后缀（如果有）
-*   把下划线替换成空格（如果有）
-*   把所有单词变成小写，缩略词除外
-*   把第一个单词的首字母变成大写
+  * Applies human inflection rules to the argument.
+  * Deletes leading underscores, if any.
+  * Removes a "_id" suffix if present.
+  * Replaces underscores with spaces, if any.
+  * Downcases all words except acronyms.
+  * Capitalizes the first word.
 
-把 `:capitalize` 选项设为 `false`（默认值为 `true`）可以禁止把第一个单词的首字母变成大写。
+The capitalization of the first word can be turned off by setting the
+`:capitalize` option to false (default is true).
 
 ```ruby
 "name".humanize                         # => "Name"
@@ -1828,13 +1812,14 @@ NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
 "_id".humanize                          # => "Id"
 ```
 
-如果把“SSL”定义为缩略词：
+If "SSL" was defined to be an acronym:
 
 ```ruby
 'ssl_error'.humanize # => "SSL error"
 ```
 
-`full_messages` 辅助方法使用 `humanize` 作为一种后备机制，以便包含属性名：
+The helper method `full_messages` uses `humanize` as a fallback to include
+attribute names:
 
 ```ruby
 def full_messages
@@ -1849,13 +1834,13 @@ def full_message
 end
 ```
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-<a class="anchor" id="foreign-key"></a>
+[String#humanize]: https://api.rubyonrails.org/classes/String.html#method-i-humanize
 
 #### `foreign_key`
 
-`foreign_key` 方法根据类名计算外键列的名称。为此，它先调用 `demodulize`，再调用 `underscore`，最后加上“_id”：
+The method [`foreign_key`][String#foreign_key] gives a foreign key column name from a class name. To do so it demodulizes, underscores, and adds "_id":
 
 ```ruby
 "User".foreign_key           # => "user_id"
@@ -1863,30 +1848,28 @@ NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
 "Admin::Session".foreign_key # => "session_id"
 ```
 
-如果不想添加“_id”中的下划线，传入 `false` 参数：
+Pass a false argument if you do not want the underscore in "_id":
 
 ```ruby
 "User".foreign_key(false) # => "userid"
 ```
 
-关联使用这个方法推断外键，例如 `has_one` 和 `has_many` 是这么做的：
+Associations use this method to infer foreign keys, for example `has_one` and `has_many` do this:
 
 ```ruby
 # active_record/associations.rb
 foreign_key = options[:foreign_key] || reflection.active_record.name.foreign_key
 ```
 
-NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/inflections.rb`.
 
-<a class="anchor" id="extensions-to-string-conversions"></a>
+[String#foreign_key]: https://api.rubyonrails.org/classes/String.html#method-i-foreign_key
 
-### 转换
+### Conversions
 
-<a class="anchor" id="to-date-to-time-to-datetime"></a>
+#### `to_date`, `to_time`, `to_datetime`
 
-#### `to_date`、`to_time`、`to_datetime`
-
-`to_date`、`to_time` 和 `to_datetime` 是对 `Date._parse` 的便利包装：
+The methods [`to_date`][String#to_date], [`to_time`][String#to_time], and [`to_datetime`][String#to_datetime] are basically convenience wrappers around `Date._parse`:
 
 ```ruby
 "2010-07-27".to_date              # => Tue, 27 Jul 2010
@@ -1894,42 +1877,55 @@ NOTE: 在 `active_support/core_ext/string/inflections.rb` 文件中定义。
 "2010-07-27 23:37:00".to_datetime # => Tue, 27 Jul 2010 23:37:00 +0000
 ```
 
-`to_time` 有个可选的参数，值为 `:utc` 或 `:local`，指明想使用的时区：
+`to_time` receives an optional argument `:utc` or `:local`, to indicate which time zone you want the time in:
 
 ```ruby
 "2010-07-27 23:42:00".to_time(:utc)   # => 2010-07-27 23:42:00 UTC
 "2010-07-27 23:42:00".to_time(:local) # => 2010-07-27 23:42:00 +0200
 ```
 
-默认值是 `:utc`。
+Default is `:local`.
 
-详情参见 `Date._parse` 的文档。
+Please refer to the documentation of `Date._parse` for further details.
 
-TIP: 参数为空时，这三个方法返回 `nil`。
+INFO: The three of them return `nil` for blank receivers.
 
-NOTE: 在 `active_support/core_ext/string/conversions.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/string/conversions.rb`.
 
-<a class="anchor" id="extensions-to-numeric"></a>
+[String#to_date]: https://api.rubyonrails.org/classes/String.html#method-i-to_date
+[String#to_datetime]: https://api.rubyonrails.org/classes/String.html#method-i-to_datetime
+[String#to_time]: https://api.rubyonrails.org/classes/String.html#method-i-to_time
 
-## `Numeric` 的扩展
+Extensions to `Symbol`
+----------------------
 
-<a class="anchor" id="bytes"></a>
+### `starts_with?` and `ends_with?`
 
-### 字节
-
-所有数字都能响应下述方法：
+Active Support defines 3rd person aliases of `Symbol#start_with?` and `Symbol#end_with?`:
 
 ```ruby
-bytes
-kilobytes
-megabytes
-gigabytes
-terabytes
-petabytes
-exabytes
+:foo.starts_with?("f") # => true
+:foo.ends_with?("o")   # => true
 ```
 
-这些方法返回相应的字节数，因子是 1024：
+NOTE: Defined in `active_support/core_ext/symbol/starts_ends_with.rb`.
+
+Extensions to `Numeric`
+-----------------------
+
+### Bytes
+
+All numbers respond to these methods:
+
+* [`bytes`][Numeric#bytes]
+* [`kilobytes`][Numeric#kilobytes]
+* [`megabytes`][Numeric#megabytes]
+* [`gigabytes`][Numeric#gigabytes]
+* [`terabytes`][Numeric#terabytes]
+* [`petabytes`][Numeric#petabytes]
+* [`exabytes`][Numeric#exabytes]
+
+They return the corresponding amount of bytes, using a conversion factor of 1024:
 
 ```ruby
 2.kilobytes   # => 2048
@@ -1938,42 +1934,66 @@ exabytes
 -4.exabytes   # => -4611686018427387904
 ```
 
-这些方法都有单数别名，因此可以这样用：
+Singular forms are aliased so you are able to say:
 
 ```ruby
 1.megabyte # => 1048576
 ```
 
-NOTE: 在 `active_support/core_ext/numeric/bytes.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/numeric/bytes.rb`.
 
-<a class="anchor" id="time"></a>
+[Numeric#bytes]: https://api.rubyonrails.org/classes/Numeric.html#method-i-bytes
+[Numeric#exabytes]: https://api.rubyonrails.org/classes/Numeric.html#method-i-exabytes
+[Numeric#gigabytes]: https://api.rubyonrails.org/classes/Numeric.html#method-i-gigabytes
+[Numeric#kilobytes]: https://api.rubyonrails.org/classes/Numeric.html#method-i-kilobytes
+[Numeric#megabytes]: https://api.rubyonrails.org/classes/Numeric.html#method-i-megabytes
+[Numeric#petabytes]: https://api.rubyonrails.org/classes/Numeric.html#method-i-petabytes
+[Numeric#terabytes]: https://api.rubyonrails.org/classes/Numeric.html#method-i-terabytes
 
-### 时间
+### Time
 
-用于计算和声明时间，例如 `45.minutes + 2.hours + 4.years`。
+The following methods:
 
-使用 `from_now`、`ago` 等精确计算日期，以及增减 `Time` 对象时使用 `Time#advance`。例如：
+* [`seconds`][Numeric#seconds]
+* [`minutes`][Numeric#minutes]
+* [`hours`][Numeric#hours]
+* [`days`][Numeric#days]
+* [`weeks`][Numeric#weeks]
+* [`fortnights`][Numeric#fortnights]
+
+enable time declarations and calculations, like `45.minutes + 2.hours + 4.weeks`. Their return values can also be added to or subtracted from Time objects.
+
+These methods can be combined with [`from_now`][Duration#from_now], [`ago`][Duration#ago], etc, for precise date calculations. For example:
 
 ```ruby
-# 等价于 Time.current.advance(months: 1)
-1.month.from_now
+# equivalent to Time.current.advance(days: 1)
+1.day.from_now
 
-# 等价于 Time.current.advance(years: 2)
-2.years.from_now
+# equivalent to Time.current.advance(weeks: 2)
+2.weeks.from_now
 
-# 等价于 Time.current.advance(months: 4, years: 5)
-(4.months + 5.years).from_now
+# equivalent to Time.current.advance(days: 4, weeks: 5)
+(4.days + 5.weeks).from_now
 ```
 
-NOTE: 在 `active_support/core_ext/numeric/time.rb` 文件中定义。
+WARNING. For other durations please refer to the time extensions to `Integer`.
 
-<a class="anchor" id="formatting"></a>
+NOTE: Defined in `active_support/core_ext/numeric/time.rb`.
 
-### 格式化
+[Duration#ago]: https://api.rubyonrails.org/classes/ActiveSupport/Duration.html#method-i-ago
+[Duration#from_now]: https://api.rubyonrails.org/classes/ActiveSupport/Duration.html#method-i-from_now
+[Numeric#days]: https://api.rubyonrails.org/classes/Numeric.html#method-i-days
+[Numeric#fortnights]: https://api.rubyonrails.org/classes/Numeric.html#method-i-fortnights
+[Numeric#hours]: https://api.rubyonrails.org/classes/Numeric.html#method-i-hours
+[Numeric#minutes]: https://api.rubyonrails.org/classes/Numeric.html#method-i-minutes
+[Numeric#seconds]: https://api.rubyonrails.org/classes/Numeric.html#method-i-seconds
+[Numeric#weeks]: https://api.rubyonrails.org/classes/Numeric.html#method-i-weeks
 
-以各种形式格式化数字。
+### Formatting
 
-把数字转换成字符串表示形式，表示电话号码：
+Enables the formatting of numbers in a variety of ways.
+
+Produce a string representation of a number as a telephone number:
 
 ```ruby
 5551234.to_s(:phone)
@@ -1990,7 +2010,7 @@ NOTE: 在 `active_support/core_ext/numeric/time.rb` 文件中定义。
 # => +1-123-555-1234
 ```
 
-把数字转换成字符串表示形式，表示货币：
+Produce a string representation of a number as currency:
 
 ```ruby
 1234567890.50.to_s(:currency)                 # => $1,234,567,890.50
@@ -1998,7 +2018,7 @@ NOTE: 在 `active_support/core_ext/numeric/time.rb` 文件中定义。
 1234567890.506.to_s(:currency, precision: 3)  # => $1,234,567,890.506
 ```
 
-把数字转换成字符串表示形式，表示百分比：
+Produce a string representation of a number as a percentage:
 
 ```ruby
 100.to_s(:percentage)
@@ -2011,7 +2031,7 @@ NOTE: 在 `active_support/core_ext/numeric/time.rb` 文件中定义。
 # => 302.24399%
 ```
 
-把数字转换成字符串表示形式，以分隔符分隔：
+Produce a string representation of a number in delimited form:
 
 ```ruby
 12345678.to_s(:delimited)                     # => 12,345,678
@@ -2021,7 +2041,7 @@ NOTE: 在 `active_support/core_ext/numeric/time.rb` 文件中定义。
 12345678.05.to_s(:delimited, separator: " ")  # => 12,345,678 05
 ```
 
-把数字转换成字符串表示形式，以指定精度四舍五入：
+Produce a string representation of a number rounded to a precision:
 
 ```ruby
 111.2345.to_s(:rounded)                     # => 111.235
@@ -2031,7 +2051,7 @@ NOTE: 在 `active_support/core_ext/numeric/time.rb` 文件中定义。
 111.2345.to_s(:rounded, significant: true)  # => 111
 ```
 
-把数字转换成字符串表示形式，得到人类可读的字节数：
+Produce a string representation of a number as a human-readable number of bytes:
 
 ```ruby
 123.to_s(:human_size)                  # => 123 Bytes
@@ -2044,7 +2064,7 @@ NOTE: 在 `active_support/core_ext/numeric/time.rb` 文件中定义。
 1234567890123456789.to_s(:human_size)  # => 1.07 EB
 ```
 
-把数字转换成字符串表示形式，得到人类可读的词：
+Produce a string representation of a number in human-readable words:
 
 ```ruby
 123.to_s(:human)               # => "123"
@@ -2056,30 +2076,27 @@ NOTE: 在 `active_support/core_ext/numeric/time.rb` 文件中定义。
 1234567890123456.to_s(:human)  # => "1.23 Quadrillion"
 ```
 
-NOTE: 在 `active_support/core_ext/numeric/conversions.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/numeric/conversions.rb`.
 
-<a class="anchor" id="extensions-to-integer"></a>
-
-## `Integer` 的扩展
-
-<a class="anchor" id="multiple-of-questionmark"></a>
+Extensions to `Integer`
+-----------------------
 
 ### `multiple_of?`
 
-`multiple_of?` 方法测试一个整数是不是参数的倍数：
+The method [`multiple_of?`][Integer#multiple_of?] tests whether an integer is multiple of the argument:
 
 ```ruby
 2.multiple_of?(1) # => true
 1.multiple_of?(2) # => false
 ```
 
-NOTE: 在 `active_support/core_ext/integer/multiple.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/integer/multiple.rb`.
 
-<a class="anchor" id="ordinal"></a>
+[Integer#multiple_of?]: https://api.rubyonrails.org/classes/Integer.html#method-i-multiple_of-3F
 
 ### `ordinal`
 
-`ordinal` 方法返回整数接收者的序数词后缀（字符串）：
+The method [`ordinal`][Integer#ordinal] returns the ordinal suffix string corresponding to the receiver integer:
 
 ```ruby
 1.ordinal    # => "st"
@@ -2090,13 +2107,13 @@ NOTE: 在 `active_support/core_ext/integer/multiple.rb` 文件中定义。
 -134.ordinal # => "th"
 ```
 
-NOTE: 在 `active_support/core_ext/integer/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/integer/inflections.rb`.
 
-<a class="anchor" id="ordinalize"></a>
+[Integer#ordinal]: https://api.rubyonrails.org/classes/Integer.html#method-i-ordinal
 
 ### `ordinalize`
 
-`ordinalize` 方法返回整数接收者的序数词（字符串）。注意，`ordinal` 方法只返回后缀。
+The method [`ordinalize`][Integer#ordinalize] returns the ordinal string corresponding to the receiver integer. In comparison, note that the `ordinal` method returns **only** the suffix string.
 
 ```ruby
 1.ordinalize    # => "1st"
@@ -2107,101 +2124,144 @@ NOTE: 在 `active_support/core_ext/integer/inflections.rb` 文件中定义。
 -134.ordinalize # => "-134th"
 ```
 
-NOTE: 在 `active_support/core_ext/integer/inflections.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/integer/inflections.rb`.
 
-<a class="anchor" id="extensions-to-bigdecimal"></a>
+[Integer#ordinalize]: https://api.rubyonrails.org/classes/Integer.html#method-i-ordinalize
 
-## `BigDecimal` 的扩展
+### Time
 
-<a class="anchor" id="extensions-to-bigdecimal-to-s"></a>
+The following methods:
 
+* [`months`][Integer#months]
+* [`years`][Integer#years]
+
+enable time declarations and calculations, like `4.months + 5.years`. Their return values can also be added to or subtracted from Time objects.
+
+These methods can be combined with [`from_now`][Duration#from_now], [`ago`][Duration#ago], etc, for precise date calculations. For example:
+
+```ruby
+# equivalent to Time.current.advance(months: 1)
+1.month.from_now
+
+# equivalent to Time.current.advance(years: 2)
+2.years.from_now
+
+# equivalent to Time.current.advance(months: 4, years: 5)
+(4.months + 5.years).from_now
+```
+
+WARNING. For other durations please refer to the time extensions to `Numeric`.
+
+NOTE: Defined in `active_support/core_ext/integer/time.rb`.
+
+[Integer#months]: https://api.rubyonrails.org/classes/Integer.html#method-i-months
+[Integer#years]: https://api.rubyonrails.org/classes/Integer.html#method-i-years
+
+Extensions to `BigDecimal`
+--------------------------
 ### `to_s`
 
-`to_s` 方法把默认的说明符设为“F”。这意味着，不传入参数时，`to_s` 返回浮点数表示形式，而不是工程计数法。
+The method `to_s` provides a default specifier of "F". This means that a simple call to `to_s` will result in floating point representation instead of engineering notation:
 
 ```ruby
-BigDecimal.new(5.00, 6).to_s  # => "5.0"
+BigDecimal(5.00, 6).to_s       # => "5.0"
 ```
 
-说明符也可以使用符号：
+and that symbol specifiers are also supported:
 
 ```ruby
-BigDecimal.new(5.00, 6).to_s(:db)  # => "5.0"
+BigDecimal(5.00, 6).to_s(:db)  # => "5.0"
 ```
 
-也支持工程计数法：
+Engineering notation is still supported:
 
 ```ruby
-BigDecimal.new(5.00, 6).to_s("e")  # => "0.5E1"
+BigDecimal(5.00, 6).to_s("e")  # => "0.5E1"
 ```
 
-<a class="anchor" id="extensions-to-enumerable"></a>
-
-## `Enumerable` 的扩展
-
-<a class="anchor" id="sum"></a>
+Extensions to `Enumerable`
+--------------------------
 
 ### `sum`
 
-`sum` 方法计算可枚举对象的元素之和：
+The method [`sum`][Enumerable#sum] adds the elements of an enumerable:
 
 ```ruby
 [1, 2, 3].sum # => 6
 (1..100).sum  # => 5050
 ```
 
-只假定元素能响应 `+`：
+Addition only assumes the elements respond to `+`:
 
 ```ruby
 [[1, 2], [2, 3], [3, 4]].sum    # => [1, 2, 2, 3, 3, 4]
 %w(foo bar baz).sum             # => "foobarbaz"
-{a: 1, b: 2, c: 3}.sum          # => [:b, 2, :c, 3, :a, 1]
+{a: 1, b: 2, c: 3}.sum          # => [:a, 1, :b, 2, :c, 3]
 ```
 
-空集合的元素之和默认为零，不过可以自定义：
+The sum of an empty collection is zero by default, but this is customizable:
 
 ```ruby
 [].sum    # => 0
 [].sum(1) # => 1
 ```
 
-如果提供块，`sum` 变成迭代器，把集合中的元素拽入块中，然后求返回值之和：
+If a block is given, `sum` becomes an iterator that yields the elements of the collection and sums the returned values:
 
 ```ruby
 (1..5).sum {|n| n * 2 } # => 30
 [2, 4, 6, 8, 10].sum    # => 30
 ```
 
-空接收者之和也可以使用这种方式自定义：
+The sum of an empty receiver can be customized in this form as well:
 
 ```ruby
 [].sum(1) {|n| n**3} # => 1
 ```
 
-NOTE: 在 `active_support/core_ext/enumerable.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/enumerable.rb`.
 
-<a class="anchor" id="index-by"></a>
+[Enumerable#sum]: https://api.rubyonrails.org/classes/Enumerable.html#method-i-sum
 
 ### `index_by`
 
-`index_by` 方法生成一个散列，使用某个键索引可枚举对象中的元素。
+The method [`index_by`][Enumerable#index_by] generates a hash with the elements of an enumerable indexed by some key.
 
-它迭代集合，把各个元素传入块中。元素使用块的返回值为键：
+It iterates through the collection and passes each element to a block. The element will be keyed by the value returned by the block:
 
 ```ruby
 invoices.index_by(&:number)
 # => {'2009-032' => <Invoice ...>, '2009-008' => <Invoice ...>, ...}
 ```
 
-WARNING: 键一般是唯一的。如果块为不同的元素返回相同的键，不会使用那个键构建集合。最后一个元素胜出。
+WARNING. Keys should normally be unique. If the block returns the same value for different elements no collection is built for that key. The last item will win.
 
-NOTE: 在 `active_support/core_ext/enumerable.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/enumerable.rb`.
 
-<a class="anchor" id="many-questionmark"></a>
+[Enumerable#index_by]: https://api.rubyonrails.org/classes/Enumerable.html#method-i-index_by
+
+### `index_with`
+
+The method [`index_with`][Enumerable#index_with] generates a hash with the elements of an enumerable as keys. The value
+is either a passed default or returned in a block.
+
+```ruby
+post = Post.new(title: "hey there", body: "what's up?")
+
+%i( title body ).index_with { |attr_name| post.public_send(attr_name) }
+# => { title: "hey there", body: "what's up?" }
+
+WEEKDAYS.index_with(Interval.all_day)
+# => { monday: [ 0, 1440 ], … }
+```
+
+NOTE: Defined in `active_support/core_ext/enumerable.rb`.
+
+[Enumerable#index_with]: https://api.rubyonrails.org/classes/Enumerable.html#method-i-index_with
 
 ### `many?`
 
-`many?` 方法是 `collection.size > 1` 的简化：
+The method [`many?`][Enumerable#many?] is shorthand for `collection.size > 1`:
 
 ```erb
 <% if pages.many? %>
@@ -2209,129 +2269,170 @@ NOTE: 在 `active_support/core_ext/enumerable.rb` 文件中定义。
 <% end %>
 ```
 
-如果提供可选的块，`many?` 只考虑返回 `true` 的元素：
+If an optional block is given, `many?` only takes into account those elements that return true:
 
 ```ruby
 @see_more = videos.many? {|video| video.category == params[:category]}
 ```
 
-NOTE: 在 `active_support/core_ext/enumerable.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/enumerable.rb`.
 
-<a class="anchor" id="exclude-questionmark"></a>
+[Enumerable#many?]: https://api.rubyonrails.org/classes/Enumerable.html#method-i-many-3F
 
 ### `exclude?`
 
-`exclude?` 方法测试指定对象是否不在集合中。这是内置方法 `include?` 的逆向判断。
+The predicate [`exclude?`][Enumerable#exclude?] tests whether a given object does **not** belong to the collection. It is the negation of the built-in `include?`:
 
 ```ruby
 to_visit << node if visited.exclude?(node)
 ```
 
-NOTE: 在 `active_support/core_ext/enumerable.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/enumerable.rb`.
 
-<a class="anchor" id="without"></a>
+[Enumerable#exclude?]: https://api.rubyonrails.org/classes/Enumerable.html#method-i-exclude-3F
 
-### `without`
+### `including`
 
-`without` 从可枚举对象中删除指定的元素，然后返回副本：
+The method [`including`][Enumerable#including] returns a new enumerable that includes the passed elements:
 
 ```ruby
-["David", "Rafael", "Aaron", "Todd"].without("Aaron", "Todd") # => ["David", "Rafael"]
+[ 1, 2, 3 ].including(4, 5)                    # => [ 1, 2, 3, 4, 5 ]
+["David", "Rafael"].including %w[ Aaron Todd ] # => ["David", "Rafael", "Aaron", "Todd"]
 ```
 
-NOTE: 在 `active_support/core_ext/enumerable.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/enumerable.rb`.
 
-<a class="anchor" id="pluck"></a>
+[Enumerable#including]: https://api.rubyonrails.org/classes/Enumerable.html#method-i-including
+
+### `excluding`
+
+The method [`excluding`][Enumerable#excluding] returns a copy of an enumerable with the specified elements
+removed:
+
+```ruby
+["David", "Rafael", "Aaron", "Todd"].excluding("Aaron", "Todd") # => ["David", "Rafael"]
+```
+
+`excluding` is aliased to [`without`][Enumerable#without].
+
+NOTE: Defined in `active_support/core_ext/enumerable.rb`.
+
+[Enumerable#excluding]: https://api.rubyonrails.org/classes/Enumerable.html#method-i-excluding
+[Enumerable#without]: https://api.rubyonrails.org/classes/Enumerable.html#method-i-without
 
 ### `pluck`
 
-`pluck` 方法基于指定的键返回一个数组：
+The method [`pluck`][Enumerable#pluck] extracts the given key from each element:
 
 ```ruby
 [{ name: "David" }, { name: "Rafael" }, { name: "Aaron" }].pluck(:name) # => ["David", "Rafael", "Aaron"]
+[{ id: 1, name: "David" }, { id: 2, name: "Rafael" }].pluck(:id, :name) # => [[1, "David"], [2, "Rafael"]]
 ```
 
-NOTE: 在 `active_support/core_ext/enumerable.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/enumerable.rb`.
 
-<a class="anchor" id="extensions-to-array"></a>
+[Enumerable#pluck]: https://api.rubyonrails.org/classes/Enumerable.html#method-i-pluck
 
-## `Array` 的扩展
+### `pick`
 
-<a class="anchor" id="accessing"></a>
-
-### 访问
-
-为了便于以多种方式访问数组，Active Support 增强了数组的 API。例如，若想获取到指定索引的子数组，可以这么做：
+The method [`pick`][Enumerable#pick] extracts the given key from the first element:
 
 ```ruby
-%w(a b c d).to(2) # => %w(a b c)
+[{ name: "David" }, { name: "Rafael" }, { name: "Aaron" }].pick(:name) # => "David"
+[{ id: 1, name: "David" }, { id: 2, name: "Rafael" }].pick(:id, :name) # => [1, "David"]
+```
+
+NOTE: Defined in `active_support/core_ext/enumerable.rb`.
+
+[Enumerable#pick]: https://api.rubyonrails.org/classes/Enumerable.html#method-i-pick
+
+Extensions to `Array`
+---------------------
+
+### Accessing
+
+Active Support augments the API of arrays to ease certain ways of accessing them. For example, [`to`][Array#to] returns the subarray of elements up to the one at the passed index:
+
+```ruby
+%w(a b c d).to(2) # => ["a", "b", "c"]
 [].to(7)          # => []
 ```
 
-类似地，`from` 从指定索引一直获取到末尾。如果索引大于数组的长度，返回一个空数组。
+Similarly, [`from`][Array#from] returns the tail from the element at the passed index to the end. If the index is greater than the length of the array, it returns an empty array.
 
 ```ruby
-%w(a b c d).from(2)  # => %w(c d)
+%w(a b c d).from(2)  # => ["c", "d"]
 %w(a b c d).from(10) # => []
 [].from(0)           # => []
 ```
 
-`second`、`third`、`fourth` 和 `fifth` 分别返回对应的元素，`second_to_last` 和 `third_to_last` 也是（`first` 和 `last` 是内置的）。得益于公众智慧和积极的建设性建议，还有 `forty_two` 可用。
+The method [`including`][Array#including] returns a new array that includes the passed elements:
 
 ```ruby
-%w(a b c d).third # => c
+[ 1, 2, 3 ].including(4, 5)          # => [ 1, 2, 3, 4, 5 ]
+[ [ 0, 1 ] ].including([ [ 1, 0 ] ]) # => [ [ 0, 1 ], [ 1, 0 ] ]
+```
+
+The method [`excluding`][Array#excluding] returns a copy of the Array excluding the specified elements.
+This is an optimization of `Enumerable#excluding` that uses `Array#-`
+instead of `Array#reject` for performance reasons.
+
+```ruby
+["David", "Rafael", "Aaron", "Todd"].excluding("Aaron", "Todd") # => ["David", "Rafael"]
+[ [ 0, 1 ], [ 1, 0 ] ].excluding([ [ 1, 0 ] ])                  # => [ [ 0, 1 ] ]
+```
+
+The methods [`second`][Array#second], [`third`][Array#third], [`fourth`][Array#fourth], and [`fifth`][Array#fifth] return the corresponding element, as do [`second_to_last`][Array#second_to_last] and [`third_to_last`][Array#third_to_last] (`first` and `last` are built-in). Thanks to social wisdom and positive constructiveness all around, [`forty_two`][Array#forty_two] is also available.
+
+```ruby
+%w(a b c d).third # => "c"
 %w(a b c d).fifth # => nil
 ```
 
-NOTE: 在 `active_support/core_ext/array/access.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/array/access.rb`.
 
-<a class="anchor" id="adding-elements"></a>
+[Array#excluding]: https://api.rubyonrails.org/classes/Array.html#method-i-excluding
+[Array#fifth]: https://api.rubyonrails.org/classes/Array.html#method-i-fifth
+[Array#forty_two]: https://api.rubyonrails.org/classes/Array.html#method-i-forty_two
+[Array#fourth]: https://api.rubyonrails.org/classes/Array.html#method-i-fourth
+[Array#from]: https://api.rubyonrails.org/classes/Array.html#method-i-from
+[Array#including]: https://api.rubyonrails.org/classes/Array.html#method-i-including
+[Array#second]: https://api.rubyonrails.org/classes/Array.html#method-i-second
+[Array#second_to_last]: https://api.rubyonrails.org/classes/Array.html#method-i-second_to_last
+[Array#third]: https://api.rubyonrails.org/classes/Array.html#method-i-third
+[Array#third_to_last]: https://api.rubyonrails.org/classes/Array.html#method-i-third_to_last
+[Array#to]: https://api.rubyonrails.org/classes/Array.html#method-i-to
 
-### 添加元素
+### Extracting
 
-<a class="anchor" id="prepend"></a>
-
-#### `prepend`
-
-这个方法是 `Array#unshift` 的别名。
-
-```ruby
-%w(a b c d).prepend('e')  # => ["e", "a", "b", "c", "d"]
-[].prepend(10)            # => [10]
-```
-
-NOTE: 在 `active_support/core_ext/array/prepend_and_append.rb` 文件中定义。
-
-<a class="anchor" id="append"></a>
-
-#### `append`
-
-这个方法是 `Array#<<` 的别名。
+The method [`extract!`][Array#extract!] removes and returns the elements for which the block returns a true value.
+If no block is given, an Enumerator is returned instead.
 
 ```ruby
-%w(a b c d).append('e')  # => ["a", "b", "c", "d", "e"]
-[].append([1,2])         # => [[1, 2]]
+numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+odd_numbers = numbers.extract! { |number| number.odd? } # => [1, 3, 5, 7, 9]
+numbers # => [0, 2, 4, 6, 8]
 ```
 
-NOTE: 在 `active_support/core_ext/array/prepend_and_append.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/array/extract.rb`.
 
-<a class="anchor" id="options-extraction"></a>
+[Array#extract!]: https://api.rubyonrails.org/classes/Array.html#method-i-extract-21
 
-### 选项提取
+### Options Extraction
 
-如果方法调用的最后一个参数（不含 `&block` 参数）是散列，Ruby 允许省略花括号：
+When the last argument in a method call is a hash, except perhaps for a `&block` argument, Ruby allows you to omit the brackets:
 
 ```ruby
 User.exists?(email: params[:email])
 ```
 
-Rails 大量使用这种语法糖，以此避免编写大量位置参数，用于模仿具名参数。Rails 经常在最后一个散列选项上使用这种惯用法。
+That syntactic sugar is used a lot in Rails to avoid positional arguments where there would be too many, offering instead interfaces that emulate named parameters. In particular it is very idiomatic to use a trailing hash for options.
 
-然而，如果方法期待任意个参数，在声明中使用 `*`，那么选项散列就会变成数组中一个元素，失去了应有的作用。
+If a method expects a variable number of arguments and uses `*` in its declaration, however, such an options hash ends up being an item of the array of arguments, where it loses its role.
 
-此时，可以使用 `extract_options!` 特殊处理选项散列。这个方法检查数组最后一个元素的类型，如果是散列，把它提取出来，并返回；否则，返回一个空散列。
+In those cases, you may give an options hash a distinguished treatment with [`extract_options!`][Array#extract_options!]. This method checks the type of the last item of an array. If it is a hash it pops it and returns it, otherwise it returns an empty hash.
 
-下面以控制器的 `caches_action` 方法的定义为例：
+Let's see for example the definition of the `caches_action` controller macro:
 
 ```ruby
 def caches_action(*actions)
@@ -2341,19 +2442,17 @@ def caches_action(*actions)
 end
 ```
 
-这个方法接收任意个动作名，最后一个参数是选项散列。`extract_options!` 方法获取选项散列，把它从 `actions` 参数中删除，这样简单便利。
+This method receives an arbitrary number of action names, and an optional hash of options as last argument. With the call to `extract_options!` you obtain the options hash and remove it from `actions` in a simple and explicit way.
 
-NOTE: 在 `active_support/core_ext/array/extract_options.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/array/extract_options.rb`.
 
-<a class="anchor" id="extensions-to-array-conversions"></a>
+[Array#extract_options!]: https://api.rubyonrails.org/classes/Array.html#method-i-extract_options-21
 
-### 转换
-
-<a class="anchor" id="to-sentence"></a>
+### Conversions
 
 #### `to_sentence`
 
-`to_sentence` 方法枚举元素，把数组变成一个句子（字符串）：
+The method [`to_sentence`][Array#to_sentence] turns an array into a string containing a sentence that enumerates its items:
 
 ```ruby
 %w().to_sentence                # => ""
@@ -2362,29 +2461,31 @@ NOTE: 在 `active_support/core_ext/array/extract_options.rb` 文件中定义。
 %w(Earth Wind Fire).to_sentence # => "Earth, Wind, and Fire"
 ```
 
-这个方法接受三个选项：
+This method accepts three options:
 
-*   `:two_words_connector`：数组长度为 2 时使用什么词。默认为“ and”。
-*   `:words_connector`：数组元素数量为 3 个以上（含）时，使用什么连接除最后两个元素之外的元素。默认为“, ”。
-*   `:last_word_connector`：数组元素数量为 3 个以上（含）时，使用什么连接最后两个元素。默认为“, and”。
+* `:two_words_connector`: What is used for arrays of length 2. Default is " and ".
+* `:words_connector`: What is used to join the elements of arrays with 3 or more elements, except for the last two. Default is ", ".
+* `:last_word_connector`: What is used to join the last items of an array with 3 or more elements. Default is ", and ".
 
-这些选项的默认值可以本地化，相应的键为：
+The defaults for these options can be localized, their keys are:
 
-| 选项 | i18n 键  |
-|---|---|
-| `:two_words_connector` | `support.array.two_words_connector`  |
-| `:words_connector` | `support.array.words_connector`  |
-| `:last_word_connector` | `support.array.last_word_connector`  |
+| Option                 | I18n key                            |
+| ---------------------- | ----------------------------------- |
+| `:two_words_connector` | `support.array.two_words_connector` |
+| `:words_connector`     | `support.array.words_connector`     |
+| `:last_word_connector` | `support.array.last_word_connector` |
 
-NOTE: 在 `active_support/core_ext/array/conversions.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/array/conversions.rb`.
 
-<a class="anchor" id="to-formatted-s"></a>
+[Array#to_sentence]: https://api.rubyonrails.org/classes/Array.html#method-i-to_sentence
 
 #### `to_formatted_s`
 
-默认情况下，`to_formatted_s` 的行为与 `to_s` 一样。
+The method [`to_formatted_s`][Array#to_formatted_s] acts like `to_s` by default.
 
-然而，如果数组中的元素能响应 `id` 方法，可以传入参数 `:db`。处理 Active Record 对象集合时经常如此。返回的字符串如下：
+If the array contains items that respond to `id`, however, the symbol
+`:db` may be passed as argument. That's typically used with
+collections of Active Record objects. Returned strings are:
 
 ```ruby
 [].to_formatted_s(:db)            # => "null"
@@ -2392,15 +2493,15 @@ NOTE: 在 `active_support/core_ext/array/conversions.rb` 文件中定义。
 invoice.lines.to_formatted_s(:db) # => "23,567,556,12"
 ```
 
-在上述示例中，整数是在元素上调用 `id` 得到的。
+Integers in the example above are supposed to come from the respective calls to `id`.
 
-NOTE: 在 `active_support/core_ext/array/conversions.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/array/conversions.rb`.
 
-<a class="anchor" id="extensions-to-array-conversions-to-xml"></a>
+[Array#to_formatted_s]: https://api.rubyonrails.org/classes/Array.html#method-i-to_formatted_s
 
 #### `to_xml`
 
-`to_xml` 方法返回接收者的 XML 表述：
+The method [`to_xml`][Array#to_xml] returns a string containing an XML representation of its receiver:
 
 ```ruby
 Contributor.limit(2).order(:rank).to_xml
@@ -2422,11 +2523,11 @@ Contributor.limit(2).order(:rank).to_xml
 # </contributors>
 ```
 
-为此，它把 `to_xml` 分别发送给每个元素，然后收集结果，放在一个根节点中。所有元素都必须能响应 `to_xml`，否则抛出异常。
+To do so it sends `to_xml` to every item in turn, and collects the results under a root node. All items must respond to `to_xml`, an exception is raised otherwise.
 
-默认情况下，根元素的名称是第一个元素的类名的复数形式经过 `underscore` 和 `dasherize` 处理后得到的值——前提是余下的元素属于那个类型（使用 `is_a?` 检查），而且不是散列。在上例中，根元素是“contributors”。
+By default, the name of the root element is the underscored and dasherized plural of the name of the class of the first item, provided the rest of elements belong to that type (checked with `is_a?`) and they are not hashes. In the example above that's "contributors".
 
-只要有不属于那个类型的元素，根元素就使用“objects”：
+If there's any element that does not belong to the type of the first one the root node becomes "objects":
 
 ```ruby
 [Contributor.first, Commit.first].to_xml
@@ -2454,7 +2555,7 @@ Contributor.limit(2).order(:rank).to_xml
 # </objects>
 ```
 
-如果接收者是由散列组成的数组，根元素默认也是“objects”：
+If the receiver is an array of hashes the root element is by default also "objects":
 
 ```ruby
 [{a: 1, b: 2}, {c: 3}].to_xml
@@ -2471,11 +2572,11 @@ Contributor.limit(2).order(:rank).to_xml
 # </objects>
 ```
 
-WARNING: 如果集合为空，根元素默认为“nil-classes”。例如上述示例中的贡献者列表，如果集合为空，根元素不是“contributors”，而是“nil-classes”。可以使用 `:root` 选项确保根元素始终一致。
+WARNING. If the collection is empty the root element is by default "nil-classes". That's a gotcha, for example the root element of the list of contributors above would not be "contributors" if the collection was empty, but "nil-classes". You may use the `:root` option to ensure a consistent root element.
 
-子节点的名称默认为根节点的单数形式。在前面几个例子中，我们见到的是“contributor”和“object”。可以使用 `:children` 选项设定子节点的名称。
+The name of children nodes is by default the name of the root node singularized. In the examples above we've seen "contributor" and "object". The option `:children` allows you to set these node names.
 
-默认的 XML 构建程序是一个新的 `Builder::XmlMarkup` 实例。可以使用 `:builder` 选项指定构建程序。这个方法还接受 `:dasherize` 等方法，它们会被转发给构建程序。
+The default XML builder is a fresh instance of `Builder::XmlMarkup`. You can configure your own builder via the `:builder` option. The method also accepts options like `:dasherize` and friends, they are forwarded to the builder:
 
 ```ruby
 Contributor.limit(2).order(:rank).to_xml(skip_types: true)
@@ -2497,19 +2598,19 @@ Contributor.limit(2).order(:rank).to_xml(skip_types: true)
 # </contributors>
 ```
 
-NOTE: 在 `active_support/core_ext/array/conversions.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/array/conversions.rb`.
 
-<a class="anchor" id="wrapping"></a>
+[Array#to_xml]: https://api.rubyonrails.org/classes/Array.html#method-i-to_xml
 
-### 包装
+### Wrapping
 
-`Array.wrap` 方法把参数包装成一个数组，除非参数已经是数组（或与数组类似的结构）。
+The method [`Array.wrap`][Array.wrap] wraps its argument in an array unless it is already an array (or array-like).
 
-具体而言：
+Specifically:
 
-*   如果参数是 `nil`，返回一个空数组。
-*   否则，如果参数响应 `to_ary` 方法，调用之；如果 `to_ary` 返回值不是 `nil`，返回之。
-*   否则，把参数作为数组的唯一元素，返回之。
+* If the argument is `nil` an empty array is returned.
+* Otherwise, if the argument responds to `to_ary` it is invoked, and if the value of `to_ary` is not `nil`, it is returned.
+* Otherwise, an array with the argument as its single element is returned.
 
 ```ruby
 Array.wrap(nil)       # => []
@@ -2517,36 +2618,33 @@ Array.wrap([1, 2, 3]) # => [1, 2, 3]
 Array.wrap(0)         # => [0]
 ```
 
-这个方法的作用与 `Kernel#Array` 类似，不过二者之间有些区别：
+This method is similar in purpose to `Kernel#Array`, but there are some differences:
 
-*   如果参数响应 `to_ary`，调用之。如果 `to_ary` 的返回值是 `nil`，`Kernel#Array` 接着调用 `to_a`，而 `Array.wrap` 把参数作为数组的唯一元素，返回之。
-*   如果 `to_ary` 的返回值既不是 `nil`，也不是 `Array` 对象，`Kernel#Array` 抛出异常，而 `Array.wrap` 不会，它返回那个值。
-*   如果参数不响应 `to_ary`，`Array.wrap` 不在参数上调用 `to_a`，而是把参数作为数组的唯一元素，返回之。
+* If the argument responds to `to_ary` the method is invoked. `Kernel#Array` moves on to try `to_a` if the returned value is `nil`, but `Array.wrap` returns an array with the argument as its single element right away.
+* If the returned value from `to_ary` is neither `nil` nor an `Array` object, `Kernel#Array` raises an exception, while `Array.wrap` does not, it just returns the value.
+* It does not call `to_a` on the argument, if the argument does not respond to `to_ary` it returns an array with the argument as its single element.
 
-对某些可枚举对象来说，最后一点尤为重要：
+The last point is particularly worth comparing for some enumerables:
 
 ```ruby
 Array.wrap(foo: :bar) # => [{:foo=>:bar}]
 Array(foo: :bar)      # => [[:foo, :bar]]
 ```
 
-还有一种惯用法是使用星号运算符：
+There's also a related idiom that uses the splat operator:
 
 ```ruby
 [*object]
 ```
 
-在 Ruby 1.8 中，如果参数是 `nil`，返回 `[nil]`，否则调用 `Array(object)`。（如果你知道在 Ruby 1.9 中的行为，请联系 fxn。）
+NOTE: Defined in `active_support/core_ext/array/wrap.rb`.
 
-因此，参数为 `nil` 时二者的行为不同，前文对 `Kernel#Array` 的说明适用于其他对象。
+[Array.wrap]: https://api.rubyonrails.org/classes/Array.html#method-c-wrap
 
-NOTE: 在 `active_support/core_ext/array/wrap.rb` 文件中定义。
+### Duplicating
 
-<a class="anchor" id="duplicating"></a>
-
-### 复制
-
-`Array#deep_dup` 方法使用 Active Support 提供的 `Object#deep_dup` 方法复制数组自身和里面的对象。其工作方式相当于通过 `Array#map` 把 `deep_dup` 方法发给里面的各个对象。
+The method [`Array#deep_dup`][Array#deep_dup] duplicates itself and all objects inside
+recursively with the Active Support method `Object#deep_dup`. It works like `Array#map`, sending `deep_dup` method to each object inside.
 
 ```ruby
 array = [1, [2, 3]]
@@ -2555,25 +2653,23 @@ dup[1][2] = 4
 array[1][2] == nil   # => true
 ```
 
-NOTE: 在 `active_support/core_ext/object/deep_dup.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/deep_dup.rb`.
 
-<a class="anchor" id="grouping"></a>
+[Array#deep_dup]: https://api.rubyonrails.org/classes/Array.html#method-i-deep_dup
 
-### 分组
-
-<a class="anchor" id="in-groups-of-number-fill-with-nil"></a>
+### Grouping
 
 #### `in_groups_of(number, fill_with = nil)`
 
-`in_groups_of` 方法把数组拆分成特定长度的连续分组，返回由各分组构成的数组：
+The method [`in_groups_of`][Array#in_groups_of] splits an array into consecutive groups of a certain size. It returns an array with the groups:
 
 ```ruby
 [1, 2, 3].in_groups_of(2) # => [[1, 2], [3, nil]]
 ```
 
-如果有块，把各分组拽入块中：
+or yields them in turn if a block is passed:
 
-```erb
+```html+erb
 <% sample.in_groups_of(3) do |a, b, c| %>
   <tr>
     <td><%= a %></td>
@@ -2583,34 +2679,34 @@ NOTE: 在 `active_support/core_ext/object/deep_dup.rb` 文件中定义。
 <% end %>
 ```
 
-第一个示例说明 `in_groups_of` 会使用 `nil` 元素填充最后一组，得到指定大小的分组。可以使用第二个参数（可选的）修改填充值：
+The first example shows how `in_groups_of` fills the last group with as many `nil` elements as needed to have the requested size. You can change this padding value using the second optional argument:
 
 ```ruby
 [1, 2, 3].in_groups_of(2, 0) # => [[1, 2], [3, 0]]
 ```
 
-如果传入 `false`，不填充最后一组：
+And you can tell the method not to fill the last group by passing `false`:
 
 ```ruby
 [1, 2, 3].in_groups_of(2, false) # => [[1, 2], [3]]
 ```
 
-因此，`false` 不能作为填充值使用。
+As a consequence `false` can't be used as a padding value.
 
-NOTE: 在 `active_support/core_ext/array/grouping.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/array/grouping.rb`.
 
-<a class="anchor" id="in-groups-number-fill-with-nil"></a>
+[Array#in_groups_of]: https://api.rubyonrails.org/classes/Array.html#method-i-in_groups_of
 
 #### `in_groups(number, fill_with = nil)`
 
-`in_groups` 方法把数组分成特定个分组。这个方法返回由分组构成的数组：
+The method [`in_groups`][Array#in_groups] splits an array into a certain number of groups. The method returns an array with the groups:
 
 ```ruby
 %w(1 2 3 4 5 6 7).in_groups(3)
 # => [["1", "2", "3"], ["4", "5", nil], ["6", "7", nil]]
 ```
 
-如果有块，把分组拽入块中：
+or yields them in turn if a block is passed:
 
 ```ruby
 %w(1 2 3 4 5 6 7).in_groups(3) {|group| p group}
@@ -2619,63 +2715,60 @@ NOTE: 在 `active_support/core_ext/array/grouping.rb` 文件中定义。
 ["6", "7", nil]
 ```
 
-在上述示例中，`in_groups` 使用 `nil` 填充尾部的分组。一个分组至多有一个填充值，而且是最后一个元素。有填充值的始终是最后几个分组。
+The examples above show that `in_groups` fills some groups with a trailing `nil` element as needed. A group can get at most one of these extra elements, the rightmost one if any. And the groups that have them are always the last ones.
 
-可以使用第二个参数（可选的）修改填充值：
+You can change this padding value using the second optional argument:
 
 ```ruby
 %w(1 2 3 4 5 6 7).in_groups(3, "0")
 # => [["1", "2", "3"], ["4", "5", "0"], ["6", "7", "0"]]
 ```
 
-如果传入 `false`，不填充较短的分组：
+And you can tell the method not to fill the smaller groups by passing `false`:
 
 ```ruby
 %w(1 2 3 4 5 6 7).in_groups(3, false)
 # => [["1", "2", "3"], ["4", "5"], ["6", "7"]]
 ```
 
-因此，`false` 不能作为填充值使用。
+As a consequence `false` can't be used as a padding value.
 
-NOTE: 在 `active_support/core_ext/array/grouping.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/array/grouping.rb`.
 
-<a class="anchor" id="split-value-nil"></a>
+[Array#in_groups]: https://api.rubyonrails.org/classes/Array.html#method-i-in_groups
 
 #### `split(value = nil)`
 
-`split` 方法在指定的分隔符处拆分数组，返回得到的片段。
+The method [`split`][Array#split] divides an array by a separator and returns the resulting chunks.
 
-如果有块，使用块中表达式返回 `true` 的元素作为分隔符：
+If a block is passed the separators are those elements of the array for which the block returns true:
 
 ```ruby
 (-5..5).to_a.split { |i| i.multiple_of?(4) }
 # => [[-5], [-3, -2, -1], [1, 2, 3], [5]]
 ```
 
-否则，使用指定的参数（默认为 `nil`）作为分隔符：
+Otherwise, the value received as argument, which defaults to `nil`, is the separator:
 
 ```ruby
 [0, 1, -5, 1, 1, "foo", "bar"].split(1)
 # => [[0], [-5], [], ["foo", "bar"]]
 ```
 
-TIP: 仔细观察上例，出现连续的分隔符时，得到的是空数组。
+TIP: Observe in the previous example that consecutive separators result in empty arrays.
 
-NOTE: 在 `active_support/core_ext/array/grouping.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/array/grouping.rb`.
 
-<a class="anchor" id="extensions-to-hash"></a>
+[Array#split]: https://api.rubyonrails.org/classes/Array.html#method-i-split
 
-## `Hash` 的扩展
+Extensions to `Hash`
+--------------------
 
-<a class="anchor" id="extensions-to-hash-conversions"></a>
-
-### 转换
-
-<a class="anchor" id="conversions-to-xml"></a>
+### Conversions
 
 #### `to_xml`
 
-`to_xml` 方法返回接收者的 XML 表述（字符串）：
+The method [`to_xml`][Hash#to_xml] returns a string containing an XML representation of its receiver:
 
 ```ruby
 {"foo" => 1, "bar" => 2}.to_xml
@@ -2687,107 +2780,110 @@ NOTE: 在 `active_support/core_ext/array/grouping.rb` 文件中定义。
 # </hash>
 ```
 
-为此，这个方法迭代各个键值对，根据值构建节点。假如键值对是 `key, value`：
+To do so, the method loops over the pairs and builds nodes that depend on the _values_. Given a pair `key`, `value`:
 
-*   如果 `value` 是一个散列，递归调用，此时 `key` 作为 `:root`。
-*   如果 `value` 是一个数组，递归调用，此时 `key` 作为 `:root`，`key` 的单数形式作为 `:children`。
-*   如果 `value` 是可调用对象，必须能接受一个或两个参数。根据参数的数量，传给可调用对象的第一个参数是 `options` 散列，`key` 作为 `:root`，`key` 的单数形式作为第二个参数。它的返回值作为新节点。
-*   如果 `value` 响应 `to_xml`，调用这个方法时把 `key` 作为 `:root`。
-*   否则，使用 `key` 为标签创建一个节点，`value` 的字符串表示形式为文本作为节点的文本。如果 `value` 是 `nil`，添加“nil”属性，值为“true”。除非有 `:skip_type` 选项，而且值为 `true`，否则还会根据下述对应关系添加“type”属性：
+* If `value` is a hash there's a recursive call with `key` as `:root`.
 
-    ```ruby
-    XML_TYPE_NAMES = {
-      "Symbol"     => "symbol",
-      "Integer"    => "integer",
-      "BigDecimal" => "decimal",
-      "Float"      => "float",
-      "TrueClass"  => "boolean",
-      "FalseClass" => "boolean",
-      "Date"       => "date",
-      "DateTime"   => "datetime",
-      "Time"       => "datetime"
-    }
-    ```
+* If `value` is an array there's a recursive call with `key` as `:root`, and `key` singularized as `:children`.
 
+* If `value` is a callable object it must expect one or two arguments. Depending on the arity, the callable is invoked with the `options` hash as first argument with `key` as `:root`, and `key` singularized as second argument. Its return value becomes a new node.
 
+* If `value` responds to `to_xml` the method is invoked with `key` as `:root`.
 
-默认情况下，根节点是“hash”，不过可以通过 `:root` 选项配置。
+* Otherwise, a node with `key` as tag is created with a string representation of `value` as text node. If `value` is `nil` an attribute "nil" set to "true" is added. Unless the option `:skip_types` exists and is true, an attribute "type" is added as well according to the following mapping:
 
-默认的 XML 构建程序是一个新的 `Builder::XmlMarkup` 实例。可以使用 `:builder` 选项配置构建程序。这个方法还接受 `:dasherize` 等选项，它们会被转发给构建程序。
+```ruby
+XML_TYPE_NAMES = {
+  "Symbol"     => "symbol",
+  "Integer"    => "integer",
+  "BigDecimal" => "decimal",
+  "Float"      => "float",
+  "TrueClass"  => "boolean",
+  "FalseClass" => "boolean",
+  "Date"       => "date",
+  "DateTime"   => "datetime",
+  "Time"       => "datetime"
+}
+```
 
-NOTE: 在 `active_support/core_ext/hash/conversions.rb` 文件中定义。
+By default the root node is "hash", but that's configurable via the `:root` option.
 
-<a class="anchor" id="merging"></a>
+The default XML builder is a fresh instance of `Builder::XmlMarkup`. You can configure your own builder with the `:builder` option. The method also accepts options like `:dasherize` and friends, they are forwarded to the builder.
 
-### 合并
+NOTE: Defined in `active_support/core_ext/hash/conversions.rb`.
 
-Ruby 有个内置的方法，`Hash#merge`，用于合并两个散列：
+[Hash#to_xml]: https://api.rubyonrails.org/classes/Hash.html#method-i-to_xml
+
+### Merging
+
+Ruby has a built-in method `Hash#merge` that merges two hashes:
 
 ```ruby
 {a: 1, b: 1}.merge(a: 0, c: 2)
 # => {:a=>0, :b=>1, :c=>2}
 ```
 
-为了方便，Active Support 定义了几个用于合并散列的方法。
+Active Support defines a few more ways of merging hashes that may be convenient.
 
-<a class="anchor" id="reverse-merge-and-reverse-merge-bang"></a>
+#### `reverse_merge` and `reverse_merge!`
 
-#### `reverse_merge` 和 `reverse_merge!`
-
-如果键有冲突，`merge` 方法的参数中的键胜出。通常利用这一点为选项散列提供默认值：
+In case of collision the key in the hash of the argument wins in `merge`. You can support option hashes with default values in a compact way with this idiom:
 
 ```ruby
 options = {length: 30, omission: "..."}.merge(options)
 ```
 
-Active Support 定义了 `reverse_merge` 方法，以防你想使用相反的合并方式：
+Active Support defines [`reverse_merge`][Hash#reverse_merge] in case you prefer this alternative notation:
 
 ```ruby
 options = options.reverse_merge(length: 30, omission: "...")
 ```
 
-还有一个爆炸版本，`reverse_merge!`，就地执行合并：
+And a bang version [`reverse_merge!`][Hash#reverse_merge!] that performs the merge in place:
 
 ```ruby
 options.reverse_merge!(length: 30, omission: "...")
 ```
 
-WARNING: `reverse_merge!` 方法会就地修改调用方，这可能不是个好主意。
+WARNING. Take into account that `reverse_merge!` may change the hash in the caller, which may or may not be a good idea.
 
-NOTE: 在 `active_support/core_ext/hash/reverse_merge.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/hash/reverse_merge.rb`.
 
-<a class="anchor" id="reverse-update"></a>
+[Hash#reverse_merge!]: https://api.rubyonrails.org/classes/Hash.html#method-i-reverse_merge-21
+[Hash#reverse_merge]: https://api.rubyonrails.org/classes/Hash.html#method-i-reverse_merge
 
 #### `reverse_update`
 
-`reverse_update` 方法是 `reverse_merge!` 的别名，作用参见前文。
+The method [`reverse_update`][Hash#reverse_update] is an alias for `reverse_merge!`, explained above.
 
-WARNING: 注意，`reverse_update` 方法的名称中没有感叹号。
+WARNING. Note that `reverse_update` has no bang.
 
-NOTE: 在 `active_support/core_ext/hash/reverse_merge.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/hash/reverse_merge.rb`.
 
-<a class="anchor" id="deep-merge-and-deep-merge-bang"></a>
+[Hash#reverse_update]: https://api.rubyonrails.org/classes/Hash.html#method-i-reverse_update
 
-#### `deep_merge` 和 `deep_merge!`
+#### `deep_merge` and `deep_merge!`
 
-如前面的示例所示，如果两个散列中有相同的键，参数中的散列胜出。
+As you can see in the previous example if a key is found in both hashes the value in the one in the argument wins.
 
-Active Support 定义了 `Hash#deep_merge` 方法。在深度合并中，如果两个散列中有相同的键，而且它们的值都是散列，那么在得到的散列中，那个键的值是合并后的结果：
+Active Support defines [`Hash#deep_merge`][Hash#deep_merge]. In a deep merge, if a key is found in both hashes and their values are hashes in turn, then their _merge_ becomes the value in the resulting hash:
 
 ```ruby
 {a: {b: 1}}.deep_merge(a: {c: 2})
 # => {:a=>{:b=>1, :c=>2}}
 ```
 
-`deep_merge!` 方法就地执行深度合并。
+The method [`deep_merge!`][Hash#deep_merge!] performs a deep merge in place.
 
-NOTE: 在 `active_support/core_ext/hash/deep_merge.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/hash/deep_merge.rb`.
 
-<a class="anchor" id="deep-duplicating"></a>
+[Hash#deep_merge!]: https://api.rubyonrails.org/classes/Hash.html#method-i-deep_merge-21
+[Hash#deep_merge]: https://api.rubyonrails.org/classes/Hash.html#method-i-deep_merge
 
-### 深度复制
+### Deep duplicating
 
-`Hash#deep_dup` 方法使用 Active Support 提供的 `Object#deep_dup` 方法复制散列自身及里面的键值对。其工作方式相当于通过 `Enumerator#each_with_object` 把 `deep_dup` 方法发给各个键值对。
+The method [`Hash#deep_dup`][Hash#deep_dup] duplicates itself and all keys and values
+inside recursively with Active Support method `Object#deep_dup`. It works like `Enumerator#each_with_object` with sending `deep_dup` method to each pair inside.
 
 ```ruby
 hash = { a: 1, b: { c: 2, d: [3, 4] } }
@@ -2800,99 +2896,52 @@ hash[:b][:e] == nil      # => true
 hash[:b][:d] == [3, 4]   # => true
 ```
 
-NOTE: 在 `active_support/core_ext/object/deep_dup.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/object/deep_dup.rb`.
 
-<a class="anchor" id="working-with-keys"></a>
+[Hash#deep_dup]: https://api.rubyonrails.org/classes/Hash.html#method-i-deep_dup
 
-### 处理键
+### Working with Keys
 
-<a class="anchor" id="except-and-except-bang"></a>
+#### `except` and `except!`
 
-#### `except` 和 `except!`
-
-`except` 方法返回一个散列，从接收者中把参数中列出的键删除（如果有的话）：
+The method [`except`][Hash#except] returns a hash with the keys in the argument list removed, if present:
 
 ```ruby
 {a: 1, b: 2}.except(:a) # => {:b=>2}
 ```
 
-如果接收者响应 `convert_key` 方法，会在各个参数上调用它。这样 `except` 能更好地处理不区分键类型的散列，例如：
+If the receiver responds to `convert_key`, the method is called on each of the arguments. This allows `except` to play nice with hashes with indifferent access for instance:
 
 ```ruby
 {a: 1}.with_indifferent_access.except(:a)  # => {}
 {a: 1}.with_indifferent_access.except("a") # => {}
 ```
 
-还有爆炸版本，`except!`，就地从接收者中删除键。
+There's also the bang variant [`except!`][Hash#except!] that removes keys in place.
 
-NOTE: 在 `active_support/core_ext/hash/except.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/hash/except.rb`.
 
-<a class="anchor" id="transform-keys-and-transform-keys-bang"></a>
+[Hash#except!]: https://api.rubyonrails.org/classes/Hash.html#method-i-except-21
+[Hash#except]: https://api.rubyonrails.org/classes/Hash.html#method-i-except
 
-#### `transform_keys` 和 `transform_keys!`
+#### `stringify_keys` and `stringify_keys!`
 
-`transform_keys` 方法接受一个块，使用块中的代码处理接收者的键：
-
-```ruby
-{nil => nil, 1 => 1, a: :a}.transform_keys { |key| key.to_s.upcase }
-# => {"" => nil, "A" => :a, "1" => 1}
-```
-
-遇到冲突的键时，只会从中选择一个。选择哪个值并不确定。
-
-```ruby
-{"a" => 1, a: 2}.transform_keys { |key| key.to_s.upcase }
-# 结果可能是
-# => {"A"=>2}
-# 也可能是
-# => {"A"=>1}
-```
-
-这个方法可以用于构建特殊的转换方式。例如，`stringify_keys` 和 `symbolize_keys` 使用 `transform_keys` 转换键：
-
-```ruby
-def stringify_keys
-  transform_keys { |key| key.to_s }
-end
-...
-def symbolize_keys
-  transform_keys { |key| key.to_sym rescue key }
-end
-```
-
-还有爆炸版本，`transform_keys!`，就地使用块中的代码处理接收者的键。
-
-此外，可以使用 `deep_transform_keys` 和 `deep_transform_keys!` 把块应用到指定散列及其嵌套的散列的所有键上。例如：
-
-```ruby
-{nil => nil, 1 => 1, nested: {a: 3, 5 => 5}}.deep_transform_keys { |key| key.to_s.upcase }
-# => {""=>nil, "1"=>1, "NESTED"=>{"A"=>3, "5"=>5}}
-```
-
-NOTE: 在 `active_support/core_ext/hash/keys.rb` 文件中定义。
-
-<a class="anchor" id="stringify-keys-and-stringify-keys-bang"></a>
-
-#### `stringify_keys` 和 `stringify_keys!`
-
-`stringify_keys` 把接收者中的键都变成字符串，然后返回一个散列。为此，它在键上调用 `to_s`。
+The method [`stringify_keys`][Hash#stringify_keys] returns a hash that has a stringified version of the keys in the receiver. It does so by sending `to_s` to them:
 
 ```ruby
 {nil => nil, 1 => 1, a: :a}.stringify_keys
 # => {"" => nil, "1" => 1, "a" => :a}
 ```
 
-遇到冲突的键时，只会从中选择一个。选择哪个值并不确定。
+In case of key collision, the value will be the one most recently inserted into the hash:
 
 ```ruby
 {"a" => 1, a: 2}.stringify_keys
-# 结果可能是
+# The result will be
 # => {"a"=>2}
-# 也可能是
-# => {"a"=>1}
 ```
 
-使用这个方法，选项既可以是符号，也可以是字符串。例如 `ActionView::Helpers::FormHelper` 定义的这个方法：
+This method may be useful for example to easily accept both symbols and strings as options. For instance `ActionView::Helpers::FormHelper` defines:
 
 ```ruby
 def to_check_box_tag(options = {}, checked_value = "1", unchecked_value = "0")
@@ -2902,131 +2951,119 @@ def to_check_box_tag(options = {}, checked_value = "1", unchecked_value = "0")
 end
 ```
 
-因为有第二行，所以用户可以传入 `:type` 或 `"type"`。
+The second line can safely access the "type" key, and let the user to pass either `:type` or "type".
 
-也有爆炸版本，`stringify_keys!`，直接把接收者的键变成字符串。
+There's also the bang variant [`stringify_keys!`][Hash#stringify_keys!] that stringifies keys in place.
 
-此外，可以使用 `deep_stringify_keys` 和 `deep_stringify_keys!` 把指定散列及其中嵌套的散列的键全都转换成字符串。例如：
+Besides that, one can use [`deep_stringify_keys`][Hash#deep_stringify_keys] and [`deep_stringify_keys!`][Hash#deep_stringify_keys!] to stringify all the keys in the given hash and all the hashes nested in it. An example of the result is:
 
 ```ruby
 {nil => nil, 1 => 1, nested: {a: 3, 5 => 5}}.deep_stringify_keys
 # => {""=>nil, "1"=>1, "nested"=>{"a"=>3, "5"=>5}}
 ```
 
-NOTE: 在 `active_support/core_ext/hash/keys.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/hash/keys.rb`.
 
-<a class="anchor" id="symbolize-keys-and-symbolize-keys-bang"></a>
+[Hash#deep_stringify_keys!]: https://api.rubyonrails.org/classes/Hash.html#method-i-deep_stringify_keys-21
+[Hash#deep_stringify_keys]: https://api.rubyonrails.org/classes/Hash.html#method-i-deep_stringify_keys
+[Hash#stringify_keys!]: https://api.rubyonrails.org/classes/Hash.html#method-i-stringify_keys-21
+[Hash#stringify_keys]: https://api.rubyonrails.org/classes/Hash.html#method-i-stringify_keys
 
-#### `symbolize_keys` 和 `symbolize_keys!`
+#### `symbolize_keys` and `symbolize_keys!`
 
-`symbolize_keys` 方法把接收者中的键尽量变成符号。为此，它在键上调用 `to_sym`。
+The method [`symbolize_keys`][Hash#symbolize_keys] returns a hash that has a symbolized version of the keys in the receiver, where possible. It does so by sending `to_sym` to them:
 
 ```ruby
 {nil => nil, 1 => 1, "a" => "a"}.symbolize_keys
 # => {nil=>nil, 1=>1, :a=>"a"}
 ```
 
-WARNING: 注意，在上例中，只有键变成了符号。
+WARNING. Note in the previous example only one key was symbolized.
 
-遇到冲突的键时，只会从中选择一个。选择哪个值并不确定。
+In case of key collision, the value will be the one most recently inserted into the hash:
 
 ```ruby
 {"a" => 1, a: 2}.symbolize_keys
-# 结果可能是
+# The result will be
 # => {:a=>2}
-# 也可能是
-# => {:a=>1}
 ```
 
-使用这个方法，选项既可以是符号，也可以是字符串。例如 `ActionController::UrlRewriter` 定义的这个方法：
+This method may be useful for example to easily accept both symbols and strings as options. For instance `ActionText::TagHelper` defines
 
 ```ruby
-def rewrite_path(options)
+def rich_text_area_tag(name, value = nil, options = {})
   options = options.symbolize_keys
-  options.update(options[:params].symbolize_keys) if options[:params]
+
+  options[:input] ||= "trix_input_#{ActionText::TagHelper.id += 1}
   ...
 end
 ```
 
-因为有第二行，所以用户可以传入 `:params` 或 `"params"`。
+The third line can safely access the `:input` key, and let the user to pass either `:input` or "input".
 
-也有爆炸版本，`symbolize_keys!`，直接把接收者的键变成符号。
+There's also the bang variant [`symbolize_keys!`][Hash#symbolize_keys!] that symbolizes keys in place.
 
-此外，可以使用 `deep_symbolize_keys` 和 `deep_symbolize_keys!` 把指定散列及其中嵌套的散列的键全都转换成符号。例如：
+Besides that, one can use [`deep_symbolize_keys`][Hash#deep_symbolize_keys] and [`deep_symbolize_keys!`][Hash#deep_symbolize_keys!] to symbolize all the keys in the given hash and all the hashes nested in it. An example of the result is:
 
 ```ruby
 {nil => nil, 1 => 1, "nested" => {"a" => 3, 5 => 5}}.deep_symbolize_keys
 # => {nil=>nil, 1=>1, nested:{a:3, 5=>5}}
 ```
 
-NOTE: 在 `active_support/core_ext/hash/keys.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/hash/keys.rb`.
 
-<a class="anchor" id="to-options-and-to-options-bang"></a>
+[Hash#deep_symbolize_keys!]: https://api.rubyonrails.org/classes/Hash.html#method-i-deep_symbolize_keys-21
+[Hash#deep_symbolize_keys]: https://api.rubyonrails.org/classes/Hash.html#method-i-deep_symbolize_keys
+[Hash#symbolize_keys!]: https://api.rubyonrails.org/classes/Hash.html#method-i-symbolize_keys-21
+[Hash#symbolize_keys]: https://api.rubyonrails.org/classes/Hash.html#method-i-symbolize_keys
 
-#### `to_options` 和 `to_options!`
+#### `to_options` and `to_options!`
 
-`to_options` 和 `to_options!` 分别是 `symbolize_keys` and `symbolize_keys!` 的别名。
+The methods [`to_options`][Hash#to_options] and [`to_options!`][Hash#to_options!] are respectively aliases of `symbolize_keys` and `symbolize_keys!`.
 
-NOTE: 在 `active_support/core_ext/hash/keys.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/hash/keys.rb`.
 
-<a class="anchor" id="assert-valid-keys"></a>
+[Hash#to_options!]: https://api.rubyonrails.org/classes/Hash.html#method-i-to_options-21
+[Hash#to_options]: https://api.rubyonrails.org/classes/Hash.html#method-i-to_options
 
 #### `assert_valid_keys`
 
-`assert_valid_keys` 方法的参数数量不定，检查接收者的键是否在白名单之外。如果是，抛出 `ArgumentError` 异常。
+The method [`assert_valid_keys`][Hash#assert_valid_keys] receives an arbitrary number of arguments, and checks whether the receiver has any key outside that list. If it does `ArgumentError` is raised.
 
 ```ruby
 {a: 1}.assert_valid_keys(:a)  # passes
 {a: 1}.assert_valid_keys("a") # ArgumentError
 ```
 
-例如，Active Record 构建关联时不接受未知的选项。这个功能就是通过 `assert_valid_keys` 实现的。
+Active Record does not accept unknown options when building associations, for example. It implements that control via `assert_valid_keys`.
 
-NOTE: 在 `active_support/core_ext/hash/keys.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/hash/keys.rb`.
 
-<a class="anchor" id="working-with-values"></a>
+[Hash#assert_valid_keys]: https://api.rubyonrails.org/classes/Hash.html#method-i-assert_valid_keys
 
-### 处理值
+### Working with Values
 
-<a class="anchor" id="transform-values-transform-values-bang"></a>
+#### `deep_transform_values` and `deep_transform_values!`
 
-#### `transform_values` 和 `transform_values!`
-
-`transform_values` 的参数是一个块，使用块中的代码处理接收者中的各个值。
+The method [`deep_transform_values`][Hash#deep_transform_values] returns a new hash with all values converted by the block operation. This includes the values from the root hash and from all nested hashes and arrays.
 
 ```ruby
-{ nil => nil, 1 => 1, :x => :a }.transform_values { |value| value.to_s.upcase }
-# => {nil=>"", 1=>"1", :x=>"A"}
+hash = { person: { name: 'Rob', age: '28' } }
+
+hash.deep_transform_values{ |value| value.to_s.upcase }
+# => {person: {name: "ROB", age: "28"}}
 ```
 
-也有爆炸版本，`transform_values!`，就地处理接收者的值。
+There's also the bang variant [`deep_transform_values!`][Hash#deep_transform_values!] that destructively converts all values by using the block operation.
 
-NOTE: 在 `active_support/core_ext/hash/transform_values.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/hash/deep_transform_values.rb`.
 
-<a class="anchor" id="slicing"></a>
+[Hash#deep_transform_values!]: https://api.rubyonrails.org/classes/Hash.html#method-i-deep_transform_values-21
+[Hash#deep_transform_values]: https://api.rubyonrails.org/classes/Hash.html#method-i-deep_transform_values
 
-### 切片
+### Slicing
 
-Ruby 原生支持从字符串和数组中提取切片。Active Support 为散列增加了这个功能：
-
-```ruby
-{a: 1, b: 2, c: 3}.slice(:a, :c)
-# => {:a=>1, :c=>3}
-
-{a: 1, b: 2, c: 3}.slice(:b, :X)
-# => {:b=>2} # 不存在的键会被忽略
-```
-
-如果接收者响应 `convert_key`，会使用它对键做整形：
-
-```ruby
-{a: 1, b: 2}.with_indifferent_access.slice("a")
-# => {:a=>1}
-```
-
-NOTE: 可以通过切片使用键白名单净化选项散列。
-
-也有 `slice!`，它就地执行切片，返回被删除的键值对：
+The method [`slice!`][Hash#slice!] replaces the hash with only the given keys and returns a hash containing the removed key/value pairs.
 
 ```ruby
 hash = {a: 1, b: 2}
@@ -3034,13 +3071,13 @@ rest = hash.slice!(:a) # => {:b=>2}
 hash                   # => {:a=>1}
 ```
 
-NOTE: 在 `active_support/core_ext/hash/slice.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/hash/slice.rb`.
 
-<a class="anchor" id="extracting"></a>
+[Hash#slice!]: https://api.rubyonrails.org/classes/Hash.html#method-i-slice-21
 
-### 提取
+### Extracting
 
-`extract!` 方法删除并返回匹配指定键的键值对。
+The method [`extract!`][Hash#extract!] removes and returns the key/value pairs matching the given keys.
 
 ```ruby
 hash = {a: 1, b: 2}
@@ -3048,7 +3085,7 @@ rest = hash.extract!(:a) # => {:a=>1}
 hash                     # => {:b=>2}
 ```
 
-`extract!` 方法的返回值类型与接收者一样，是 `Hash` 或其子类。
+The method `extract!` returns the same subclass of Hash that the receiver is.
 
 ```ruby
 hash = {a: 1, b: 2}.with_indifferent_access
@@ -3056,41 +3093,29 @@ rest = hash.extract!(:a).class
 # => ActiveSupport::HashWithIndifferentAccess
 ```
 
-NOTE: 在 `active_support/core_ext/hash/slice.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/hash/slice.rb`.
 
-<a class="anchor" id="indifferent-access"></a>
+[Hash#extract!]: https://api.rubyonrails.org/classes/Hash.html#method-i-extract-21
 
-### 无差别访问
+### Indifferent Access
 
-`with_indifferent_access` 方法把接收者转换成 `ActiveSupport::HashWithIndifferentAccess` 实例：
+The method [`with_indifferent_access`][Hash#with_indifferent_access] returns an [`ActiveSupport::HashWithIndifferentAccess`][ActiveSupport::HashWithIndifferentAccess] out of its receiver:
 
 ```ruby
 {a: 1}.with_indifferent_access["a"] # => 1
 ```
 
-NOTE: 在 `active_support/core_ext/hash/indifferent_access.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/hash/indifferent_access.rb`.
 
-<a class="anchor" id="compacting"></a>
+[ActiveSupport::HashWithIndifferentAccess]: https://api.rubyonrails.org/classes/ActiveSupport/HashWithIndifferentAccess.html
+[Hash#with_indifferent_access]: https://api.rubyonrails.org/classes/Hash.html#method-i-with_indifferent_access
 
-### 压缩
-
-`compact` 和 `compact!` 方法返回没有 `nil` 值的散列：
-
-```ruby
-{a: 1, b: 2, c: nil}.compact # => {a: 1, b: 2}
-```
-
-NOTE: 在 `active_support/core_ext/hash/compact.rb` 文件中定义。
-
-<a class="anchor" id="extensions-to-regexp"></a>
-
-## `Regexp` 的扩展
-
-<a class="anchor" id="multiline-questionmark"></a>
+Extensions to `Regexp`
+----------------------
 
 ### `multiline?`
 
-`multiline?` 方法判断正则表达式有没有设定 `/m` 旗标，即点号是否匹配换行符。
+The method [`multiline?`][Regexp#multiline?] says whether a regexp has the `/m` flag set, that is, whether the dot matches newlines.
 
 ```ruby
 %r{.}.multiline?  # => false
@@ -3100,45 +3125,28 @@ Regexp.new('.').multiline?                    # => false
 Regexp.new('.', Regexp::MULTILINE).multiline? # => true
 ```
 
-Rails 只在一处用到了这个方法，也在路由代码中。路由的条件不允许使用多行正则表达式，这个方法简化了这一约束的实施。
+Rails uses this method in a single place, also in the routing code. Multiline regexps are disallowed for route requirements and this flag eases enforcing that constraint.
 
 ```ruby
-def assign_route_options(segments, defaults, requirements)
+def verify_regexp_requirements(requirements)
   ...
   if requirement.multiline?
-    raise ArgumentError, "Regexp multiline option not allowed in routing requirements: #{requirement.inspect}"
+    raise ArgumentError, "Regexp multiline option is not allowed in routing requirements: #{requirement.inspect}"
   end
   ...
 end
 ```
 
-NOTE: 在 `active_support/core_ext/regexp.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/regexp.rb`.
 
-<a class="anchor" id="match-questionmark"></a>
+[Regexp#multiline?]: https://api.rubyonrails.org/classes/Regexp.html#method-i-multiline-3F
 
-### `match?`
-
-Rails 实现了 `Regexp#match?` 方法，供 Ruby 2.4 之前的版本使用：
-
-```ruby
-/oo/.match?('foo')    # => true
-/oo/.match?('bar')    # => false
-/oo/.match?('foo', 1) # => true
-```
-
-这个向后移植的版本与原生的 `match?` 方法具有相同的接口，但是调用方没有未设定 `$1` 等副作用，不过速度没什么优势。定义这个方法的目的是编写与 2.4 兼容的代码。Rails 内部有用到这个判断方法。
-
-只有 Ruby 未定义 `Regexp#match?` 方法时，Rails 才会定义，因此在 Ruby 2.4 或以上版本中运行的代码使用的是原生版本，性能有保障。
-
-<a class="anchor" id="extensions-to-range"></a>
-
-## `Range` 的扩展
-
-<a class="anchor" id="extensions-to-range-to-s"></a>
+Extensions to `Range`
+---------------------
 
 ### `to_s`
 
-Active Support 扩展了 `Range#to_s` 方法，让它接受一个可选的格式参数。目前，唯一支持的非默认格式是 `:db`：
+Active Support extends the method `Range#to_s` so that it understands an optional format argument. As of this writing the only supported non-default format is `:db`:
 
 ```ruby
 (Date.today..Date.tomorrow).to_s
@@ -3148,41 +3156,42 @@ Active Support 扩展了 `Range#to_s` 方法，让它接受一个可选的格式
 # => "BETWEEN '2009-10-25' AND '2009-10-26'"
 ```
 
-如上例所示，`:db` 格式生成一个 `BETWEEN` SQL 子句。Active Record 使用它支持范围值条件。
+As the example depicts, the `:db` format generates a `BETWEEN` SQL clause. That is used by Active Record in its support for range values in conditions.
 
-NOTE: 在 `active_support/core_ext/range/conversions.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/range/conversions.rb`.
 
-<a class="anchor" id="include-questionmark"></a>
+### `===`, `include?`, and `cover?`
 
-### `include?`
-
-`Range#include?` 和 `Range#===` 方法判断值是否在值域的范围内：
+The methods `Range#===`, `Range#include?`, and `Range#cover?` say whether some value falls between the ends of a given instance:
 
 ```ruby
 (2..3).include?(Math::E) # => true
 ```
 
-Active Support 扩展了这两个方法，允许参数为另一个值域。此时，测试参数指定的值域是否在接收者的范围内：
+Active Support extends these methods so that the argument may be another range in turn. In that case we test whether the ends of the argument range belong to the receiver themselves:
 
 ```ruby
+(1..10) === (3..7)  # => true
+(1..10) === (0..7)  # => false
+(1..10) === (3..11) # => false
+(1...9) === (3..9)  # => false
+
 (1..10).include?(3..7)  # => true
 (1..10).include?(0..7)  # => false
 (1..10).include?(3..11) # => false
 (1...9).include?(3..9)  # => false
 
-(1..10) === (3..7)  # => true
-(1..10) === (0..7)  # => false
-(1..10) === (3..11) # => false
-(1...9) === (3..9)  # => false
+(1..10).cover?(3..7)  # => true
+(1..10).cover?(0..7)  # => false
+(1..10).cover?(3..11) # => false
+(1...9).cover?(3..9)  # => false
 ```
 
-NOTE: 在 `active_support/core_ext/range/include_range.rb` 文件中定义。
-
-<a class="anchor" id="overlaps-questionmark"></a>
+NOTE: Defined in `active_support/core_ext/range/compare_range.rb`.
 
 ### `overlaps?`
 
-`Range#overlaps?` 方法测试两个值域是否有交集：
+The method [`Range#overlaps?`][Range#overlaps?] says whether any two given ranges have non-void intersection:
 
 ```ruby
 (1..10).overlaps?(7..11)  # => true
@@ -3190,105 +3199,41 @@ NOTE: 在 `active_support/core_ext/range/include_range.rb` 文件中定义。
 (1..10).overlaps?(11..27) # => false
 ```
 
-NOTE: 在 `active_support/core_ext/range/overlaps.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/range/overlaps.rb`.
 
-<a class="anchor" id="extensions-to-date"></a>
+[Range#overlaps?]: https://api.rubyonrails.org/classes/Range.html#method-i-overlaps-3F
 
-## `Date` 的扩展
+Extensions to `Date`
+--------------------
 
-<a class="anchor" id="extensions-to-date-calculations"></a>
+### Calculations
 
-### 计算
-
-NOTE: 这一节的方法都在 `active_support/core_ext/date/calculations.rb` 文件中定义。
-
-TIP: 下述计算方法在 1582 年 10 月有边缘情况，因为 5..14 日不存在。简单起见，本文没有说明这些日子的行为，不过可以说，其行为与预期是相符的。即，`Date.new(1582, 10, 4).tomorrow` 返回 `Date.new(1582, 10, 15)`，等等。预期的行为参见 `test/core_ext/date_ext_test.rb` 中的 Active Support 测试组件。
-
-<a class="anchor" id="date-current"></a>
+INFO: The following calculation methods have edge cases in October 1582, since days 5..14 just do not exist. This guide does not document their behavior around those days for brevity, but it is enough to say that they do what you would expect. That is, `Date.new(1582, 10, 4).tomorrow` returns `Date.new(1582, 10, 15)` and so on. Please check `test/core_ext/date_ext_test.rb` in the Active Support test suite for expected behavior.
 
 #### `Date.current`
 
-Active Support 定义的 `Date.current` 方法表示当前时区中的今天。其作用类似于 `Date.today`，不过会考虑用户设定的时区（如果定义了时区的话）。Active Support 还定义了 `Date.yesterday` 和 `Date.tomorrow`，以及实例判断方法 `past?`、`today?`、`future?`、`on_weekday?` 和 `on_weekend?`，这些方法都与 `Date.current` 相关。
+Active Support defines [`Date.current`][Date.current] to be today in the current time zone. That's like `Date.today`, except that it honors the user time zone, if defined. It also defines [`Date.yesterday`][Date.yesterday] and [`Date.tomorrow`][Date.tomorrow], and the instance predicates [`past?`][DateAndTime::Calculations#past?], [`today?`][DateAndTime::Calculations#today?], [`tomorrow?`][DateAndTime::Calculations#tomorrow?], [`next_day?`][DateAndTime::Calculations#next_day?], [`yesterday?`][DateAndTime::Calculations#yesterday?], [`prev_day?`][DateAndTime::Calculations#prev_day?], [`future?`][DateAndTime::Calculations#future?], [`on_weekday?`][DateAndTime::Calculations#on_weekday?] and [`on_weekend?`][DateAndTime::Calculations#on_weekend?], all of them relative to `Date.current`.
 
-比较日期时，如果要考虑用户设定的时区，应该使用 `Date.current`，而不是 `Date.today`。与系统的时区（`Date.today` 默认采用）相比，用户设定的时区可能超前，这意味着，`Date.today` 可能等于 `Date.yesterday`。
+When making Date comparisons using methods which honor the user time zone, make sure to use `Date.current` and not `Date.today`. There are cases where the user time zone might be in the future compared to the system time zone, which `Date.today` uses by default. This means `Date.today` may equal `Date.yesterday`.
 
-<a class="anchor" id="named-dates"></a>
+NOTE: Defined in `active_support/core_ext/date/calculations.rb`.
 
-#### 具名日期
+[Date.current]: https://api.rubyonrails.org/classes/Date.html#method-c-current
+[Date.tomorrow]: https://api.rubyonrails.org/classes/Date.html#method-c-tomorrow
+[Date.yesterday]: https://api.rubyonrails.org/classes/Date.html#method-c-yesterday
+[DateAndTime::Calculations#future?]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-future-3F
+[DateAndTime::Calculations#on_weekday?]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-on_weekday-3F
+[DateAndTime::Calculations#on_weekend?]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-on_weekend-3F
+[DateAndTime::Calculations#past?]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-past-3F
 
-<a class="anchor" id="prev-year-next-year"></a>
+#### Named dates
 
-##### `prev_year`、`next_year`
+##### `beginning_of_week`, `end_of_week`
 
-在 Ruby 1.9 中，`prev_year` 和 `next_year` 方法返回前一年和下一年中的相同月和日：
-
-```ruby
-d = Date.new(2010, 5, 8) # => Sat, 08 May 2010
-d.prev_year              # => Fri, 08 May 2009
-d.next_year              # => Sun, 08 May 2011
-```
-
-如果是润年的 2 月 29 日，得到的是 28 日：
-
-```ruby
-d = Date.new(2000, 2, 29) # => Tue, 29 Feb 2000
-d.prev_year               # => Sun, 28 Feb 1999
-d.next_year               # => Wed, 28 Feb 2001
-```
-
-`last_year` 是 `prev_year` 的别名。
-
-<a class="anchor" id="prev-month-next-month"></a>
-
-##### `prev_month`、`next_month`
-
-在 Ruby 1.9 中，`prev_month` 和 `next_month` 方法分别返回前一个月和后一个月中的相同日：
-
-```ruby
-d = Date.new(2010, 5, 8) # => Sat, 08 May 2010
-d.prev_month             # => Thu, 08 Apr 2010
-d.next_month             # => Tue, 08 Jun 2010
-```
-
-如果日不存在，返回前一月中的最后一天：
-
-```ruby
-Date.new(2000, 5, 31).prev_month # => Sun, 30 Apr 2000
-Date.new(2000, 3, 31).prev_month # => Tue, 29 Feb 2000
-Date.new(2000, 5, 31).next_month # => Fri, 30 Jun 2000
-Date.new(2000, 1, 31).next_month # => Tue, 29 Feb 2000
-```
-
-`last_month` 是 `prev_month` 的别名。
-
-<a class="anchor" id="prev-quarter-next-quarter"></a>
-
-##### `prev_quarter`、`next_quarter`
-
-类似于 `prev_month` 和 `next_month`，返回前一季度和下一季度中的相同日：
-
-```ruby
-t = Time.local(2010, 5, 8) # => Sat, 08 May 2010
-t.prev_quarter             # => Mon, 08 Feb 2010
-t.next_quarter             # => Sun, 08 Aug 2010
-```
-
-如果日不存在，返回前一月中的最后一天：
-
-```ruby
-Time.local(2000, 7, 31).prev_quarter  # => Sun, 30 Apr 2000
-Time.local(2000, 5, 31).prev_quarter  # => Tue, 29 Feb 2000
-Time.local(2000, 10, 31).prev_quarter # => Mon, 30 Oct 2000
-Time.local(2000, 11, 31).next_quarter # => Wed, 28 Feb 2001
-```
-
-`last_quarter` 是 `prev_quarter` 的别名。
-
-<a class="anchor" id="beginning-of-week-end-of-week"></a>
-
-##### `beginning_of_week`、`end_of_week`
-
-`beginning_of_week` 和 `end_of_week` 方法分别返回某一周的第一天和最后一天的日期。一周假定从周一开始，不过这是可以修改的，方法是在线程中设定 `Date.beginning_of_week` 或 `config.beginning_of_week`。
+The methods [`beginning_of_week`][DateAndTime::Calculations#beginning_of_week] and [`end_of_week`][DateAndTime::Calculations#end_of_week] return the dates for the
+beginning and end of the week, respectively. Weeks are assumed to start on
+Monday, but that can be changed passing an argument, setting thread local
+`Date.beginning_of_week` or `config.beginning_of_week`.
 
 ```ruby
 d = Date.new(2010, 5, 8)     # => Sat, 08 May 2010
@@ -3298,13 +3243,19 @@ d.end_of_week                # => Sun, 09 May 2010
 d.end_of_week(:sunday)       # => Sat, 08 May 2010
 ```
 
-`at_beginning_of_week` 是 `beginning_of_week` 的别名，`at_end_of_week` 是 `end_of_week` 的别名。
+`beginning_of_week` is aliased to [`at_beginning_of_week`][DateAndTime::Calculations#at_beginning_of_week] and `end_of_week` is aliased to [`at_end_of_week`][DateAndTime::Calculations#at_end_of_week].
 
-<a class="anchor" id="monday-sunday"></a>
+NOTE: Defined in `active_support/core_ext/date_and_time/calculations.rb`.
 
-##### `monday`、`sunday`
+[DateAndTime::Calculations#at_beginning_of_week]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-at_beginning_of_week
+[DateAndTime::Calculations#at_end_of_week]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-at_end_of_week
+[DateAndTime::Calculations#beginning_of_week]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-beginning_of_week
+[DateAndTime::Calculations#end_of_week]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-end_of_week
 
-`monday` 和 `sunday` 方法分别返回前一个周一和下一个周日的日期：
+##### `monday`, `sunday`
+
+The methods [`monday`][DateAndTime::Calculations#monday] and [`sunday`][DateAndTime::Calculations#sunday] return the dates for the previous Monday and
+next Sunday, respectively.
 
 ```ruby
 d = Date.new(2010, 5, 8)     # => Sat, 08 May 2010
@@ -3318,11 +3269,14 @@ d = Date.new(2012, 9, 16)    # => Sun, 16 Sep 2012
 d.sunday                     # => Sun, 16 Sep 2012
 ```
 
-<a class="anchor" id="prev-week-next-week"></a>
+NOTE: Defined in `active_support/core_ext/date_and_time/calculations.rb`.
 
-##### `prev_week`、`next_week`
+[DateAndTime::Calculations#monday]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-monday
+[DateAndTime::Calculations#sunday]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-sunday
 
-`next_week` 的参数是一个符号，指定周几的英文名称（默认为线程中的 `Date.beginning_of_week` 或 `config.beginning_of_week`，或者 `:monday`），返回那一天的日期。
+##### `prev_week`, `next_week`
+
+The method [`next_week`][DateAndTime::Calculations#next_week] receives a symbol with a day name in English (default is the thread local [`Date.beginning_of_week`][Date.beginning_of_week], or `config.beginning_of_week`, or `:monday`) and it returns the date corresponding to that day.
 
 ```ruby
 d = Date.new(2010, 5, 9) # => Sun, 09 May 2010
@@ -3330,7 +3284,7 @@ d.next_week              # => Mon, 10 May 2010
 d.next_week(:saturday)   # => Sat, 15 May 2010
 ```
 
-`prev_week` 的作用类似：
+The method [`prev_week`][DateAndTime::Calculations#prev_week] is analogous:
 
 ```ruby
 d.prev_week              # => Mon, 26 Apr 2010
@@ -3338,15 +3292,20 @@ d.prev_week(:saturday)   # => Sat, 01 May 2010
 d.prev_week(:friday)     # => Fri, 30 Apr 2010
 ```
 
-`last_week` 是 `prev_week` 的别名。
+`prev_week` is aliased to [`last_week`][DateAndTime::Calculations#last_week].
 
-设定 `Date.beginning_of_week` 或 `config.beginning_of_week` 之后，`next_week` 和 `prev_week` 能按预期工作。
+Both `next_week` and `prev_week` work as expected when `Date.beginning_of_week` or `config.beginning_of_week` are set.
 
-<a class="anchor" id="beginning-of-month-end-of-month"></a>
+NOTE: Defined in `active_support/core_ext/date_and_time/calculations.rb`.
 
-##### `beginning_of_month`、`end_of_month`
+[Date.beginning_of_week]: https://api.rubyonrails.org/classes/Date.html#method-c-beginning_of_week
+[DateAndTime::Calculations#last_week]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-last_week
+[DateAndTime::Calculations#next_week]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-next_week
+[DateAndTime::Calculations#prev_week]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-prev_week
 
-`beginning_of_month` 和 `end_of_month` 方法分别返回某个月的第一天和最后一天的日期：
+##### `beginning_of_month`, `end_of_month`
+
+The methods [`beginning_of_month`][DateAndTime::Calculations#beginning_of_month] and [`end_of_month`][DateAndTime::Calculations#end_of_month] return the dates for the beginning and end of the month:
 
 ```ruby
 d = Date.new(2010, 5, 9) # => Sun, 09 May 2010
@@ -3354,13 +3313,18 @@ d.beginning_of_month     # => Sat, 01 May 2010
 d.end_of_month           # => Mon, 31 May 2010
 ```
 
-`at_beginning_of_month` 是 `beginning_of_month` 的别名，`at_end_of_month` 是 `end_of_month` 的别名。
+`beginning_of_month` is aliased to [`at_beginning_of_month`][DateAndTime::Calculations#at_beginning_of_month], and `end_of_month` is aliased to [`at_end_of_month`][DateAndTime::Calculations#at_end_of_month].
 
-<a class="anchor" id="beginning-of-quarter-end-of-quarter"></a>
+NOTE: Defined in `active_support/core_ext/date_and_time/calculations.rb`.
 
-##### `beginning_of_quarter`、`end_of_quarter`
+[DateAndTime::Calculations#at_beginning_of_month]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-at_beginning_of_month
+[DateAndTime::Calculations#at_end_of_month]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-at_end_of_month
+[DateAndTime::Calculations#beginning_of_month]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-beginning_of_month
+[DateAndTime::Calculations#end_of_month]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-end_of_month
 
-`beginning_of_quarter` 和 `end_of_quarter` 分别返回接收者日历年的季度第一天和最后一天的日期：
+##### `beginning_of_quarter`, `end_of_quarter`
+
+The methods [`beginning_of_quarter`][DateAndTime::Calculations#beginning_of_quarter] and [`end_of_quarter`][DateAndTime::Calculations#end_of_quarter] return the dates for the beginning and end of the quarter of the receiver's calendar year:
 
 ```ruby
 d = Date.new(2010, 5, 9) # => Sun, 09 May 2010
@@ -3368,13 +3332,18 @@ d.beginning_of_quarter   # => Thu, 01 Apr 2010
 d.end_of_quarter         # => Wed, 30 Jun 2010
 ```
 
-`at_beginning_of_quarter` 是 `beginning_of_quarter` 的别名，`at_end_of_quarter` 是 `end_of_quarter` 的别名。
+`beginning_of_quarter` is aliased to [`at_beginning_of_quarter`][DateAndTime::Calculations#at_beginning_of_quarter], and `end_of_quarter` is aliased to [`at_end_of_quarter`][DateAndTime::Calculations#at_end_of_quarter].
 
-<a class="anchor" id="beginning-of-year-end-of-year"></a>
+NOTE: Defined in `active_support/core_ext/date_and_time/calculations.rb`.
 
-##### `beginning_of_year`、`end_of_year`
+[DateAndTime::Calculations#at_beginning_of_quarter]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-at_beginning_of_quarter
+[DateAndTime::Calculations#at_end_of_quarter]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-at_end_of_quarter
+[DateAndTime::Calculations#beginning_of_quarter]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-beginning_of_quarter
+[DateAndTime::Calculations#end_of_quarter]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-end_of_quarter
 
-`beginning_of_year` 和 `end_of_year` 方法分别返回一年的第一天和最后一天的日期：
+##### `beginning_of_year`, `end_of_year`
+
+The methods [`beginning_of_year`][DateAndTime::Calculations#beginning_of_year] and [`end_of_year`][DateAndTime::Calculations#end_of_year] return the dates for the beginning and end of the year:
 
 ```ruby
 d = Date.new(2010, 5, 9) # => Sun, 09 May 2010
@@ -3382,71 +3351,88 @@ d.beginning_of_year      # => Fri, 01 Jan 2010
 d.end_of_year            # => Fri, 31 Dec 2010
 ```
 
-`at_beginning_of_year` 是 `beginning_of_year` 的别名，`at_end_of_year` 是 `end_of_year` 的别名。
+`beginning_of_year` is aliased to [`at_beginning_of_year`][DateAndTime::Calculations#at_beginning_of_year], and `end_of_year` is aliased to [`at_end_of_year`][DateAndTime::Calculations#at_end_of_year].
 
-<a class="anchor" id="other-date-computations"></a>
+NOTE: Defined in `active_support/core_ext/date_and_time/calculations.rb`.
 
-#### 其他日期计算方法
+[DateAndTime::Calculations#at_beginning_of_year]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-at_beginning_of_year
+[DateAndTime::Calculations#at_end_of_year]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-at_end_of_year
+[DateAndTime::Calculations#beginning_of_year]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-beginning_of_year
+[DateAndTime::Calculations#end_of_year]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-end_of_year
 
-<a class="anchor" id="years-ago-years-since"></a>
+#### Other Date Computations
 
-##### `years_ago`、`years_since`
+##### `years_ago`, `years_since`
 
-`years_ago` 方法的参数是一个数字，返回那么多年以前同一天的日期：
+The method [`years_ago`][DateAndTime::Calculations#years_ago] receives a number of years and returns the same date those many years ago:
 
 ```ruby
 date = Date.new(2010, 6, 7)
 date.years_ago(10) # => Wed, 07 Jun 2000
 ```
 
-`years_since` 方法向前移动时间：
+[`years_since`][DateAndTime::Calculations#years_since] moves forward in time:
 
 ```ruby
 date = Date.new(2010, 6, 7)
 date.years_since(10) # => Sun, 07 Jun 2020
 ```
 
-如果那一天不存在，返回前一个月的最后一天：
+If such a day does not exist, the last day of the corresponding month is returned:
 
 ```ruby
 Date.new(2012, 2, 29).years_ago(3)     # => Sat, 28 Feb 2009
 Date.new(2012, 2, 29).years_since(3)   # => Sat, 28 Feb 2015
 ```
 
-<a class="anchor" id="months-ago-months-since"></a>
+[`last_year`][DateAndTime::Calculations#last_year] is short-hand for `#years_ago(1)`.
 
-##### `months_ago`、`months_since`
+NOTE: Defined in `active_support/core_ext/date_and_time/calculations.rb`.
 
-`months_ago` 和 `months_since` 方法的作用类似，不过是针对月的：
+[DateAndTime::Calculations#last_year]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-last_year
+[DateAndTime::Calculations#years_ago]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-years_ago
+[DateAndTime::Calculations#years_since]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-years_since
+
+##### `months_ago`, `months_since`
+
+The methods [`months_ago`][DateAndTime::Calculations#months_ago] and [`months_since`][DateAndTime::Calculations#months_since] work analogously for months:
 
 ```ruby
 Date.new(2010, 4, 30).months_ago(2)   # => Sun, 28 Feb 2010
 Date.new(2010, 4, 30).months_since(2) # => Wed, 30 Jun 2010
 ```
 
-如果那一天不存在，返回前一个月的最后一天：
+If such a day does not exist, the last day of the corresponding month is returned:
 
 ```ruby
 Date.new(2010, 4, 30).months_ago(2)    # => Sun, 28 Feb 2010
 Date.new(2009, 12, 31).months_since(2) # => Sun, 28 Feb 2010
 ```
 
-<a class="anchor" id="weeks-ago"></a>
+[`last_month`][DateAndTime::Calculations#last_month] is short-hand for `#months_ago(1)`.
+
+NOTE: Defined in `active_support/core_ext/date_and_time/calculations.rb`.
+
+[DateAndTime::Calculations#last_month]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-last_month
+[DateAndTime::Calculations#months_ago]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-months_ago
+[DateAndTime::Calculations#months_since]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-months_since
 
 ##### `weeks_ago`
 
-`weeks_ago` 方法的作用类似，不过是针对周的：
+The method [`weeks_ago`][DateAndTime::Calculations#weeks_ago] works analogously for weeks:
 
 ```ruby
 Date.new(2010, 5, 24).weeks_ago(1)    # => Mon, 17 May 2010
 Date.new(2010, 5, 24).weeks_ago(2)    # => Mon, 10 May 2010
 ```
 
-<a class="anchor" id="other-date-computations-advance"></a>
+NOTE: Defined in `active_support/core_ext/date_and_time/calculations.rb`.
+
+[DateAndTime::Calculations#weeks_ago]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-weeks_ago
 
 ##### `advance`
 
-跳到另一天最普适的方法是 `advance`。这个方法的参数是一个散列，包含 `:years`、`:months`、`:weeks`、`:days` 键，返回移动相应量之后的日期。
+The most generic way to jump to other days is [`advance`][Date#advance]. This method receives a hash with keys `:years`, `:months`, `:weeks`, `:days`, and returns a date advanced as much as the present keys indicate:
 
 ```ruby
 date = Date.new(2010, 6, 6)
@@ -3454,47 +3440,51 @@ date.advance(years: 1, weeks: 2)  # => Mon, 20 Jun 2011
 date.advance(months: 2, days: -2) # => Wed, 04 Aug 2010
 ```
 
-如上例所示，增量可以是负数。
+Note in the previous example that increments may be negative.
 
-这个方法做计算时，先增加年，然后是月和周，最后是日。这个顺序是重要的，向一个月的末尾流动。假如我们在 2010 年 2 月的最后一天，我们想向前移动一个月和一天。
+To perform the computation the method first increments years, then months, then weeks, and finally days. This order is important towards the end of months. Say for example we are at the end of February of 2010, and we want to move one month and one day forward.
 
-此时，`advance` 先向前移动一个月，然后移动一天，结果是：
+The method `advance` advances first one month, and then one day, the result is:
 
 ```ruby
 Date.new(2010, 2, 28).advance(months: 1, days: 1)
 # => Sun, 29 Mar 2010
 ```
 
-如果以其他方式移动，得到的结果就不同了：
+While if it did it the other way around the result would be different:
 
 ```ruby
 Date.new(2010, 2, 28).advance(days: 1).advance(months: 1)
 # => Thu, 01 Apr 2010
 ```
 
-<a class="anchor" id="extensions-to-date-calculations-changing-components"></a>
+NOTE: Defined in `active_support/core_ext/date/calculations.rb`.
 
-#### 修改日期组成部分
+[Date#advance]: https://api.rubyonrails.org/classes/Date.html#method-i-advance
 
-`change` 方法在接收者的基础上修改日期，修改的值由参数指定：
+#### Changing Components
+
+The method [`change`][Date#change] allows you to get a new date which is the same as the receiver except for the given year, month, or day:
 
 ```ruby
 Date.new(2010, 12, 23).change(year: 2011, month: 11)
 # => Wed, 23 Nov 2011
 ```
 
-这个方法无法容错不存在的日期，如果修改无效，抛出 `ArgumentError` 异常：
+This method is not tolerant to non-existing dates, if the change is invalid `ArgumentError` is raised:
 
 ```ruby
 Date.new(2010, 1, 31).change(month: 2)
 # => ArgumentError: invalid date
 ```
 
-<a class="anchor" id="extensions-to-date-calculations-durations"></a>
+NOTE: Defined in `active_support/core_ext/date/calculations.rb`.
 
-#### 时间跨度
+[Date#change]: https://api.rubyonrails.org/classes/Date.html#method-i-change
 
-可以为日期增加或减去时间跨度：
+#### Durations
+
+[`Duration`][ActiveSupport::Duration] objects can be added to and subtracted from dates:
 
 ```ruby
 d = Date.current
@@ -3505,202 +3495,194 @@ d - 3.hours
 # => Sun, 08 Aug 2010 21:00:00 UTC +00:00
 ```
 
-增加跨度会调用 `since` 或 `advance`。例如，跳跃时能正确考虑历法改革：
+They translate to calls to `since` or `advance`. For example here we get the correct jump in the calendar reform:
 
 ```ruby
 Date.new(1582, 10, 4) + 1.day
 # => Fri, 15 Oct 1582
 ```
 
-<a class="anchor" id="timestamps"></a>
+[ActiveSupport::Duration]: https://api.rubyonrails.org/classes/ActiveSupport/Duration.html
 
-#### 时间戳
+#### Timestamps
 
-TIP: 如果可能，下述方法返回 `Time` 对象，否则返回 `DateTime` 对象。如果用户设定了时区，会将其考虑在内。
+INFO: The following methods return a `Time` object if possible, otherwise a `DateTime`. If set, they honor the user time zone.
 
-<a class="anchor" id="beginning-of-day-end-of-day"></a>
+##### `beginning_of_day`, `end_of_day`
 
-##### `beginning_of_day`、`end_of_day`
-
-`beginning_of_day` 方法返回一天的起始时间戳（00:00:00）：
+The method [`beginning_of_day`][Date#beginning_of_day] returns a timestamp at the beginning of the day (00:00:00):
 
 ```ruby
 date = Date.new(2010, 6, 7)
 date.beginning_of_day # => Mon Jun 07 00:00:00 +0200 2010
 ```
 
-`end_of_day` 方法返回一天的结束时间戳（23:59:59）：
+The method [`end_of_day`][Date#end_of_day] returns a timestamp at the end of the day (23:59:59):
 
 ```ruby
 date = Date.new(2010, 6, 7)
 date.end_of_day # => Mon Jun 07 23:59:59 +0200 2010
 ```
 
-`at_beginning_of_day`、`midnight` 和 `at_midnight` 是 `beginning_of_day` 的别名，
+`beginning_of_day` is aliased to [`at_beginning_of_day`][Date#at_beginning_of_day], [`midnight`][Date#midnight], [`at_midnight`][Date#at_midnight].
 
-<a class="anchor" id="beginning-of-hour-end-of-hour"></a>
+NOTE: Defined in `active_support/core_ext/date/calculations.rb`.
 
-##### `beginning_of_hour`、`end_of_hour`
+[Date#at_beginning_of_day]: https://api.rubyonrails.org/classes/Date.html#method-i-at_beginning_of_day
+[Date#at_midnight]: https://api.rubyonrails.org/classes/Date.html#method-i-at_midnight
+[Date#beginning_of_day]: https://api.rubyonrails.org/classes/Date.html#method-i-beginning_of_day
+[Date#end_of_day]: https://api.rubyonrails.org/classes/Date.html#method-i-end_of_day
+[Date#midnight]: https://api.rubyonrails.org/classes/Date.html#method-i-midnight
 
-`beginning_of_hour` 返回一小时的起始时间戳（hh:00:00）：
+##### `beginning_of_hour`, `end_of_hour`
+
+The method [`beginning_of_hour`][DateTime#beginning_of_hour] returns a timestamp at the beginning of the hour (hh:00:00):
 
 ```ruby
 date = DateTime.new(2010, 6, 7, 19, 55, 25)
 date.beginning_of_hour # => Mon Jun 07 19:00:00 +0200 2010
 ```
 
-`end_of_hour` 方法返回一小时的结束时间戳（hh:59:59）：
+The method [`end_of_hour`][DateTime#end_of_hour] returns a timestamp at the end of the hour (hh:59:59):
 
 ```ruby
 date = DateTime.new(2010, 6, 7, 19, 55, 25)
 date.end_of_hour # => Mon Jun 07 19:59:59 +0200 2010
 ```
 
-`at_beginning_of_hour` 是 `beginning_of_hour` 的别名。
+`beginning_of_hour` is aliased to [`at_beginning_of_hour`][DateTime#at_beginning_of_hour].
 
-<a class="anchor" id="beginning-of-minute-end-of-minute"></a>
+NOTE: Defined in `active_support/core_ext/date_time/calculations.rb`.
 
-##### `beginning_of_minute`、`end_of_minute`
+##### `beginning_of_minute`, `end_of_minute`
 
-`beginning_of_minute` 方法返回一分钟的起始时间戳（hh:mm:00）：
+The method [`beginning_of_minute`][DateTime#beginning_of_minute] returns a timestamp at the beginning of the minute (hh:mm:00):
 
 ```ruby
 date = DateTime.new(2010, 6, 7, 19, 55, 25)
 date.beginning_of_minute # => Mon Jun 07 19:55:00 +0200 2010
 ```
 
-`end_of_minute` 方法返回一分钟的结束时间戳（hh:mm:59）：
+The method [`end_of_minute`][DateTime#end_of_minute] returns a timestamp at the end of the minute (hh:mm:59):
 
 ```ruby
 date = DateTime.new(2010, 6, 7, 19, 55, 25)
 date.end_of_minute # => Mon Jun 07 19:55:59 +0200 2010
 ```
 
-`at_beginning_of_minute` 是 `beginning_of_minute` 的别名。
+`beginning_of_minute` is aliased to [`at_beginning_of_minute`][DateTime#at_beginning_of_minute].
 
-TIP: `Time` 和 `DateTime` 实现了 `beginning_of_hour`、`end_of_hour`、`beginning_of_minute` 和 `end_of_minute` 方法，但是 `Date` 没有实现，因为在 `Date` 实例上请求小时和分钟的起始和结束时间戳没有意义。
+INFO: `beginning_of_hour`, `end_of_hour`, `beginning_of_minute` and `end_of_minute` are implemented for `Time` and `DateTime` but **not** `Date` as it does not make sense to request the beginning or end of an hour or minute on a `Date` instance.
 
-<a class="anchor" id="ago-since"></a>
+NOTE: Defined in `active_support/core_ext/date_time/calculations.rb`.
 
-##### `ago`、`since`
+[DateTime#at_beginning_of_minute]: https://api.rubyonrails.org/classes/DateTime.html#method-i-at_beginning_of_minute
+[DateTime#beginning_of_minute]: https://api.rubyonrails.org/classes/DateTime.html#method-i-beginning_of_minute
+[DateTime#end_of_minute]: https://api.rubyonrails.org/classes/DateTime.html#method-i-end_of_minute
 
-`ago` 的参数是秒数，返回自午夜起那么多秒之后的时间戳：
+##### `ago`, `since`
+
+The method [`ago`][Date#ago] receives a number of seconds as argument and returns a timestamp those many seconds ago from midnight:
 
 ```ruby
 date = Date.current # => Fri, 11 Jun 2010
 date.ago(1)         # => Thu, 10 Jun 2010 23:59:59 EDT -04:00
 ```
 
-类似的，`since` 向前移动：
+Similarly, [`since`][Date#since] moves forward:
 
 ```ruby
 date = Date.current # => Fri, 11 Jun 2010
 date.since(1)       # => Fri, 11 Jun 2010 00:00:01 EDT -04:00
 ```
 
-<a class="anchor" id="extensions-to-datetime"></a>
+NOTE: Defined in `active_support/core_ext/date/calculations.rb`.
 
-## `DateTime` 的扩展
+[Date#ago]: https://api.rubyonrails.org/classes/Date.html#method-i-ago
+[Date#since]: https://api.rubyonrails.org/classes/Date.html#method-i-since
 
-WARNING: `DateTime` 不理解夏令时规则，因此如果正处于夏令时，这些方法可能有边缘情况。例如，在夏令时中，`seconds_since_midnight` 可能无法返回真实的量。
+#### Other Time Computations
 
-<a class="anchor" id="extensions-to-datetime-calculations"></a>
+### Conversions
 
-### 计算
+Extensions to `DateTime`
+------------------------
 
-NOTE: 本节的方法都在 `active_support/core_ext/date_time/calculations.rb` 文件中定义。
+WARNING: `DateTime` is not aware of DST rules and so some of these methods have edge cases when a DST change is going on. For example [`seconds_since_midnight`][DateTime#seconds_since_midnight] might not return the real amount in such a day.
 
-`DateTime` 类是 `Date` 的子类，因此加载 `active_support/core_ext/date/calculations.rb` 时也就继承了下述方法及其别名，只不过，此时都返回 `DateTime` 对象：
+### Calculations
 
-```text
-yesterday
-tomorrow
-beginning_of_week (at_beginning_of_week)
-end_of_week (at_end_of_week)
-monday
-sunday
-weeks_ago
-prev_week (last_week)
-next_week
-months_ago
-months_since
-beginning_of_month (at_beginning_of_month)
-end_of_month (at_end_of_month)
-prev_month (last_month)
-next_month
-beginning_of_quarter (at_beginning_of_quarter)
-end_of_quarter (at_end_of_quarter)
-beginning_of_year (at_beginning_of_year)
-end_of_year (at_end_of_year)
-years_ago
-years_since
-prev_year (last_year)
-next_year
-on_weekday?
-on_weekend?
-```
+The class `DateTime` is a subclass of `Date` so by loading `active_support/core_ext/date/calculations.rb` you inherit these methods and their aliases, except that they will always return datetimes.
 
-下述方法重新实现了，因此使用它们时无需加载 `active_support/core_ext/date/calculations.rb`：
+The following methods are reimplemented so you do **not** need to load `active_support/core_ext/date/calculations.rb` for these ones:
 
-```text
-beginning_of_day (midnight, at_midnight, at_beginning_of_day)
-end_of_day
-ago
-since (in)
-```
+* [`beginning_of_day`][DateTime#beginning_of_day] / [`midnight`][DateTime#midnight] / [`at_midnight`][DateTime#at_midnight] / [`at_beginning_of_day`][DateTime#at_beginning_of_day]
+* [`end_of_day`][DateTime#end_of_day]
+* [`ago`][DateTime#ago]
+* [`since`][DateTime#since] / [`in`][DateTime#in]
 
-此外，还定义了 `advance` 和 `change` 方法，而且支持更多选项。参见下文。
+On the other hand, [`advance`][DateTime#advance] and [`change`][DateTime#change] are also defined and support more options, they are documented below.
 
-下述方法只在 `active_support/core_ext/date_time/calculations.rb` 中实现，因为它们只对 `DateTime` 实例有意义：
+The following methods are only implemented in `active_support/core_ext/date_time/calculations.rb` as they only make sense when used with a `DateTime` instance:
 
-```ruby
-beginning_of_hour (at_beginning_of_hour)
-end_of_hour
-```
+* [`beginning_of_hour`][DateTime#beginning_of_hour] / [`at_beginning_of_hour`][DateTime#at_beginning_of_hour]
+* [`end_of_hour`][DateTime#end_of_hour]
 
-<a class="anchor" id="named-datetimes"></a>
+[DateTime#ago]: https://api.rubyonrails.org/classes/DateTime.html#method-i-ago
+[DateTime#at_beginning_of_day]: https://api.rubyonrails.org/classes/DateTime.html#method-i-at_beginning_of_day
+[DateTime#at_beginning_of_hour]: https://api.rubyonrails.org/classes/DateTime.html#method-i-at_beginning_of_hour
+[DateTime#at_midnight]: https://api.rubyonrails.org/classes/DateTime.html#method-i-at_midnight
+[DateTime#beginning_of_day]: https://api.rubyonrails.org/classes/DateTime.html#method-i-beginning_of_day
+[DateTime#beginning_of_hour]: https://api.rubyonrails.org/classes/DateTime.html#method-i-beginning_of_hour
+[DateTime#end_of_day]: https://api.rubyonrails.org/classes/DateTime.html#method-i-end_of_day
+[DateTime#end_of_hour]: https://api.rubyonrails.org/classes/DateTime.html#method-i-end_of_hour
+[DateTime#in]: https://api.rubyonrails.org/classes/DateTime.html#method-i-in
+[DateTime#midnight]: https://api.rubyonrails.org/classes/DateTime.html#method-i-midnight
 
-#### 具名日期时间
-
-<a class="anchor" id="datetime-current"></a>
+#### Named Datetimes
 
 ##### `DateTime.current`
 
-Active Support 定义的 `DateTime.current` 方法类似于 `Time.now.to_datetime`，不过会考虑用户设定的时区（如果定义了时区的话）。Active Support 还定义了 `DateTime.yesterday` 和 `DateTime.tomorrow`，以及与 `DateTime.current` 相关的判断方法 `past?` 和 `future?`。
+Active Support defines [`DateTime.current`][DateTime.current] to be like `Time.now.to_datetime`, except that it honors the user time zone, if defined. The instance predicates [`past?`][DateAndTime::Calculations#past?] and [`future?`][DateAndTime::Calculations#future?] are defined relative to `DateTime.current`.
 
-<a class="anchor" id="other-extensions"></a>
+NOTE: Defined in `active_support/core_ext/date_time/calculations.rb`.
 
-#### 其他扩展
+[DateTime.current]: https://api.rubyonrails.org/classes/DateTime.html#method-c-current
 
-<a class="anchor" id="seconds-since-midnight"></a>
+#### Other Extensions
 
 ##### `seconds_since_midnight`
 
-`seconds_since_midnight` 方法返回自午夜起的秒数：
+The method [`seconds_since_midnight`][DateTime#seconds_since_midnight] returns the number of seconds since midnight:
 
 ```ruby
 now = DateTime.current     # => Mon, 07 Jun 2010 20:26:36 +0000
 now.seconds_since_midnight # => 73596
 ```
 
-<a class="anchor" id="utc"></a>
+NOTE: Defined in `active_support/core_ext/date_time/calculations.rb`.
+
+[DateTime#seconds_since_midnight]: https://api.rubyonrails.org/classes/DateTime.html#method-i-seconds_since_midnight
 
 ##### `utc`
 
-`utc` 返回的日期时间与接收者一样，不过使用 UTC 表示。
+The method [`utc`][DateTime#utc] gives you the same datetime in the receiver expressed in UTC.
 
 ```ruby
 now = DateTime.current # => Mon, 07 Jun 2010 19:27:52 -0400
 now.utc                # => Mon, 07 Jun 2010 23:27:52 +0000
 ```
 
-这个方法有个别名，`getutc`。
+This method is also aliased as [`getutc`][DateTime#getutc].
 
-<a class="anchor" id="utc-questionmark"></a>
+NOTE: Defined in `active_support/core_ext/date_time/calculations.rb`.
+
+[DateTime#getutc]: https://api.rubyonrails.org/classes/DateTime.html#method-i-getutc
+[DateTime#utc]: https://api.rubyonrails.org/classes/DateTime.html#method-i-utc
 
 ##### `utc?`
 
-`utc?` 判断接收者的时区是不是 UTC：
+The predicate [`utc?`][DateTime#utc?] says whether the receiver has UTC as its time zone:
 
 ```ruby
 now = DateTime.now # => Mon, 07 Jun 2010 19:30:47 -0400
@@ -3708,11 +3690,13 @@ now.utc?           # => false
 now.utc.utc?       # => true
 ```
 
-<a class="anchor" id="other-extensions-advance"></a>
+NOTE: Defined in `active_support/core_ext/date_time/calculations.rb`.
+
+[DateTime#utc?]: https://api.rubyonrails.org/classes/DateTime.html#method-i-utc-3F
 
 ##### `advance`
 
-跳到其他日期时间最普适的方法是 `advance`。这个方法的参数是一个散列，包含 `:years`、`:months`、`:weeks`、`:days`、`:hours`、`:minutes` 和 `:seconds` 等键，返回移动相应量之后的日期时间。
+The most generic way to jump to another datetime is [`advance`][DateTime#advance]. This method receives a hash with keys `:years`, `:months`, `:weeks`, `:days`, `:hours`, `:minutes`, and `:seconds`, and returns a datetime advanced as much as the present keys indicate.
 
 ```ruby
 d = DateTime.current
@@ -3721,9 +3705,9 @@ d.advance(years: 1, months: 1, days: 1, hours: 1, minutes: 1, seconds: 1)
 # => Tue, 06 Sep 2011 12:34:32 +0000
 ```
 
-这个方法计算目标日期时，把 `:years`、`:months`、`:weeks` 和 `:days` 传给 `Date#advance`，然后调用 `since` 处理时间，前进相应的秒数。这个顺序是重要的，如若不然，在某些边缘情况下可能得到不同的日期时间。讲解 `Date#advance` 时所举的例子在这里也适用，我们可以扩展一下，显示处理时间的顺序。
+This method first computes the destination date passing `:years`, `:months`, `:weeks`, and `:days` to `Date#advance` documented above. After that, it adjusts the time calling [`since`][DateTime#since] with the number of seconds to advance. This order is relevant, a different ordering would give different datetimes in some edge-cases. The example in `Date#advance` applies, and we can extend it to show order relevance related to the time bits.
 
-如果先移动日期部分（如前文所述，处理日期的顺序也很重要），然后再计算时间，得到的结果如下：
+If we first move the date bits (that have also a relative order of processing, as documented before), and then the time bits we get for example the following computation:
 
 ```ruby
 d = DateTime.new(2010, 2, 28, 23, 59, 59)
@@ -3732,20 +3716,23 @@ d.advance(months: 1, seconds: 1)
 # => Mon, 29 Mar 2010 00:00:00 +0000
 ```
 
-但是如果以其他方式计算，结果就不同了：
+but if we computed them the other way around, the result would be different:
 
 ```ruby
 d.advance(seconds: 1).advance(months: 1)
 # => Thu, 01 Apr 2010 00:00:00 +0000
 ```
 
-WARNING: 因为 `DateTime` 不支持夏令时，所以可能得到不存在的时间点，而且没有提醒或报错。
+WARNING: Since `DateTime` is not DST-aware you can end up in a non-existing point in time with no warning or error telling you so.
 
-<a class="anchor" id="extensions-to-datetime-calculations-changing-components"></a>
+NOTE: Defined in `active_support/core_ext/date_time/calculations.rb`.
 
-#### 修改日期时间组成部分
+[DateTime#advance]: https://api.rubyonrails.org/classes/DateTime.html#method-i-advance
+[DateTime#since]: https://api.rubyonrails.org/classes/DateTime.html#method-i-since
 
-`change` 方法在接收者的基础上修改日期时间，修改的值由选项指定，可以包括 `:year`、`:month`、`:day`、`:hour`、`:min`、`:sec`、`:offset` 和 `:start`：
+#### Changing Components
+
+The method [`change`][DateTime#change] allows you to get a new datetime which is the same as the receiver except for the given options, which may include `:year`, `:month`, `:day`, `:hour`, `:min`, `:sec`, `:offset`, `:start`:
 
 ```ruby
 now = DateTime.current
@@ -3754,32 +3741,34 @@ now.change(year: 2011, offset: Rational(-6, 24))
 # => Wed, 08 Jun 2011 01:56:22 -0600
 ```
 
-如果小时归零了，分钟和秒也归零（除非指定了值）：
+If hours are zeroed, then minutes and seconds are too (unless they have given values):
 
 ```ruby
 now.change(hour: 0)
 # => Tue, 08 Jun 2010 00:00:00 +0000
 ```
 
-类似地，如果分钟归零了，秒也归零（除非指定了值）：
+Similarly, if minutes are zeroed, then seconds are too (unless it has given a value):
 
 ```ruby
 now.change(min: 0)
 # => Tue, 08 Jun 2010 01:00:00 +0000
 ```
 
-这个方法无法容错不存在的日期，如果修改无效，抛出 `ArgumentError` 异常：
+This method is not tolerant to non-existing dates, if the change is invalid `ArgumentError` is raised:
 
 ```ruby
 DateTime.current.change(month: 2, day: 30)
 # => ArgumentError: invalid date
 ```
 
-<a class="anchor" id="extensions-to-datetime-calculations-durations"></a>
+NOTE: Defined in `active_support/core_ext/date_time/calculations.rb`.
 
-#### 时间跨度
+[DateTime#change]: https://api.rubyonrails.org/classes/DateTime.html#method-i-change
 
-可以为日期时间增加或减去时间跨度：
+#### Durations
+
+[`Duration`][ActiveSupport::Duration] objects can be added to and subtracted from datetimes:
 
 ```ruby
 now = DateTime.current
@@ -3790,97 +3779,57 @@ now - 1.week
 # => Mon, 02 Aug 2010 23:15:17 +0000
 ```
 
-增加跨度会调用 `since` 或 `advance`。例如，跳跃时能正确考虑历法改革：
+They translate to calls to `since` or `advance`. For example here we get the correct jump in the calendar reform:
 
 ```ruby
 DateTime.new(1582, 10, 4, 23) + 1.hour
 # => Fri, 15 Oct 1582 00:00:00 +0000
 ```
 
-<a class="anchor" id="extensions-to-time"></a>
+Extensions to `Time`
+--------------------
 
-## `Time` 的扩展
+### Calculations
 
-<a class="anchor" id="extensions-to-time-calculations"></a>
+They are analogous. Please refer to their documentation above and take into account the following differences:
 
-### 计算
+* [`change`][Time#change] accepts an additional `:usec` option.
+* `Time` understands DST, so you get correct DST calculations as in
 
-NOTE: 本节的方法都在 `active_support/core_ext/time/calculations.rb` 文件中定义。
+```ruby
+Time.zone_default
+# => #<ActiveSupport::TimeZone:0x7f73654d4f38 @utc_offset=nil, @name="Madrid", ...>
 
-Active Support 为 `Time` 添加了 `DateTime` 的很多方法：
-
-```text
-past?
-today?
-future?
-yesterday
-tomorrow
-seconds_since_midnight
-change
-advance
-ago
-since (in)
-beginning_of_day (midnight, at_midnight, at_beginning_of_day)
-end_of_day
-beginning_of_hour (at_beginning_of_hour)
-end_of_hour
-beginning_of_week (at_beginning_of_week)
-end_of_week (at_end_of_week)
-monday
-sunday
-weeks_ago
-prev_week (last_week)
-next_week
-months_ago
-months_since
-beginning_of_month (at_beginning_of_month)
-end_of_month (at_end_of_month)
-prev_month (last_month)
-next_month
-beginning_of_quarter (at_beginning_of_quarter)
-end_of_quarter (at_end_of_quarter)
-beginning_of_year (at_beginning_of_year)
-end_of_year (at_end_of_year)
-years_ago
-years_since
-prev_year (last_year)
-next_year
-on_weekday?
-on_weekend?
+# In Barcelona, 2010/03/28 02:00 +0100 becomes 2010/03/28 03:00 +0200 due to DST.
+t = Time.local(2010, 3, 28, 1, 59, 59)
+# => Sun Mar 28 01:59:59 +0100 2010
+t.advance(seconds: 1)
+# => Sun Mar 28 03:00:00 +0200 2010
 ```
 
-它们的作用与之前类似。详情参见前文，不过要知道下述区别：
+* If [`since`][Time#since] or [`ago`][Time#ago] jump to a time that can't be expressed with `Time` a `DateTime` object is returned instead.
 
-*   `change` 额外接受 `:usec` 选项。
-*   `Time` 支持夏令时，因此能正确计算夏令时。
-
-    ```ruby
-    Time.zone_default
-    # => #<ActiveSupport::TimeZone:0x7f73654d4f38 @utc_offset=nil, @name="Madrid", ...>
-    
-    # 因为采用夏令时，在巴塞罗那，2010/03/28 02:00 +0100 变成 2010/03/28 03:00 +0200
-    t = Time.local(2010, 3, 28, 1, 59, 59)
-    # => Sun Mar 28 01:59:59 +0100 2010
-    t.advance(seconds: 1)
-    # => Sun Mar 28 03:00:00 +0200 2010
-    ```
-
-
-*   如果 `since` 或 `ago` 的目标时间无法使用 `Time` 对象表示，返回一个 `DateTime` 对象。
-
-<a class="anchor" id="time-current"></a>
+[Time#ago]: https://api.rubyonrails.org/classes/Time.html#method-i-ago
+[Time#change]: https://api.rubyonrails.org/classes/Time.html#method-i-change
+[Time#since]: https://api.rubyonrails.org/classes/Time.html#method-i-since
 
 #### `Time.current`
 
-Active Support 定义的 `Time.current` 方法表示当前时区中的今天。其作用类似于 `Time.now`，不过会考虑用户设定的时区（如果定义了时区的话）。Active Support 还定义了与 `Time.current` 有关的实例判断方法 `past?`、`today?` 和 `future?`。
+Active Support defines [`Time.current`][Time.current] to be today in the current time zone. That's like `Time.now`, except that it honors the user time zone, if defined. It also defines the instance predicates [`past?`][DateAndTime::Calculations#past?], [`today?`][DateAndTime::Calculations#today?], [`tomorrow?`][DateAndTime::Calculations#tomorrow?], [`next_day?`][DateAndTime::Calculations#next_day?], [`yesterday?`][DateAndTime::Calculations#yesterday?], [`prev_day?`][DateAndTime::Calculations#prev_day?] and [`future?`][DateAndTime::Calculations#future?], all of them relative to `Time.current`.
 
-比较时间时，如果要考虑用户设定的时区，应该使用 `Time.current`，而不是 `Time.now`。与系统的时区（`Time.now` 默认采用）相比，用户设定的时区可能超前，这意味着，`Time.now.to_date` 可能等于 `Date.yesterday`。
+When making Time comparisons using methods which honor the user time zone, make sure to use `Time.current` instead of `Time.now`. There are cases where the user time zone might be in the future compared to the system time zone, which `Time.now` uses by default. This means `Time.now.to_date` may equal `Date.yesterday`.
 
-<a class="anchor" id="all-day-all-week-all-month-all-quarter-and-all-year"></a>
+NOTE: Defined in `active_support/core_ext/time/calculations.rb`.
 
-#### `all_day`、`all_week`、`all_month`、`all_quarter` 和 `all_year`
+[DateAndTime::Calculations#next_day?]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-next_day-3F
+[DateAndTime::Calculations#prev_day?]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-prev_day-3F
+[DateAndTime::Calculations#today?]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-today-3F
+[DateAndTime::Calculations#tomorrow?]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-tomorrow-3F
+[DateAndTime::Calculations#yesterday?]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-yesterday-3F
 
-`all_day` 方法返回一个值域，表示当前时间的一整天。
+#### `all_day`, `all_week`, `all_month`, `all_quarter` and `all_year`
+
+The method [`all_day`][DateAndTime::Calculations#all_day] returns a range representing the whole day of the current time.
 
 ```ruby
 now = Time.current
@@ -3889,7 +3838,7 @@ now.all_day
 # => Mon, 09 Aug 2010 00:00:00 UTC +00:00..Mon, 09 Aug 2010 23:59:59 UTC +00:00
 ```
 
-类似地，`all_week`、`all_month`、`all_quarter` 和 `all_year` 分别生成相应的时间值域。
+Analogously, [`all_week`][DateAndTime::Calculations#all_week], [`all_month`][DateAndTime::Calculations#all_month], [`all_quarter`][DateAndTime::Calculations#all_quarter] and [`all_year`][DateAndTime::Calculations#all_year] all serve the purpose of generating time ranges.
 
 ```ruby
 now = Time.current
@@ -3906,11 +3855,107 @@ now.all_year
 # => Fri, 01 Jan 2010 00:00:00 UTC +00:00..Fri, 31 Dec 2010 23:59:59 UTC +00:00
 ```
 
-<a class="anchor" id="time-constructors"></a>
+NOTE: Defined in `active_support/core_ext/date_and_time/calculations.rb`.
 
-### 时间构造方法
+[DateAndTime::Calculations#all_day]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-all_day
+[DateAndTime::Calculations#all_month]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-all_month
+[DateAndTime::Calculations#all_quarter]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-all_quarter
+[DateAndTime::Calculations#all_week]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-all_week
+[DateAndTime::Calculations#all_year]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-all_year
+[Time.current]: https://api.rubyonrails.org/classes/Time.html#method-c-current
 
-Active Support 定义的 `Time.current` 方法，在用户设定了时区时，等价于 `Time.zone.now`，否则回落到 `Time.now`：
+#### `prev_day`, `next_day`
+
+[`prev_day`][Time#prev_day] and [`next_day`][Time#next_day] return the time in the last or next day:
+
+```ruby
+t = Time.new(2010, 5, 8) # => 2010-05-08 00:00:00 +0900
+t.prev_day               # => 2010-05-07 00:00:00 +0900
+t.next_day               # => 2010-05-09 00:00:00 +0900
+```
+
+NOTE: Defined in `active_support/core_ext/time/calculations.rb`.
+
+[Time#next_day]: https://api.rubyonrails.org/classes/Time.html#method-i-next_day
+[Time#prev_day]: https://api.rubyonrails.org/classes/Time.html#method-i-prev_day
+
+#### `prev_month`, `next_month`
+
+[`prev_month`][Time#prev_month] and [`next_month`][Time#next_month] return the time with the same day in the last or next month:
+
+```ruby
+t = Time.new(2010, 5, 8) # => 2010-05-08 00:00:00 +0900
+t.prev_month             # => 2010-04-08 00:00:00 +0900
+t.next_month             # => 2010-06-08 00:00:00 +0900
+```
+
+If such a day does not exist, the last day of the corresponding month is returned:
+
+```ruby
+Time.new(2000, 5, 31).prev_month # => 2000-04-30 00:00:00 +0900
+Time.new(2000, 3, 31).prev_month # => 2000-02-29 00:00:00 +0900
+Time.new(2000, 5, 31).next_month # => 2000-06-30 00:00:00 +0900
+Time.new(2000, 1, 31).next_month # => 2000-02-29 00:00:00 +0900
+```
+
+NOTE: Defined in `active_support/core_ext/time/calculations.rb`.
+
+[Time#next_month]: https://api.rubyonrails.org/classes/Time.html#method-i-next_month
+[Time#prev_month]: https://api.rubyonrails.org/classes/Time.html#method-i-prev_month
+
+#### `prev_year`, `next_year`
+
+[`prev_year`][Time#prev_year] and [`next_year`][Time#next_year] return a time with the same day/month in the last or next year:
+
+```ruby
+t = Time.new(2010, 5, 8) # => 2010-05-08 00:00:00 +0900
+t.prev_year              # => 2009-05-08 00:00:00 +0900
+t.next_year              # => 2011-05-08 00:00:00 +0900
+```
+
+If date is the 29th of February of a leap year, you obtain the 28th:
+
+```ruby
+t = Time.new(2000, 2, 29) # => 2000-02-29 00:00:00 +0900
+t.prev_year               # => 1999-02-28 00:00:00 +0900
+t.next_year               # => 2001-02-28 00:00:00 +0900
+```
+
+NOTE: Defined in `active_support/core_ext/time/calculations.rb`.
+
+[Time#next_year]: https://api.rubyonrails.org/classes/Time.html#method-i-next_year
+[Time#prev_year]: https://api.rubyonrails.org/classes/Time.html#method-i-prev_year
+
+#### `prev_quarter`, `next_quarter`
+
+[`prev_quarter`][DateAndTime::Calculations#prev_quarter] and [`next_quarter`][DateAndTime::Calculations#next_quarter] return the date with the same day in the previous or next quarter:
+
+```ruby
+t = Time.local(2010, 5, 8) # => 2010-05-08 00:00:00 +0300
+t.prev_quarter             # => 2010-02-08 00:00:00 +0200
+t.next_quarter             # => 2010-08-08 00:00:00 +0300
+```
+
+If such a day does not exist, the last day of the corresponding month is returned:
+
+```ruby
+Time.local(2000, 7, 31).prev_quarter  # => 2000-04-30 00:00:00 +0300
+Time.local(2000, 5, 31).prev_quarter  # => 2000-02-29 00:00:00 +0200
+Time.local(2000, 10, 31).prev_quarter # => 2000-07-31 00:00:00 +0300
+Time.local(2000, 11, 31).next_quarter # => 2001-03-01 00:00:00 +0200
+```
+
+`prev_quarter` is aliased to [`last_quarter`][DateAndTime::Calculations#last_quarter].
+
+NOTE: Defined in `active_support/core_ext/date_and_time/calculations.rb`.
+
+[DateAndTime::Calculations#last_quarter]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-last_quarter
+[DateAndTime::Calculations#next_quarter]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-next_quarter
+[DateAndTime::Calculations#prev_quarter]: https://api.rubyonrails.org/classes/DateAndTime/Calculations.html#method-i-prev_quarter
+
+### Time Constructors
+
+Active Support defines [`Time.current`][Time.current] to be `Time.zone.now` if there's a user time zone defined, with fallback to `Time.now`:
 
 ```ruby
 Time.zone_default
@@ -3919,45 +3964,40 @@ Time.current
 # => Fri, 06 Aug 2010 17:11:58 CEST +02:00
 ```
 
-与 `DateTime` 一样，判断方法 `past?` 和 `future?` 与 `Time.current` 相关。
+Analogously to `DateTime`, the predicates [`past?`][DateAndTime::Calculations#past?], and [`future?`][DateAndTime::Calculations#future?] are relative to `Time.current`.
 
-如果要构造的时间超出了运行时平台对 `Time` 的支持范围，微秒会被丢掉，然后返回 `DateTime` 对象。
+If the time to be constructed lies beyond the range supported by `Time` in the runtime platform, usecs are discarded and a `DateTime` object is returned instead.
 
-<a class="anchor" id="durations"></a>
+#### Durations
 
-#### 时间跨度
-
-可以为时间增加或减去时间跨度：
+[`Duration`][ActiveSupport::Duration] objects can be added to and subtracted from time objects:
 
 ```ruby
 now = Time.current
 # => Mon, 09 Aug 2010 23:20:05 UTC +00:00
 now + 1.year
-#  => Tue, 09 Aug 2011 23:21:11 UTC +00:00
+# => Tue, 09 Aug 2011 23:21:11 UTC +00:00
 now - 1.week
 # => Mon, 02 Aug 2010 23:21:11 UTC +00:00
 ```
 
-增加跨度会调用 `since` 或 `advance`。例如，跳跃时能正确考虑历法改革：
+They translate to calls to `since` or `advance`. For example here we get the correct jump in the calendar reform:
 
 ```ruby
 Time.utc(1582, 10, 3) + 5.days
 # => Mon Oct 18 00:00:00 UTC 1582
 ```
 
-<a class="anchor" id="extensions-to-file"></a>
-
-## `File` 的扩展
-
-<a class="anchor" id="atomic-write"></a>
+Extensions to `File`
+--------------------
 
 ### `atomic_write`
 
-使用类方法 `File.atomic_write` 写文件时，可以避免在写到一半时读取内容。
+With the class method [`File.atomic_write`][File.atomic_write] you can write to a file in a way that will prevent any reader from seeing half-written content.
 
-这个方法的参数是文件名，它会产出一个文件句柄，把文件打开供写入。块执行完毕后，`atomic_write` 会关闭文件句柄，完成工作。
+The name of the file is passed as an argument, and the method yields a file handle opened for writing. Once the block is done `atomic_write` closes the file handle and completes its job.
 
-例如，Action Pack 使用这个方法写静态资源缓存文件，如 `all.css`：
+For example, Action Pack uses this method to write asset cache files like `all.css`:
 
 ```ruby
 File.atomic_write(joined_asset_path) do |cache|
@@ -3965,53 +4005,51 @@ File.atomic_write(joined_asset_path) do |cache|
 end
 ```
 
-为此，`atomic_write` 会创建一个临时文件。块中的代码其实是向这个临时文件写入。写完之后，重命名临时文件，这在 POSIX 系统中是原子操作。如果目标文件存在，`atomic_write` 将其覆盖，并且保留属主和权限。不过，有时 `atomic_write` 无法修改文件的归属或权限。这个错误会被捕获并跳过，从而确保需要它的进程能访问它。
+To accomplish this `atomic_write` creates a temporary file. That's the file the code in the block actually writes to. On completion, the temporary file is renamed, which is an atomic operation on POSIX systems. If the target file exists `atomic_write` overwrites it and keeps owners and permissions. However there are a few cases where `atomic_write` cannot change the file ownership or permissions, this error is caught and skipped over trusting in the user/filesystem to ensure the file is accessible to the processes that need it.
 
-NOTE: `atomic_write` 会执行 chmod 操作，因此如果目标文件设定了 ACL，`atomic_write` 会重新计算或修改 ACL。
+NOTE. Due to the chmod operation `atomic_write` performs, if the target file has an ACL set on it this ACL will be recalculated/modified.
 
-WARNING: 注意，不能使用 `atomic_write` 追加内容。
+WARNING. Note you can't append with `atomic_write`.
 
-临时文件在存储临时文件的标准目录中，但是可以传入第二个参数指定一个目录。
+The auxiliary file is written in a standard directory for temporary files, but you can pass a directory of your choice as second argument.
 
-NOTE: 在 `active_support/core_ext/file/atomic.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/file/atomic.rb`.
 
-<a class="anchor" id="extensions-to-marshal"></a>
+[File.atomic_write]: https://api.rubyonrails.org/classes/File.html#method-c-atomic_write
 
-## `Marshal` 的扩展
-
-<a class="anchor" id="load"></a>
+Extensions to `Marshal`
+-----------------------
 
 ### `load`
 
-Active Support 为 `load` 增加了常量自动加载功能。
+Active Support adds constant autoloading support to `load`.
 
-例如，文件缓存存储像这样反序列化：
+For example, the file cache store deserializes this way:
 
 ```ruby
 File.open(file_name) { |f| Marshal.load(f) }
 ```
 
-如果缓存的数据指代那一刻未知的常量，自动加载机制会被触发，如果成功加载，会再次尝试反序列化。
+If the cached data refers to a constant that is unknown at that point, the autoloading mechanism is triggered and if it succeeds the deserialization is retried transparently.
 
-WARNING: 如果参数是 `IO` 对象，要能响应 `rewind` 方法才会重试。常规的文件响应 `rewind` 方法。
+WARNING. If the argument is an `IO` it needs to respond to `rewind` to be able to retry. Regular files respond to `rewind`.
 
-NOTE: 在 `active_support/core_ext/marshal.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/marshal.rb`.
 
-<a class="anchor" id="extensions-to-nameerror"></a>
+Extensions to `NameError`
+-------------------------
 
-## `NameError` 的扩展
+Active Support adds [`missing_name?`][NameError#missing_name?] to `NameError`, which tests whether the exception was raised because of the name passed as argument.
 
-Active Support 为 `NameError` 增加了 `missing_name?` 方法，测试异常是不是由于参数的名称引起的。
+The name may be given as a symbol or string. A symbol is tested against the bare constant name, a string is against the fully qualified constant name.
 
-参数的名称可以使用符号或字符串指定。指定符号时，使用裸常量名测试；指定字符串时，使用完全限定常量名测试。
+TIP: A symbol can represent a fully qualified constant name as in `:"ActiveRecord::Base"`, so the behavior for symbols is defined for convenience, not because it has to be that way technically.
 
-TIP: 符号可以表示完全限定常量名，例如 `:"ActiveRecord::Base"`，因此这里符号的行为是为了便利而特别定义的，不是说在技术上只能如此。
-
-例如，调用 `ArticlesController` 的动作时，Rails 会乐观地使用 `ArticlesHelper`。如果那个模块不存在也没关系，因此，由那个常量名引起的异常要静默。不过，可能是由于确实是未知的常量名而由 `articles_helper.rb` 抛出的 `NameError` 异常。此时，异常应该抛出。`missing_name?` 方法能区分这两种情况：
+For example, when an action of `ArticlesController` is called Rails tries optimistically to use `ArticlesHelper`. It is OK that the helper module does not exist, so if an exception for that constant name is raised it should be silenced. But it could be the case that `articles_helper.rb` raises a `NameError` due to an actual unknown constant. That should be reraised. The method `missing_name?` provides a way to distinguish both cases:
 
 ```ruby
 def default_helper_module!
-  module_name = name.sub(/Controller$/, '')
+  module_name = name.delete_suffix("Controller")
   module_path = module_name.underscore
   helper module_path
 rescue LoadError => e
@@ -4021,21 +4059,22 @@ rescue NameError => e
 end
 ```
 
-NOTE: 在 `active_support/core_ext/name_error.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/name_error.rb`.
 
-<a class="anchor" id="extensions-to-loaderror"></a>
+[NameError#missing_name?]: https://api.rubyonrails.org/classes/NameError.html#method-i-missing_name-3F
 
-## `LoadError` 的扩展
+Extensions to `LoadError`
+-------------------------
 
-Active Support 为 `LoadError` 增加了 `is_missing?` 方法。
+Active Support adds [`is_missing?`][LoadError#is_missing?] to `LoadError`.
 
-`is_missing?` 方法判断异常是不是由指定路径名（不含“.rb”扩展名）引起的。
+Given a path name `is_missing?` tests whether the exception was raised due to that particular file (except perhaps for the ".rb" extension).
 
-例如，调用 `ArticlesController` 的动作时，Rails 会尝试加载 `articles_helper.rb`，但是那个文件可能不存在。这没关系，辅助模块不是必须的，因此 Rails 会静默加载错误。但是，有可能是辅助模块存在，而它引用的其他库不存在。此时，Rails 必须抛出异常。`is_missing?` 方法能区分这两种情况：
+For example, when an action of `ArticlesController` is called Rails tries to load `articles_helper.rb`, but that file may not exist. That's fine, the helper module is not mandatory so Rails silences a load error. But it could be the case that the helper module does exist and in turn requires another library that is missing. In that case Rails must reraise the exception. The method `is_missing?` provides a way to distinguish both cases:
 
 ```ruby
 def default_helper_module!
-  module_name = name.sub(/Controller$/, '')
+  module_name = name.delete_suffix("Controller")
   module_path = module_name.underscore
   helper module_path
 rescue LoadError => e
@@ -4045,4 +4084,6 @@ rescue NameError => e
 end
 ```
 
-NOTE: 在 `active_support/core_ext/load_error.rb` 文件中定义。
+NOTE: Defined in `active_support/core_ext/load_error.rb`.
+
+[LoadError#is_missing?]: https://api.rubyonrails.org/classes/LoadError.html#method-i-is_missing-3F

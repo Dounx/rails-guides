@@ -1,43 +1,99 @@
-# Action Cable 概览
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-本文介绍 Action Cable 的工作原理，以及在 Rails 应用中如何通过 WebSocket 实现实时功能。
+Action Cable Overview
+=====================
 
-读完本文后，您将学到：
+In this guide, you will learn how Action Cable works and how to use WebSockets to
+incorporate real-time features into your Rails application.
 
-*   Action Cable 是什么，以及对前后端的集成；
-*   如何设置 Action Cable；
-*   如何设置频道（channel）；
-*   Action Cable 的部署和架构设置。
+After reading this guide, you will know:
 
------------------------------------------------------------------------------
+* What Action Cable is and its integration backend and frontend
+* How to set up Action Cable
+* How to set up channels
+* Deployment and Architecture setup for running Action Cable
 
-<a class="anchor" id="introduction"></a>
+--------------------------------------------------------------------------------
 
-## 简介
+What is Action Cable?
+---------------------
 
-Action Cable 将 [WebSocket](https://en.wikipedia.org/wiki/WebSocket) 与 Rails 应用的其余部分无缝集成。有了 Action Cable，我们就可以用 Ruby 语言，以 Rails 风格实现实时功能，并且保持高性能和可扩展性。Action Cable 为此提供了全栈支持，包括客户端 JavaScript 框架和服务器端 Ruby 框架。同时，我们也能够通过 Action Cable 访问使用 Active Record 或其他 ORM 编写的所有模型。
+Action Cable seamlessly integrates
+[WebSockets](https://en.wikipedia.org/wiki/WebSocket) with the rest of your
+Rails application. It allows for real-time features to be written in Ruby in the
+same style and form as the rest of your Rails application, while still being
+performant and scalable. It's a full-stack offering that provides both a
+client-side JavaScript framework and a server-side Ruby framework. You have
+access to your full domain model written with Active Record or your ORM of
+choice.
 
-<a class="anchor" id="what-is-pub-sub"></a>
+Terminology
+-----------
 
-## Pub/Sub 是什么
+Action Cable uses WebSockets instead of the HTTP request-response protocol.
+Both Action Cable and WebSockets introduce some less familiar terminology:
 
-[Pub/Sub](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern)，也就是发布/订阅，是指在消息队列中，信息发送者（发布者）把数据发送给某一类接收者（订阅者），而不必单独指定接收者。Action Cable 通过发布/订阅的方式在服务器和多个客户端之间通信。
+### Connections
 
-<a class="anchor" id="server-side-components"></a>
+*Connections* form the foundation of the client-server relationship.
+A single Action Cable server can handle multiple connection instances. It has one
+connection instance per WebSocket connection. A single user may have multiple
+WebSockets open to your application if they use multiple browser tabs or devices.
 
-## 服务器端组件
+### Consumers
 
-<a class="anchor" id="server-side-connections"></a>
+The client of a WebSocket connection is called the *consumer*. In Action Cable
+the consumer is created by the client-side JavaScript framework.
 
-### 连接
+### Channels
 
-连接是客户端-服务器通信的基础。每当服务器接受一个 WebSocket，就会实例化一个连接对象。所有频道订阅（channel subscription）都是在继承连接对象的基础上创建的。连接本身并不处理身份验证和授权之外的任何应用逻辑。WebSocket 连接的客户端被称为连接用户（connection consumer）。每当用户新打开一个浏览器标签、窗口或设备，对应地都会新建一个用户-连接对（consumer-connection pair）。
+Each consumer can in turn subscribe to multiple *channels*. Each channel
+encapsulates a logical unit of work, similar to what a controller does in
+a regular MVC setup. For example, you could have a `ChatChannel` and
+an `AppearancesChannel`, and a consumer could be subscribed to either
+or to both of these channels. At the very least, a consumer should be subscribed
+to one channel.
 
-连接是 `ApplicationCable::Connection` 类的实例。对连接的授权就是在这个类中完成的，对于能够识别的用户，才会继续建立连接。
+### Subscribers
 
-<a class="anchor" id="connection-setup"></a>
+When the consumer is subscribed to a channel, they act as a *subscriber*.
+The connection between the subscriber and the channel is, surprise-surprise,
+called a subscription. A consumer can act as a subscriber to a given channel
+any number of times. For example, a consumer could subscribe to multiple chat rooms
+at the same time. (And remember that a physical user may have multiple consumers,
+one per tab/device open to your connection).
 
-#### 连接设置
+### Pub/Sub
+
+[Pub/Sub](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern), or
+Publish-Subscribe, refers to a message queue paradigm whereby senders of
+information (publishers), send data to an abstract class of recipients
+(subscribers), without specifying individual recipients. Action Cable uses this
+approach to communicate between the server and many clients.
+
+### Broadcastings
+
+A broadcasting is a pub/sub link where anything transmitted by the broadcaster is
+sent directly to the channel subscribers who are streaming that named broadcasting.
+Each channel can be streaming zero or more broadcastings.
+
+## Server-Side Components
+
+### Connections
+
+For every WebSocket accepted by the server, a connection object is instantiated. This
+object becomes the parent of all the *channel subscriptions* that are created
+from there on. The connection itself does not deal with any specific application
+logic beyond authentication and authorization. The client of a WebSocket
+connection is called the connection *consumer*. An individual user will create
+one consumer-connection pair per browser tab, window, or device they have open.
+
+Connections are instances of `ApplicationCable::Connection`, which extends
+[`ActionCable::Connection::Base`][]. In `ApplicationCable::Connection`, you
+authorize the incoming connection, and proceed to establish it if the user can
+be identified.
+
+#### Connection Setup
 
 ```ruby
 # app/channels/application_cable/connection.rb
@@ -51,8 +107,8 @@ module ApplicationCable
 
     private
       def find_verified_user
-        if current_user = User.find_by(id: cookies.signed[:user_id])
-          current_user
+        if verified_user = User.find_by(id: cookies.encrypted[:user_id])
+          verified_user
         else
           reject_unauthorized_connection
         end
@@ -61,21 +117,61 @@ module ApplicationCable
 end
 ```
 
-其中 `identified_by` 用于声明连接标识符，连接标识符稍后将用于查找指定连接。注意，在声明连接标识符的同时，在基于连接创建的频道实例上，会自动创建同名委托（delegate）。
+Here [`identified_by`][] designates a connection identifier that can be used to find the
+specific connection later. Note that anything marked as an identifier will automatically
+create a delegate by the same name on any channel instances created off the connection.
 
-上述例子假设我们已经在应用的其他部分完成了用户身份验证，并且在验证成功后设置了经过用户 ID 签名的 cookie。
+This example relies on the fact that you will already have handled authentication of the user
+somewhere else in your application, and that a successful authentication sets an encrypted
+cookie with the user ID.
 
-尝试建立新连接时，会自动把 cookie 发送给连接实例，用于设置 `current_user`。通过使用 `current_user` 标识连接，我们稍后就能够检索指定用户打开的所有连接（如果删除用户或取消对用户的授权，该用户打开的所有连接都会断开）。
+The cookie is then automatically sent to the connection instance when a new connection
+is attempted, and you use that to set the `current_user`. By identifying the connection
+by this same current user, you're also ensuring that you can later retrieve all open
+connections by a given user (and potentially disconnect them all if the user is deleted
+or unauthorized).
 
-<a class="anchor" id="channels"></a>
+If your authentication approach includes using a session, you use cookie store for the
+session, your session cookie is named `_session` and the user ID key is `user_id` you
+can use this approach:
 
-### 频道
+```ruby
+verified_user = User.find_by(id: cookies.encrypted['_session']['user_id'])
+```
 
-和常规 MVC 中的控制器类似，频道用于封装逻辑工作单元。默认情况下，Rails 会把 `ApplicationCable::Channel` 类作为频道的父类，用于封装频道之间共享的逻辑。
+[`ActionCable::Connection::Base`]: https://api.rubyonrails.org/classes/ActionCable/Connection/Base.html
+[`identified_by`]: https://api.rubyonrails.org/classes/ActionCable/Connection/Identification/ClassMethods.html#method-i-identified_by
 
-<a class="anchor" id="parent-channel-setup"></a>
+#### Exception Handling
 
-#### 父频道设置
+By default, unhandled exceptions are caught and logged to Rails' logger. If you would like to
+globally intercept these exceptions and report them to an external bug tracking service, for
+example, you can do so with [`rescue_from`][]:
+
+```ruby
+# app/channels/application_cable/connection.rb
+module ApplicationCable
+  class Connection < ActionCable::Connection::Base
+    rescue_from StandardError, with: :report_error
+
+    private
+
+    def report_error(e)
+      SomeExternalBugtrackingService.notify(e)
+    end
+  end
+end
+```
+
+[`rescue_from`]: https://api.rubyonrails.org/classes/ActiveSupport/Rescuable/ClassMethods.html#method-i-rescue_from
+
+### Channels
+
+A *channel* encapsulates a logical unit of work, similar to what a controller does in a
+regular MVC setup. By default, Rails creates a parent `ApplicationCable::Channel` class
+(which extends [`ActionCable::Channel::Base`][]) for encapsulating shared logic between your channels.
+
+#### Parent Channel Setup
 
 ```ruby
 # app/channels/application_cable/channel.rb
@@ -85,7 +181,8 @@ module ApplicationCable
 end
 ```
 
-接下来我们要创建自己的频道类。例如，可以创建 `ChatChannel` 和 `AppearanceChannel` 类：
+Then you would create your own channel classes. For example, you could have a
+`ChatChannel` and an `AppearanceChannel`:
 
 ```ruby
 # app/channels/chat_channel.rb
@@ -97,84 +194,122 @@ class AppearanceChannel < ApplicationCable::Channel
 end
 ```
 
-这样用户就可以订阅频道了，订阅一个或两个都行。
+[`ActionCable::Channel::Base`]: https://api.rubyonrails.org/classes/ActionCable/Channel/Base.html
 
-<a class="anchor" id="subscriptions"></a>
+A consumer could then be subscribed to either or both of these channels.
 
-#### 订阅
+#### Subscriptions
 
-订阅频道的用户称为订阅者。用户创建的连接称为（频道）订阅。订阅基于连接用户（订阅者）发送的标识符创建，生成的消息将发送到这些订阅。
+Consumers subscribe to channels, acting as *subscribers*. Their connection is
+called a *subscription*. Produced messages are then routed to these channel
+subscriptions based on an identifier sent by the channel consumer.
 
 ```ruby
 # app/channels/chat_channel.rb
 class ChatChannel < ApplicationCable::Channel
-  # 当用户成为此频道的订阅者时调用
+  # Called when the consumer has successfully
+  # become a subscriber to this channel.
   def subscribed
   end
 end
 ```
 
-<a class="anchor" id="client-side-components"></a>
+#### Exception Handling
 
-## 客户端组件
+As with `ApplicationCable::Connection`, you can also use [`rescue_from`][] on a
+specific channel to handle raised exceptions:
 
-<a class="anchor" id="client-side-connections"></a>
+```ruby
+# app/channels/chat_channel.rb
+class ChatChannel < ApplicationCable::Channel
+  rescue_from 'MyError', with: :deliver_error_message
 
-### 连接
+  private
 
-用户需要在客户端创建连接实例。下面这段由 Rails 默认生成的 JavaScript 代码，正是用于在客户端创建连接实例：
+  def deliver_error_message(e)
+    broadcast_to(...)
+  end
+end
+```
 
-<a class="anchor" id="connect-consumer"></a>
+## Client-Side Components
 
-#### 连接用户
+### Connections
+
+Consumers require an instance of the connection on their side. This can be
+established using the following JavaScript, which is generated by default by Rails:
+
+#### Connect Consumer
 
 ```js
-// app/assets/javascripts/cable.js
-//= require action_cable
-//= require_self
-//= require_tree ./channels
+// app/javascript/channels/consumer.js
+// Action Cable provides the framework to deal with WebSockets in Rails.
+// You can generate new channels where WebSocket features live using the `bin/rails generate channel` command.
 
-(function() {
-  this.App || (this.App = {});
+import { createConsumer } from "@rails/actioncable"
 
-  App.cable = ActionCable.createConsumer();
-}).call(this);
+export default createConsumer()
 ```
 
-上述代码会创建连接用户，并将通过默认的 `/cable` 地址和服务器建立连接。我们还需要从现有订阅中至少选择一个感兴趣的订阅，否则将无法建立连接。
+This will ready a consumer that'll connect against `/cable` on your server by default.
+The connection won't be established until you've also specified at least one subscription
+you're interested in having.
 
-<a class="anchor" id="subscriber"></a>
+The consumer can optionally take an argument that specifies the URL to connect to. This
+can be a string, or a function that returns a string that will be called when the
+WebSocket is opened.
 
-#### 订阅者
+```js
+// Specify a different URL to connect to
+createConsumer('https://ws.example.com/cable')
 
-一旦订阅了某个频道，用户也就成为了订阅者：
+// Use a function to dynamically generate the URL
+createConsumer(getWebSocketURL)
 
-```ruby
-# app/assets/javascripts/cable/subscriptions/chat.coffee
-App.cable.subscriptions.create { channel: "ChatChannel", room: "Best Room" }
-
-# app/assets/javascripts/cable/subscriptions/appearance.coffee
-App.cable.subscriptions.create { channel: "AppearanceChannel" }
+function getWebSocketURL {
+  const token = localStorage.get('auth-token')
+  return `https://ws.example.com/cable?token=${token}`
+}
 ```
 
-上述代码创建了订阅，稍后我们还要描述如何处理接收到的数据。
+#### Subscriber
 
-作为订阅者，用户可以多次订阅同一个频道。例如，用户可以同时订阅多个聊天室：
+A consumer becomes a subscriber by creating a subscription to a given channel:
 
-```ruby
-App.cable.subscriptions.create { channel: "ChatChannel", room: "1st Room" }
-App.cable.subscriptions.create { channel: "ChatChannel", room: "2nd Room" }
+```js
+// app/javascript/channels/chat_channel.js
+import consumer from "./consumer"
+
+consumer.subscriptions.create({ channel: "ChatChannel", room: "Best Room" })
+
+// app/javascript/channels/appearance_channel.js
+import consumer from "./consumer"
+
+consumer.subscriptions.create({ channel: "AppearanceChannel" })
 ```
 
-<a class="anchor" id="client-server-interactions"></a>
+While this creates the subscription, the functionality needed to respond to
+received data will be described later on.
 
-## 客户端-服务器的交互
+A consumer can act as a subscriber to a given channel any number of times. For
+example, a consumer could subscribe to multiple chat rooms at the same time:
 
-<a class="anchor" id="streams"></a>
+```js
+// app/javascript/channels/chat_channel.js
+import consumer from "./consumer"
 
-### 流（stream）
+consumer.subscriptions.create({ channel: "ChatChannel", room: "1st Room" })
+consumer.subscriptions.create({ channel: "ChatChannel", room: "2nd Room" })
+```
 
-频道把已发布内容（即广播）发送给订阅者，是通过所谓的“流”机制实现的。
+## Client-Server Interactions
+
+### Streams
+
+*Streams* provide the mechanism by which channels route published content
+(broadcasts) to their subscribers. For example, the following code uses
+[`stream_from`][] to subscribe to the broadcasting named `chat_Best Room` when
+the value of the `:room` parameter is `"Best Room"`:
 
 ```ruby
 # app/channels/chat_channel.rb
@@ -185,7 +320,18 @@ class ChatChannel < ApplicationCable::Channel
 end
 ```
 
-有了和模型关联的流，就可以从模型和频道生成所需的广播。下面的例子用于订阅评论频道，以接收 `Z2lkOi8vVGVzdEFwcC9Qb3N0LzE` 这样的广播：
+Then, elsewhere in your Rails application, you can broadcast to such a room by
+calling [`broadcast`][]:
+
+```ruby
+ActionCable.server.broadcast("chat_Best Room", body: "This Room is Best Room.")
+```
+
+If you have a stream that is related to a model, then the broadcasting name
+can be generated from the channel and model. For example, the following code
+uses [`stream_for`][] to subscribe to a broadcasting like
+`comments:Z2lkOi8vVGVzdEFwcC9Qb3N0LzE`, where `Z2lkOi8vVGVzdEFwcC9Qb3N0LzE` is
+the GlobalID of the Post model.
 
 ```ruby
 class CommentsChannel < ApplicationCable::Channel
@@ -196,65 +342,64 @@ class CommentsChannel < ApplicationCable::Channel
 end
 ```
 
-向评论频道发送广播的方式如下：
+You can then broadcast to this channel by calling [`broadcast_to`][]:
 
 ```ruby
 CommentsChannel.broadcast_to(@post, @comment)
 ```
 
-<a class="anchor" id="broadcasting"></a>
+[`broadcast`]: https://api.rubyonrails.org/classes/ActionCable/Server/Broadcasting.html#method-i-broadcast
+[`broadcast_to`]: https://api.rubyonrails.org/classes/ActionCable/Channel/Broadcasting/ClassMethods.html#method-i-broadcast_to
+[`stream_for`]: https://api.rubyonrails.org/classes/ActionCable/Channel/Streams.html#method-i-stream_for
+[`stream_from`]: https://api.rubyonrails.org/classes/ActionCable/Channel/Streams.html#method-i-stream_from
 
-### 广播
+### Broadcastings
 
-广播是指发布/订阅的链接，也就是说，当频道订阅者使用流接收某个广播时，发布者发布的内容会被直接发送给订阅者。
+A *broadcasting* is a pub/sub link where anything transmitted by a publisher
+is routed directly to the channel subscribers who are streaming that named
+broadcasting. Each channel can be streaming zero or more broadcastings.
 
-广播也是时间相关的在线队列。如果用户未使用流（即未订阅频道），稍后就无法接收到广播。
+Broadcastings are purely an online queue and time-dependent. If a consumer is
+not streaming (subscribed to a given channel), they'll not get the broadcast
+should they connect later.
 
-在 Rails 应用的其他部分也可以发送广播：
+### Subscriptions
 
-```ruby
-WebNotificationsChannel.broadcast_to(
-  current_user,
-  title: 'New things!',
-  body: 'All the news fit to print'
-)
+When a consumer is subscribed to a channel, they act as a subscriber. This
+connection is called a subscription. Incoming messages are then routed to
+these channel subscriptions based on an identifier sent by the cable consumer.
+
+```js
+// app/javascript/channels/chat_channel.js
+// Assumes you've already requested the right to send web notifications
+import consumer from "./consumer"
+
+consumer.subscriptions.create({ channel: "ChatChannel", room: "Best Room" }, {
+  received(data) {
+    this.appendLine(data)
+  },
+
+  appendLine(data) {
+    const html = this.createLine(data)
+    const element = document.querySelector("[data-chat-room='Best Room']")
+    element.insertAdjacentHTML("beforeend", html)
+  },
+
+  createLine(data) {
+    return `
+      <article class="chat-line">
+        <span class="speaker">${data["sent_by"]}</span>
+        <span class="body">${data["body"]}</span>
+      </article>
+    `
+  }
+})
 ```
 
-调用 `WebNotificationsChannel.broadcast_to` 将向当前订阅适配器（生产环境默认为 `redis`，开发和测试环境默认为 `async`）的发布/订阅队列推送一条消息，并为每个用户设置不同的广播名。对于 ID 为 1 的用户，广播名是 `web_notifications:1`。
+### Passing Parameters to Channels
 
-通过调用 `received` 回调方法，频道会使用流把到达 `web_notifications:1` 的消息直接发送给客户端。
-
-<a class="anchor" id="client-server-interactions-subscriptions"></a>
-
-### 订阅
-
-订阅频道的用户，称为订阅者。用户创建的连接称为（频道）订阅。订阅基于连接用户（订阅者）发送的标识符创建，收到的消息将被发送到这些订阅。
-
-```coffee
-# app/assets/javascripts/cable/subscriptions/chat.coffee
-# 假设我们已经获得了发送 Web 通知的权限
-App.cable.subscriptions.create { channel: "ChatChannel", room: "Best Room" },
-  received: (data) ->
-    @appendLine(data)
-
-  appendLine: (data) ->
-    html = @createLine(data)
-    $("[data-chat-room='Best Room']").append(html)
-
-  createLine: (data) ->
-    """
-    <article class="chat-line">
-      <span class="speaker">#{data["sent_by"]}</span>
-      <span class="body">#{data["body"]}</span>
-    </article>
-    """
-```
-
-<a class="anchor" id="passing-parameters-to-channels"></a>
-
-### 向频道传递参数
-
-创建订阅时，可以从客户端向服务器端传递参数。例如：
+You can pass parameters from the client side to the server side when creating a
+subscription. For example:
 
 ```ruby
 # app/channels/chat_channel.rb
@@ -265,29 +410,38 @@ class ChatChannel < ApplicationCable::Channel
 end
 ```
 
-传递给 `subscriptions.create` 方法并作为第一个参数的对象，将成为频道的参数散列。其中必需包含 `channel` 关键字：
+An object passed as the first argument to `subscriptions.create` becomes the
+params hash in the cable channel. The keyword `channel` is required:
 
-```coffee
-# app/assets/javascripts/cable/subscriptions/chat.coffee
-App.cable.subscriptions.create { channel: "ChatChannel", room: "Best Room" },
-  received: (data) ->
-    @appendLine(data)
+```js
+// app/javascript/channels/chat_channel.js
+import consumer from "./consumer"
 
-  appendLine: (data) ->
-    html = @createLine(data)
-    $("[data-chat-room='Best Room']").append(html)
+consumer.subscriptions.create({ channel: "ChatChannel", room: "Best Room" }, {
+  received(data) {
+    this.appendLine(data)
+  },
 
-  createLine: (data) ->
-    """
-    <article class="chat-line">
-      <span class="speaker">#{data["sent_by"]}</span>
-      <span class="body">#{data["body"]}</span>
-    </article>
-    """
+  appendLine(data) {
+    const html = this.createLine(data)
+    const element = document.querySelector("[data-chat-room='Best Room']")
+    element.insertAdjacentHTML("beforeend", html)
+  },
+
+  createLine(data) {
+    return `
+      <article class="chat-line">
+        <span class="speaker">${data["sent_by"]}</span>
+        <span class="body">${data["body"]}</span>
+      </article>
+    `
+  }
+})
 ```
 
 ```ruby
-# 在应用的某个部分中调用，例如 NewCommentJob
+# Somewhere in your app this is called, perhaps
+# from a NewCommentJob.
 ActionCable.server.broadcast(
   "chat_#{room}",
   sent_by: 'Paul',
@@ -295,11 +449,10 @@ ActionCable.server.broadcast(
 )
 ```
 
-<a class="anchor" id="rebroadcasting-a-message"></a>
+### Rebroadcasting a Message
 
-### 消息重播
-
-一个客户端向其他已连接客户端重播自己收到的消息，是一种常见用法。
+A common use case is to *rebroadcast* a message sent by one client to any
+other connected clients.
 
 ```ruby
 # app/channels/chat_channel.rb
@@ -314,34 +467,38 @@ class ChatChannel < ApplicationCable::Channel
 end
 ```
 
-```coffee
-# app/assets/javascripts/cable/subscriptions/chat.coffee
-App.chatChannel = App.cable.subscriptions.create { channel: "ChatChannel", room: "Best Room" },
-  received: (data) ->
-    # data => { sent_by: "Paul", body: "This is a cool chat app." }
+```js
+// app/javascript/channels/chat_channel.js
+import consumer from "./consumer"
 
-App.chatChannel.send({ sent_by: "Paul", body: "This is a cool chat app." })
+const chatChannel = consumer.subscriptions.create({ channel: "ChatChannel", room: "Best Room" }, {
+  received(data) {
+    // data => { sent_by: "Paul", body: "This is a cool chat app." }
+  }
+}
+
+chatChannel.send({ sent_by: "Paul", body: "This is a cool chat app." })
 ```
 
-所有已连接的客户端，包括发送消息的客户端在内，都将收到重播的消息。注意，重播时使用的参数与订阅频道时使用的参数相同。
+The rebroadcast will be received by all connected clients, _including_ the
+client that sent the message. Note that params are the same as they were when
+you subscribed to the channel.
 
-<a class="anchor" id="full-stack-examples"></a>
+## Full-Stack Examples
 
-## 全栈示例
+The following setup steps are common to both examples:
 
-本节的两个例子都需要进行下列设置：
+  1. [Setup your connection](#connection-setup).
+  2. [Setup your parent channel](#parent-channel-setup).
+  3. [Connect your consumer](#connect-consumer).
 
-1.  设置连接；
-1.  设置父频道；
-1.  连接用户。
+### Example 1: User Appearances
 
-<a class="anchor" id="example-one-user-appearances"></a>
+Here's a simple example of a channel that tracks whether a user is online or not
+and what page they're on. (This is useful for creating presence features like showing
+a green dot next to a user name if they're online).
 
-### 例 1：用户在线状态（user appearance）
-
-下面是一个关于频道的简单例子，用于跟踪用户是否在线，以及用户所在的页面。（常用于显示用户在线状态，例如当用户在线时，在用户名旁边显示绿色小圆点。）
-
-在服务器端创建在线状态频道（appearance channel）：
+Create the server-side appearance channel:
 
 ```ruby
 # app/channels/appearance_channel.rb
@@ -364,71 +521,115 @@ class AppearanceChannel < ApplicationCable::Channel
 end
 ```
 
-订阅创建后，会触发 `subscribed` 回调方法，这时可以提示说“当前用户上线了”。上线/下线 API 的后端可以是 Redis、数据库或其他解决方案。
+When a subscription is initiated the `subscribed` callback gets fired and we
+take that opportunity to say "the current user has indeed appeared". That
+appear/disappear API could be backed by Redis, a database, or whatever else.
 
-在客户端创建在线状态频道订阅：
+Create the client-side appearance channel subscription:
 
-```coffee
-# app/assets/javascripts/cable/subscriptions/appearance.coffee
-App.cable.subscriptions.create "AppearanceChannel",
-  # 当服务器上的订阅可用时调用
-  connected: ->
-    @install()
-    @appear()
+```js
+// app/javascript/channels/appearance_channel.js
+import consumer from "./consumer"
 
-  # 当 WebSocket 连接关闭时调用
-  disconnected: ->
-    @uninstall()
+consumer.subscriptions.create("AppearanceChannel", {
+  // Called once when the subscription is created.
+  initialized() {
+    this.update = this.update.bind(this)
+  },
 
-  # 当服务器拒绝订阅时调用
-  rejected: ->
-    @uninstall()
+  // Called when the subscription is ready for use on the server.
+  connected() {
+    this.install()
+    this.update()
+  },
 
-  appear: ->
-    # 在服务器上调用 `AppearanceChannel#appear(data)`
-    @perform("appear", appearing_on: $("main").data("appearing-on"))
+  // Called when the WebSocket connection is closed.
+  disconnected() {
+    this.uninstall()
+  },
 
-  away: ->
-    # 在服务器上调用 `AppearanceChannel#away`
-    @perform("away")
+  // Called when the subscription is rejected by the server.
+  rejected() {
+    this.uninstall()
+  },
 
+  update() {
+    this.documentIsActive ? this.appear() : this.away()
+  },
 
-  buttonSelector = "[data-behavior~=appear_away]"
+  appear() {
+    // Calls `AppearanceChannel#appear(data)` on the server.
+    this.perform("appear", { appearing_on: this.appearingOn })
+  },
 
-  install: ->
-    $(document).on "turbolinks:load.appearance", =>
-      @appear()
+  away() {
+    // Calls `AppearanceChannel#away` on the server.
+    this.perform("away")
+  },
 
-    $(document).on "click.appearance", buttonSelector, =>
-      @away()
-      false
+  install() {
+    window.addEventListener("focus", this.update)
+    window.addEventListener("blur", this.update)
+    document.addEventListener("turbolinks:load", this.update)
+    document.addEventListener("visibilitychange", this.update)
+  },
 
-    $(buttonSelector).show()
+  uninstall() {
+    window.removeEventListener("focus", this.update)
+    window.removeEventListener("blur", this.update)
+    document.removeEventListener("turbolinks:load", this.update)
+    document.removeEventListener("visibilitychange", this.update)
+  },
 
-  uninstall: ->
-    $(document).off(".appearance")
-    $(buttonSelector).hide()
+  get documentIsActive() {
+    return document.visibilityState == "visible" && document.hasFocus()
+  },
+
+  get appearingOn() {
+    const element = document.querySelector("[data-appearing-on]")
+    return element ? element.getAttribute("data-appearing-on") : null
+  }
+})
 ```
 
-<a class="anchor" id="client-server-interaction"></a>
+##### Client-Server Interaction
 
-#### 客户端-服务器交互
+1. **Client** connects to the **Server** via `App.cable =
+ActionCable.createConsumer("ws://cable.example.com")`. (`cable.js`). The
+**Server** identifies this connection by `current_user`.
 
-1.  **客户端**通过 `App.cable = ActionCable.createConsumer("ws://cable.example.com")`（位于 `cable.js` 文件中）连接到**服务器**。**服务器**通过 `current_user` 标识此连接。
-1.  **客户端**通过 `App.cable.subscriptions.create(channel: "AppearanceChannel")`（位于 `appearance.coffee` 文件中）订阅在线状态频道。
-1.  **服务器**发现在线状态频道创建了一个新订阅，于是调用 `subscribed` 回调方法，也即在 `current_user` 对象上调用 `appear` 方法。
-1.  **客户端**发现订阅创建成功，于是调用 `connected` 方法（位于 `appearance.coffee` 文件中），也即依次调用 `@install` 和 `@appear`。`@appear` 会调用服务器上的 `AppearanceChannel#appear(data)` 方法，同时提供 `{ appearing_on: $("main").data("appearing-on") }` 数据散列。之所以能够这样做，是因为服务器端的频道实例会自动暴露类上声明的所有公共方法（回调除外），从而使远程过程能够通过订阅的 `perform` 方法调用它们。
-1.  **服务器**接收向在线状态频道的 `appear` 动作发起的请求，此频道基于连接创建，连接由 `current_user`（位于 `appearance_channel.rb` 文件中）标识。**服务器**通过 `:appearing_on` 键从数据散列中检索数据，将其设置为 `:on` 键的值并传递给 `current_user.appear`。
+2. **Client** subscribes to the appearance channel via
+`consumer.subscriptions.create({ channel: "AppearanceChannel" })`. (`appearance_channel.js`)
 
-<a class="anchor" id="example-two-receiving-new-web-notifications"></a>
+3. **Server** recognizes a new subscription has been initiated for the
+appearance channel and runs its `subscribed` callback, calling the `appear`
+method on `current_user`. (`appearance_channel.rb`)
 
-### 例 2：接收新的 Web 通知
+4. **Client** recognizes that a subscription has been established and calls
+`connected` (`appearance_channel.js`) which in turn calls `install` and `appear`.
+`appear` calls `AppearanceChannel#appear(data)` on the server, and supplies a
+data hash of `{ appearing_on: this.appearingOn }`. This is
+possible because the server-side channel instance automatically exposes all
+public methods declared on the class (minus the callbacks), so that these can be
+reached as remote procedure calls via a subscription's `perform` method.
 
-上一节中在线状态的例子，演示了如何把服务器功能暴露给客户端，以便在客户端通过 WebSocket 连接调用这些功能。但是 WebSocket 的伟大之处在于，它是一条双向通道。因此，在本节的例子中，我们要看一看服务器如何调用客户端上的动作。
+5. **Server** receives the request for the `appear` action on the appearance
+channel for the connection identified by `current_user`
+(`appearance_channel.rb`). **Server** retrieves the data with the
+`:appearing_on` key from the data hash and sets it as the value for the `:on`
+key being passed to `current_user.appear`.
 
-本节所举的例子是一个 Web 通知频道（Web notification channel），允许我们在广播到正确的流时触发客户端 Web 通知。
+### Example 2: Receiving New Web Notifications
 
-创建服务器端 Web 通知频道：
+The appearance example was all about exposing server functionality to
+client-side invocation over the WebSocket connection. But the great thing
+about WebSockets is that it's a two-way street. So now let's show an example
+where the server invokes an action on the client.
+
+This is a web notification channel that allows you to trigger client-side
+web notifications when you broadcast to the right streams:
+
+Create the server-side web notifications channel:
 
 ```ruby
 # app/channels/web_notifications_channel.rb
@@ -439,20 +640,26 @@ class WebNotificationsChannel < ApplicationCable::Channel
 end
 ```
 
-创建客户端 Web 通知频道订阅：
+Create the client-side web notifications channel subscription:
 
-```coffee
-# app/assets/javascripts/cable/subscriptions/web_notifications.coffee
-# 客户端假设我们已经获得了发送 Web 通知的权限
-App.cable.subscriptions.create "WebNotificationsChannel",
-  received: (data) ->
-    new Notification data["title"], body: data["body"]
+```js
+// app/javascript/channels/web_notifications_channel.js
+// Client-side which assumes you've already requested
+// the right to send web notifications.
+import consumer from "./consumer"
+
+consumer.subscriptions.create("WebNotificationsChannel", {
+  received(data) {
+    new Notification(data["title"], body: data["body"])
+  }
+})
 ```
 
-在应用的其他部分向 Web 通知频道实例发送内容广播：
+Broadcast content to a web notification channel instance from elsewhere in your
+application:
 
 ```ruby
-# 在应用的某个部分中调用，例如 NewCommentJob
+# Somewhere in your app this is called, perhaps from a NewCommentJob
 WebNotificationsChannel.broadcast_to(
   current_user,
   title: 'New things!',
@@ -460,29 +667,33 @@ WebNotificationsChannel.broadcast_to(
 )
 ```
 
-调用 `WebNotificationsChannel.broadcast_to` 将向当前订阅适配器的发布/订阅队列推送一条消息，并为每个用户设置不同的广播名。对于 ID 为 1 的用户，广播名是 `web_notifications:1`。
+The `WebNotificationsChannel.broadcast_to` call places a message in the current
+subscription adapter's pubsub queue under a separate broadcasting name for each
+user. For a user with an ID of 1, the broadcasting name would be
+`web_notifications:1`.
 
-通过调用 `received` 回调方法，频道会用流把到达 `web_notifications:1` 的消息直接发送给客户端。作为参数传递的数据散列，将作为第二个参数传递给服务器端的广播调用，数据在传输前使用 JSON 进行编码，到达服务器后由 `received` 解码。
+The channel has been instructed to stream everything that arrives at
+`web_notifications:1` directly to the client by invoking the `received`
+callback. The data passed as argument is the hash sent as the second parameter
+to the server-side broadcast call, JSON encoded for the trip across the wire
+and unpacked for the data argument arriving as `received`.
 
-<a class="anchor" id="more-complete-examples"></a>
+### More Complete Examples
 
-### 更完整的例子
+See the [rails/actioncable-examples](https://github.com/rails/actioncable-examples)
+repository for a full example of how to set up Action Cable in a Rails app and adding channels.
 
-关于在 Rails 应用中设置 Action Cable 并添加频道的完整例子，参见 [rails/actioncable-examples](https://github.com/rails/actioncable-examples) 仓库。
+## Configuration
 
-<a class="anchor" id="configuration"></a>
+Action Cable has two required configurations: a subscription adapter and allowed request origins.
 
-## 配置
+### Subscription Adapter
 
-使用 Action Cable 时，有两个选项必需配置：订阅适配器和允许的请求来源。
+By default, Action Cable looks for a configuration file in `config/cable.yml`.
+The file must specify an adapter for each Rails environment. See the
+[Dependencies](#dependencies) section for additional information on adapters.
 
-<a class="anchor" id="subscription-adapter"></a>
-
-### 订阅适配器
-
-默认情况下，Action Cable 会查找 `config/cable.yml` 这个配置文件。该文件必须为每个 Rails 环境指定适配器和 URL 地址。关于适配器的更多介绍，请参阅 [依赖关系](#action-cable-overview-dependencies)。
-
-```yml
+```yaml
 development:
   adapter: async
 
@@ -494,60 +705,84 @@ production:
   url: redis://10.10.3.153:6381
   channel_prefix: appname_production
 ```
+#### Adapter Configuration
 
-<a class="anchor" id="adapter-configuration"></a>
+Below is a list of the subscription adapters available for end users.
 
-#### 配置适配器
+##### Async Adapter
 
-下面是终端用户可用的订阅适配器。
+The async adapter is intended for development/testing and should not be used in production.
 
-<a class="anchor" id="async-adapter"></a>
+##### Redis Adapter
 
-##### async 适配器
+The Redis adapter requires users to provide a URL pointing to the Redis server.
+Additionally, a `channel_prefix` may be provided to avoid channel name collisions
+when using the same Redis server for multiple applications. See the [Redis PubSub documentation](https://redis.io/topics/pubsub#database-amp-scoping) for more details.
 
-async 适配器只适用于开发和测试环境，不应该在生产环境使用。
+##### PostgreSQL Adapter
 
-<a class="anchor" id="redis-adapter"></a>
+The PostgreSQL adapter uses Active Record's connection pool, and thus the
+application's `config/database.yml` database configuration, for its connection.
+This may change in the future. [#27214](https://github.com/rails/rails/issues/27214)
 
-##### Redis 适配器
+### Allowed Request Origins
 
-Action Cable 包含两个 Redis 适配器：常规的 Redis 和事件型 Redis。这两个适配器都要求用户提供指向 Redis 服务器的 URL。此外，多个应用使用同一个 Redis 服务器时，可以设定 `channel_prefix`，以免名称冲突。详情参见 [Redis PubSub 文档](https://redis.io/topics/pubsub#database-amp-scoping)。
-
-<a class="anchor" id="postgresql-adapter"></a>
-
-##### PostgreSQL 适配器
-
-PostgreSQL 适配器使用 Active Record 的连接池，因此使用应用的 `config/database.yml` 数据库配置连接。以后可能会变。[#27214](https://github.com/rails/rails/issues/27214)
-
-<a class="anchor" id="allowed-request-origins"></a>
-
-### 允许的请求来源
-
-Action Cable 仅接受来自指定来源的请求。这些来源是在服务器配置文件中以数组的形式设置的，每个来源既可以是字符串，也可以是正则表达式。对于每个请求，都要对其来源进行检查，看是否和允许的请求来源相匹配。
+Action Cable will only accept requests from specified origins, which are
+passed to the server config as an array. The origins can be instances of
+strings or regular expressions, against which a check for the match will be performed.
 
 ```ruby
-config.action_cable.allowed_request_origins = ['http://rubyonrails.com', %r{http://ruby.*}]
+config.action_cable.allowed_request_origins = ['https://rubyonrails.com', %r{http://ruby.*}]
 ```
 
-若想禁用来源检查，允许任何来源的请求：
+To disable and allow requests from any origin:
 
 ```ruby
 config.action_cable.disable_request_forgery_protection = true
 ```
 
-在开发环境中，Action Cable 默认允许来自 localhost:3000 的所有请求。
+By default, Action Cable allows all requests from localhost:3000 when running
+in the development environment.
 
-<a class="anchor" id="consumer-configuration"></a>
+### Consumer Configuration
 
-### 用户配置
+To configure the URL, add a call to [`action_cable_meta_tag`][] in your HTML layout
+HEAD. This uses a URL or path typically set via `config.action_cable.url` in the
+environment configuration files.
 
-要想配置 URL 地址，可以在 HTML 布局文件的 `<head>` 元素中添加 `action_cable_meta_tag` 标签。这个标签会使用环境配置文件中 `config.action_cable.url` 选项设置的 URL 地址或路径。
+[`action_cable_meta_tag`]: https://api.rubyonrails.org/classes/ActionCable/Helpers/ActionCableHelper.html#method-i-action_cable_meta_tag
 
-<a class="anchor" id="other-configurations"></a>
+### Worker Pool Configuration
 
-### 其他配置
+The worker pool is used to run connection callbacks and channel actions in
+isolation from the server's main thread. Action Cable allows the application
+to configure the number of simultaneously processed threads in the worker pool.
 
-另一个常见的配置选项，是应用于每个连接记录器的日志标签。下述示例在有用户账户时使用账户 ID，没有时则标记为“no-account”：
+```ruby
+config.action_cable.worker_pool_size = 4
+```
+
+Also, note that your server must provide at least the same number of database
+connections as you have workers. The default worker pool size is set to 4, so
+that means you have to make at least 4 database connections available.
+ You can change that in `config/database.yml` through the `pool` attribute.
+
+### Client side logging
+
+Client side logging is disabled by default. You can enable this by setting the `ActionCable.logger.enabled` to true.
+
+```ruby
+import * as ActionCable from '@rails/actioncable'
+
+ActionCable.logger.enabled = true
+```
+
+
+### Other Configurations
+
+The other common option to configure is the log tags applied to the
+per-connection logger. Here's an example that uses
+the user account id if available, else "no-account" while tagging:
 
 ```ruby
 config.action_cable.log_tags = [
@@ -557,19 +792,16 @@ config.action_cable.log_tags = [
 ]
 ```
 
-关于所有配置选项的完整列表，请参阅 `ActionCable::Server::Configuration` 类的 API 文档。
+For a full list of all configuration options, see the
+`ActionCable::Server::Configuration` class.
 
-还要注意，服务器提供的数据库连接在数量上至少应该和职程（worker）相等。职程池的默认大小为 100，也就是说数据库连接数量至少为 4。职程池的大小可以通过 `config/database.yml` 文件中的 `pool` 属性设置。
+## Running Standalone Cable Servers
 
-<a class="anchor" id="running-standalone-cable-servers"></a>
+### In App
 
-## 运行独立的 Cable 服务器
-
-<a class="anchor" id="in-app"></a>
-
-### 和应用一起运行
-
-Action Cable 可以和 Rails 应用一起运行。例如，要想监听 `/websocket` 上的 WebSocket 请求，可以通过 `config.action_cable.mount_path` 选项指定监听路径：
+Action Cable can run alongside your Rails application. For example, to
+listen for WebSocket requests on `/websocket`, specify that path to
+`config.action_cable.mount_path`:
 
 ```ruby
 # config/application.rb
@@ -578,54 +810,68 @@ class Application < Rails::Application
 end
 ```
 
-在布局文件中调用 `action_cable_meta_tag` 后，就可以使用 `App.cable = ActionCable.createConsumer()` 连接到 Cable 服务器。可以通过 `createConsumer` 方法的第一个参数指定自定义路径（例如，`App.cable =
-ActionCable.createConsumer("/websocket")`）。
+You can use `ActionCable.createConsumer()` to connect to the cable
+server if `action_cable_meta_tag` is invoked in the layout. Otherwise, A path is
+specified as first argument to `createConsumer` (e.g. `ActionCable.createConsumer("/websocket")`).
 
-对于我们创建的每个服务器实例，以及由服务器派生的每个职程，都会新建对应的 Action Cable 实例，通过 Redis 可以在不同连接之间保持消息同步。
+For every instance of your server you create and for every worker your server
+spawns, you will also have a new instance of Action Cable, but the use of Redis
+keeps messages synced across connections.
 
-<a class="anchor" id="standalone"></a>
+### Standalone
 
-### 独立运行
-
-Cable 服务器可以和普通应用服务器分离。此时，Cable 服务器仍然是 Rack 应用，只不过是单独的 Rack 应用罢了。推荐的基本设置如下：
+The cable servers can be separated from your normal application server. It's
+still a Rack application, but it is its own Rack application. The recommended
+basic setup is as follows:
 
 ```ruby
 # cable/config.ru
-require_relative '../config/environment'
+require_relative "../config/environment"
 Rails.application.eager_load!
 
 run ActionCable.server
 ```
 
-然后用 `bin/cable` 中的一个 binstub 命令启动服务器：
+Then you start the server using a binstub in `bin/cable` ala:
 
-```shell
+```
 #!/bin/bash
 bundle exec puma -p 28080 cable/config.ru
 ```
 
-上述代码在 28080 端口上启动 Cable 服务器。
+The above will start a cable server on port 28080.
 
-<a class="anchor" id="notes"></a>
+### Notes
 
-### 注意事项
+The WebSocket server doesn't have access to the session, but it has
+access to the cookies. This can be used when you need to handle
+authentication. You can see one way of doing that with Devise in this [article](https://greg.molnar.io/blog/actioncable-devise-authentication/).
 
-WebSocket 服务器没有访问会话的权限，但可以访问 cookie，而在处理身份验证时需要用到 cookie。[这篇文章](http://www.rubytutorial.io/actioncable-devise-authentication)介绍了如何使用 Devise 验证身份。
+## Dependencies
 
-<a class="anchor" id="action-cable-overview-dependencies"></a>
+Action Cable provides a subscription adapter interface to process its
+pubsub internals. By default, asynchronous, inline, PostgreSQL, and Redis
+adapters are included. The default adapter
+in new Rails applications is the asynchronous (`async`) adapter.
 
-## 依赖关系
+The Ruby side of things is built on top of [websocket-driver](https://github.com/faye/websocket-driver-ruby),
+[nio4r](https://github.com/celluloid/nio4r), and [concurrent-ruby](https://github.com/ruby-concurrency/concurrent-ruby).
 
-Action Cable 提供了用于处理发布/订阅内部逻辑的订阅适配器接口，默认包含异步、内联、PostgreSQL、事件 Redis 和非事件 Redis 适配器。新建 Rails 应用的默认适配器是异步（async）适配器。
+## Deployment
 
-对 Ruby gem 的依赖包括 [websocket-driver](https://github.com/faye/websocket-driver-ruby)、[nio4r](https://github.com/celluloid/nio4r) 和 [concurrent-ruby](https://github.com/ruby-concurrency/concurrent-ruby)。
+Action Cable is powered by a combination of WebSockets and threads. Both the
+framework plumbing and user-specified channel work are handled internally by
+utilizing Ruby's native thread support. This means you can use all your regular
+Rails models with no problem, as long as you haven't committed any thread-safety sins.
 
-<a class="anchor" id="deployment"></a>
+The Action Cable server implements the Rack socket hijacking API,
+thereby allowing the use of a multithreaded pattern for managing connections
+internally, irrespective of whether the application server is multi-threaded or not.
 
-## 部署
+Accordingly, Action Cable works with popular servers like Unicorn, Puma, and
+Passenger.
 
-Action Cable 由 WebSocket 和线程组成。其中框架管道和用户指定频道的职程，都是通过 Ruby 提供的原生线程支持来处理的。这意味着，只要不涉及线程安全问题，我们就可以使用常规 Rails 线程模型的所有功能。
+## Testing
 
-Action Cable 服务器实现了Rack 套接字劫持 API（Rack socket hijacking API），因此无论应用服务器是否是多线程的，都能够通过多线程模式管理内部连接。
-
-因此，Action Cable 可以和流行的应用服务器一起使用，例如 Unicorn、Puma 和 Passenger。
+You can find detailed instructions on how to test your Action Cable functionality in the
+[testing guide](testing.html#testing-action-cable).

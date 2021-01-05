@@ -1,54 +1,12 @@
-## Rails 5.1.0 (April 27, 2017) ##
+## Rails 6.1.0 (December 09, 2020) ##
 
-*   No changes.
+*   Updated `ActiveSupport::Cache::MemCacheStore` docs to reflect support for `$MEMCACHE_SERVERS`.
 
-## Rails 5.0.1 (December 21, 2016) ##
+    *Sam Bostock*
 
-*   No changes.
+*   Use Bookstore as a unified use-case for all examples in Active Record Query Interface Guide.
 
-
-## Rails 5.0.1.rc2 (December 10, 2016) ##
-
-*   No changes.
+    *Ashley Engelund*, *Vipul A M*
 
 
-## Rails 5.0.1.rc1 (December 01, 2016) ##
-
-*   No changes.
-
-
-## Rails 5.0.0 (June 30, 2016) ##
-
-*   Update example of passing a proc to `:message` option for validating records.
-
-    This behavior was recently changed in [Pull Request #24199](https://github.com/rails/rails/pull/24119) to
-    pass the object being validated as first argument to the `:message` proc,
-    instead of the key of the field being validated.
-
-    *Prathamesh Sonpatki*
-
-*   Added new guide: Action Cable Overview.
-
-    *David Kuhta*
-
-*   Add code of conduct to contributing guide.
-
-    *Jon Moss*
-
-*   New section in Configuring: Configuring Active Job.
-
-    *Eliot Sykes*
-
-*   New section in Active Record Association Basics: Single Table Inheritance.
-
-    *Andrey Nering*
-
-*   New section in Active Record Querying: Understanding The Method Chaining.
-
-    *Andrey Nering*
-
-*   New section in Configuring: Search Engines Indexing.
-
-    *Andrey Nering*
-
-Please check [4-2-stable](https://github.com/rails/rails/blob/4-2-stable/guides/CHANGELOG.md) for previous changes.
+Please check [6-0-stable](https://github.com/rails/rails/blob/6-0-stable/guides/CHANGELOG.md) for previous changes.

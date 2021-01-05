@@ -1,29 +1,34 @@
-# Active Model 基础
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-本文简述模型类。Active Model 允许使用 Action Pack 辅助方法与普通的 Ruby 类交互。Active Model 还协助构建自定义的 ORM，可在 Rails 框架外部使用。
+Active Model Basics
+===================
 
-读完本文后，您将学到：
+This guide should provide you with all you need to get started using model
+classes. Active Model allows for Action Pack helpers to interact with
+plain Ruby objects. Active Model also helps build custom ORMs for use
+outside of the Rails framework.
 
-*   Active Record 模型的行为；
-*   回调和数据验证的工作方式；
-*   序列化程序的工作方式；
-*   Active Model 与 Rails 国际化（i18n）框架的集成。
+After reading this guide, you will know:
 
------------------------------------------------------------------------------
+* How an Active Record model behaves.
+* How Callbacks and validations work.
+* How serializers work.
+* How Active Model integrates with the Rails internationalization (i18n) framework.
 
-NOTE: 本文原文尚未完工！
+--------------------------------------------------------------------------------
 
-<a class="anchor" id="active-model-basics-introduction"></a>
+What is Active Model?
+---------------------
 
-## 简介
+Active Model is a library containing various modules used in developing
+classes that need some features present on Active Record.
+Some of these modules are explained below.
 
-Active Model 库包含很多模块，用于开发要在 Active Record 中存储的类。下面说明其中部分模块。
+### Attribute Methods
 
-<a class="anchor" id="attribute-methods"></a>
-
-### 属性方法
-
-`ActiveModel::AttributeMethods` 模块可以为类中的方法添加自定义的前缀和后缀。它用于定义前缀和后缀，对象中的方法将使用它们。
+The `ActiveModel::AttributeMethods` module can add custom prefixes and suffixes
+on methods of a class. It is used by defining the prefixes and suffixes and
+which methods on the object will use them.
 
 ```ruby
 class Person
@@ -44,19 +49,25 @@ class Person
       send(attribute) > 100
     end
 end
-
-person = Person.new
-person.age = 110
-person.age_highest?  # => true
-person.reset_age     # => 0
-person.age_highest?  # => false
 ```
 
-<a class="anchor" id="callbacks"></a>
+```irb
+irb> person = Person.new
+irb> person.age = 110
+irb> person.age_highest?
+=> true
+irb> person.reset_age
+=> 0
+irb> person.age_highest?
+=> false
+```
 
-### 回调
+### Callbacks
 
-`ActiveModel::Callbacks` 模块为 Active Record 提供回调，在某个时刻运行。定义回调之后，可以使用前置、后置和环绕方法包装。
+`ActiveModel::Callbacks` gives Active Record style callbacks. This provides an
+ability to define callbacks which run at appropriate times.
+After defining callbacks, you can wrap them with before, after, and around
+custom methods.
 
 ```ruby
 class Person
@@ -68,22 +79,21 @@ class Person
 
   def update
     run_callbacks(:update) do
-      # 在对象上调用 update 时执行这个方法
+      # This method is called when update is called on an object.
     end
   end
 
   def reset_me
-    # 在对象上调用 update 方法时执行这个方法
-    # 因为把它定义为 before_update 回调了
+    # This method is called when update is called on an object as a before_update callback is defined.
   end
 end
 ```
 
-<a class="anchor" id="conversion"></a>
+### Conversion
 
-### 转换
-
-如果一个类定义了 `persisted?` 和 `id` 方法，可以在那个类中引入 `ActiveModel::Conversion` 模块，这样便能在类的对象上调用 Rails 提供的转换方法。
+If a class defines `persisted?` and `id` methods, then you can include the
+`ActiveModel::Conversion` module in that class, and call the Rails conversion
+methods on objects of that class.
 
 ```ruby
 class Person
@@ -97,18 +107,25 @@ class Person
     nil
   end
 end
-
-person = Person.new
-person.to_model == person  # => true
-person.to_key              # => nil
-person.to_param            # => nil
 ```
 
-<a class="anchor" id="dirty"></a>
+```irb
+irb> person = Person.new
+irb> person.to_model == person
+=> true
+irb> person.to_key
+=> nil
+irb> person.to_param
+=> nil
+```
 
-### 弄脏
+### Dirty
 
-如果修改了对象的一个或多个属性，但是没有保存，此时就把对象弄脏了。`ActiveModel::Dirty` 模块提供检查对象是否被修改的功能。它还提供了基于属性的存取方法。假如有个 `Person` 类，它有两个属性，`first_name` 和 `last_name`：
+An object becomes dirty when it has gone through one or more changes to its
+attributes and has not been saved. `ActiveModel::Dirty` gives the ability to
+check whether an object has been changed or not. It also has attribute based
+accessor methods. Let's consider a Person class with attributes `first_name`
+and `last_name`:
 
 ```ruby
 class Person
@@ -134,66 +151,76 @@ class Person
   end
 
   def save
-    # 执行保存操作……
+    # do save work...
     changes_applied
   end
 end
 ```
 
-<a class="anchor" id="querying-object-directly-for-its-list-of-all-changed-attributes"></a>
+#### Querying object directly for its list of all changed attributes.
 
-#### 直接查询对象，获取所有被修改的属性列表
+```irb
+irb> person = Person.new
+irb> person.changed?
+=> false
 
-```ruby
-person = Person.new
-person.changed? # => false
+irb> person.first_name = "First Name"
+irb> person.first_name
+=> "First Name"
 
-person.first_name = "First Name"
-person.first_name # => "First Name"
+# Returns true if any of the attributes have unsaved changes.
+irb> person.changed?
+=> true
 
-# 如果修改属性后未保存，返回 true
-person.changed? # => true
+# Returns a list of attributes that have changed before saving.
+irb> person.changed
+=> ["first_name"]
 
-# 返回修改之后没有保存的属性列表
-person.changed # => ["first_name"]
+# Returns a Hash of the attributes that have changed with their original values.
+irb> person.changed_attributes
+=> {"first_name"=>nil}
 
-# 返回一个属性散列，指明原来的值
-person.changed_attributes # => {"first_name"=>nil}
-
-# 返回一个散列，键为修改的属性名，值是一个数组，包含旧值和新值
-person.changes # => {"first_name"=>[nil, "First Name"]}
+# Returns a Hash of changes, with the attribute names as the keys, and the values as an array of the old and new values for that field.
+irb> person.changes
+=> {"first_name"=>[nil, "First Name"]}
 ```
 
-<a class="anchor" id="attribute-based-accessor-methods"></a>
+#### Attribute based accessor methods
 
-#### 基于属性的存取方法
+Track whether the particular attribute has been changed or not.
 
-判断具体的属性是否被修改了：
+```irb
+irb> person.first_name
+=> "First Name"
 
-```ruby
 # attr_name_changed?
-person.first_name # => "First Name"
-person.first_name_changed? # => true
+irb> person.first_name_changed?
+=> true
 ```
 
-查看属性之前的值：
+Track the previous value of the attribute.
 
-```ruby
-person.first_name_was # => nil
+```irb
+# attr_name_was accessor
+irb> person.first_name_was
+=> nil
 ```
 
-查看属性修改前后的值。如果修改了，返回一个数组，否则返回 `nil`：
+Track both previous and current value of the changed attribute. Returns an array
+if changed, otherwise returns nil.
 
-```ruby
-person.first_name_change # => [nil, "First Name"]
-person.last_name_change # => nil
+```irb
+# attr_name_change
+irb> person.first_name_change
+=> [nil, "First Name"]
+irb> person.last_name_change
+=> nil
 ```
 
-<a class="anchor" id="validations"></a>
+### Validations
 
-### 数据验证
-
-`ActiveModel::Validations` 模块提供数据验证功能，这与 Active Record 中的类似。
+The `ActiveModel::Validations` module adds the ability to validate objects
+like in Active Record.
 
 ```ruby
 class Person
@@ -205,24 +232,30 @@ class Person
   validates_format_of :email, with: /\A([^\s]+)((?:[-a-z0-9]\.)[a-z]{2,})\z/i
   validates! :token, presence: true
 end
-
-person = Person.new
-person.token = "2b1f325"
-person.valid?                        # => false
-person.name = 'vishnu'
-person.email = 'me'
-person.valid?                        # => false
-person.email = 'me@vishnuatrai.com'
-person.valid?                        # => true
-person.token = nil
-person.valid?                        # => raises ActiveModel::StrictValidationFailed
 ```
 
-<a class="anchor" id="naming"></a>
+```irb
+irb> person = Person.new
+irb> person.token = "2b1f325"
+irb> person.valid?
+=> false
+irb> person.name = 'vishnu'
+irb> person.email = 'me'
+irb> person.valid?
+=> false
+irb> person.email = 'me@vishnuatrai.com'
+irb> person.valid?
+=> true
+irb> person.token = nil
+irb> person.valid?
+ActiveModel::StrictValidationFailed
+```
 
-### 命名
+### Naming
 
-`ActiveModel::Naming` 添加一些类方法，便于管理命名和路由。这个模块定义了 `model_name` 类方法，它使用 `ActiveSupport::Inflector` 中的一些方法定义一些存取方法。
+`ActiveModel::Naming` adds a number of class methods which make naming and routing
+easier to manage. The module defines the `model_name` class method which
+will define a number of accessors using some `ActiveSupport::Inflector` methods.
 
 ```ruby
 class Person
@@ -241,11 +274,10 @@ Person.model_name.route_key           # => "people"
 Person.model_name.singular_route_key  # => "person"
 ```
 
-<a class="anchor" id="model"></a>
+### Model
 
-### 模型
-
-`ActiveModel::Model` 模块能让一个类立即能与 Action Pack 和 Action View 集成。
+`ActiveModel::Model` adds the ability for a class to work with Action Pack and
+Action View right out of the box.
 
 ```ruby
 class EmailContact
@@ -256,38 +288,43 @@ class EmailContact
 
   def deliver
     if valid?
-      # 发送电子邮件
+      # deliver email
     end
   end
 end
 ```
 
-引入 `ActiveModel::Model` 后，将获得以下功能：
+When including `ActiveModel::Model` you get some features like:
 
-*   模型名称内省
-*   转换
-*   翻译
-*   数据验证
+- model name introspection
+- conversions
+- translations
+- validations
 
-还能像 Active Record 对象那样使用散列指定属性，初始化对象。
+It also gives you the ability to initialize an object with a hash of attributes,
+much like any Active Record object.
 
-```ruby
-email_contact = EmailContact.new(name: 'David',
-                                 email: 'david@example.com',
-                                 message: 'Hello World')
-email_contact.name       # => 'David'
-email_contact.email      # => 'david@example.com'
-email_contact.valid?     # => true
-email_contact.persisted? # => false
+```irb
+irb> email_contact = EmailContact.new(name: 'David', email: 'david@example.com', message: 'Hello World')
+irb> email_contact.name
+=> "David"
+irb> email_contact.email
+=> "david@example.com"
+irb> email_contact.valid?
+=> true
+irb> email_contact.persisted?
+=> false
 ```
 
-只要一个类引入了 `ActiveModel::Model`，它就能像 Active Record 对象那样使用 `form_for`、`render` 和任何 Action View 辅助方法。
+Any class that includes `ActiveModel::Model` can be used with `form_with`,
+`render` and any other Action View helper methods, just like Active Record
+objects.
 
-<a class="anchor" id="serialization"></a>
+### Serialization
 
-### 序列化
-
-`ActiveModel::Serialization` 模块为对象提供基本的序列化支持。你要定义一个属性散列，包含想序列化的属性。属性名必须使用字符串，不能使用符号。
+`ActiveModel::Serialization` provides basic serialization for your object.
+You need to declare an attributes Hash which contains the attributes you want to
+serialize. Attributes must be strings, not symbols.
 
 ```ruby
 class Person
@@ -301,26 +338,27 @@ class Person
 end
 ```
 
-这样就可以使用 `serializable_hash` 方法访问对象的序列化散列：
+Now you can access a serialized Hash of your object using the `serializable_hash` method.
 
-```ruby
-person = Person.new
-person.serializable_hash   # => {"name"=>nil}
-person.name = "Bob"
-person.serializable_hash   # => {"name"=>"Bob"}
+```irb
+irb> person = Person.new
+irb> person.serializable_hash
+=> {"name"=>nil}
+irb> person.name = "Bob"
+irb> person.serializable_hash
+=> {"name"=>"Bob"}
 ```
 
-<a class="anchor" id="activemodel-serializers"></a>
+#### ActiveModel::Serializers
 
-#### `ActiveModel::Serializers`
+Active Model also provides the `ActiveModel::Serializers::JSON` module
+for JSON serializing / deserializing. This module automatically includes the
+previously discussed `ActiveModel::Serialization` module.
 
-Rails 还提供了用于序列化和反序列化 JSON 的 `ActiveModel::Serializers::JSON`。这个模块自动引入前文介绍过的 `ActiveModel::Serialization` 模块。
+##### ActiveModel::Serializers::JSON
 
-<a class="anchor" id="activemodel-serializers-json"></a>
-
-##### `ActiveModel::Serializers::JSON`
-
-若想使用 `ActiveModel::Serializers::JSON`，只需把 `ActiveModel::Serialization` 换成 `ActiveModel::Serializers::JSON`。
+To use `ActiveModel::Serializers::JSON` you only need to change the
+module you are including from `ActiveModel::Serialization` to `ActiveModel::Serializers::JSON`.
 
 ```ruby
 class Person
@@ -334,16 +372,20 @@ class Person
 end
 ```
 
-`as_json` 方法与 `serializable_hash` 方法相似，用于提供模型的散列表示形式。
+The `as_json` method, similar to `serializable_hash`, provides a Hash representing
+the model.
 
-```ruby
-person = Person.new
-person.as_json # => {"name"=>nil}
-person.name = "Bob"
-person.as_json # => {"name"=>"Bob"}
+```irb
+irb> person = Person.new
+irb> person.as_json
+=> {"name"=>nil}
+irb> person.name = "Bob"
+irb> person.as_json
+=> {"name"=>"Bob"}
 ```
 
-还可以使用 JSON 字符串定义模型的属性。然后，要在类中定义 `attributes=` 方法：
+You can also define the attributes for a model from a JSON string.
+However, you need to define the `attributes=` method on your class:
 
 ```ruby
 class Person
@@ -363,20 +405,21 @@ class Person
 end
 ```
 
-现在，可以使用 `from_json` 方法创建 `Person` 实例，并且设定属性：
+Now it is possible to create an instance of `Person` and set attributes using `from_json`.
 
-```ruby
-json = { name: 'Bob' }.to_json
-person = Person.new
-person.from_json(json) # => #<Person:0x00000100c773f0 @name="Bob">
-person.name            # => "Bob"
+```irb
+irb> json = { name: 'Bob' }.to_json
+irb> person = Person.new
+irb> person.from_json(json)
+=> #<Person:0x00000100c773f0 @name="Bob">
+irb> person.name
+=> "Bob"
 ```
 
-<a class="anchor" id="translation"></a>
+### Translation
 
-### 翻译
-
-`ActiveModel::Translation` 模块把对象与 Rails 国际化（i18n）框架集成起来。
+`ActiveModel::Translation` provides integration between your object and the Rails
+internationalization (i18n) framework.
 
 ```ruby
 class Person
@@ -384,31 +427,29 @@ class Person
 end
 ```
 
-使用 `human_attribute_name` 方法可以把属性名称变成对人类友好的格式。对人类友好的格式在本地化文件中定义。
+With the `human_attribute_name` method, you can transform attribute names into a
+more human-readable format. The human-readable format is defined in your locale file(s).
 
-*   `config/locales/app.pt-BR.yml`
+* config/locales/app.pt-BR.yml
 
-    ```ruby
-    pt-BR:
-      activemodel:
-        attributes:
-          person:
-            name: 'Nome'
-    ```
-
-
+```yaml
+pt-BR:
+  activemodel:
+    attributes:
+      person:
+        name: 'Nome'
+```
 
 ```ruby
 Person.human_attribute_name('name') # => "Nome"
 ```
 
-<a class="anchor" id="lint-tests"></a>
+### Lint Tests
 
-### lint 测试
+`ActiveModel::Lint::Tests` allows you to test whether an object is compliant with
+the Active Model API.
 
-`ActiveModel::Lint::Tests` 模块测试对象是否符合 Active Model API。
-
-*   `app/models/person.rb`
+* `app/models/person.rb`
 
     ```ruby
     class Person
@@ -416,25 +457,22 @@ Person.human_attribute_name('name') # => "Nome"
     end
     ```
 
-
-*   `test/models/person_test.rb`
+* `test/models/person_test.rb`
 
     ```ruby
-    require 'test_helper'
-    
+    require "test_helper"
+
     class PersonTest < ActiveSupport::TestCase
       include ActiveModel::Lint::Tests
-    
+
       setup do
         @model = Person.new
       end
     end
     ```
 
-
-
-```sh
-$ rails test
+```bash
+$ bin/rails test
 
 Run options: --seed 14596
 
@@ -447,54 +485,87 @@ Finished in 0.024899s, 240.9735 runs/s, 1204.8677 assertions/s.
 6 runs, 30 assertions, 0 failures, 0 errors, 0 skips
 ```
 
-为了使用 Action Pack，对象无需实现所有 API。这个模块只是提供一种指导，以防你需要全部功能。
+An object is not required to implement all APIs in order to work with
+Action Pack. This module only intends to provide guidance in case you want all
+features out of the box.
 
-<a class="anchor" id="securepassword"></a>
+### SecurePassword
 
-### 安全密码
+`ActiveModel::SecurePassword` provides a way to securely store any
+password in an encrypted form. When you include this module, a
+`has_secure_password` class method is provided which defines
+a `password` accessor with certain validations on it by default.
 
-`ActiveModel::SecurePassword` 提供安全加密密码的功能。这个模块提供了 `has_secure_password` 类方法，它定义了一个名为 `password` 的存取方法，而且有相应的数据验证。
+#### Requirements
 
-<a class="anchor" id="requirements"></a>
+`ActiveModel::SecurePassword` depends on [`bcrypt`](https://github.com/codahale/bcrypt-ruby 'BCrypt'),
+so include this gem in your `Gemfile` to use `ActiveModel::SecurePassword` correctly.
+In order to make this work, the model must have an accessor named `XXX_digest`.
+Where `XXX` is the attribute name of your desired password.
+The following validations are added automatically:
 
-#### 要求
+1. Password should be present.
+2. Password should be equal to its confirmation (provided `XXX_confirmation` is passed along).
+3. The maximum length of a password is 72 (required by `bcrypt` on which ActiveModel::SecurePassword depends)
 
-`ActiveModel::SecurePassword` 依赖 [bcrypt](https://github.com/codahale/bcrypt-ruby)，因此要在 `Gemfile` 中加入这个 gem，`ActiveModel::SecurePassword` 才能正确运行。为了使用安全密码，模型中必须定义一个名为 `password_digest` 的存取方法。`has_secure_password` 类方法会为 `password` 存取方法添加下述数据验证：
-
-1.  密码应该存在
-1.  密码应该等于密码确认（前提是有密码确认）
-1.  密码的最大长度为 72（`ActiveModel::SecurePassword` 依赖的 `bcrypt` 的要求）
-
-<a class="anchor" id="examples"></a>
-
-#### 示例
+#### Examples
 
 ```ruby
 class Person
   include ActiveModel::SecurePassword
   has_secure_password
-  attr_accessor :password_digest
+  has_secure_password :recovery_password, validations: false
+
+  attr_accessor :password_digest, :recovery_password_digest
 end
+```
 
-person = Person.new
+```irb
+irb> person = Person.new
 
-# 密码为空时
-person.valid? # => false
+# When password is blank.
+irb> person.valid?
+=> false
 
-# 密码确认与密码不匹配时
-person.password = 'aditya'
-person.password_confirmation = 'nomatch'
-person.valid? # => false
+# When the confirmation doesn't match the password.
+irb> person.password = 'aditya'
+irb> person.password_confirmation = 'nomatch'
+irb> person.valid?
+=> false
 
-# 密码长度超过 72 时
-person.password = person.password_confirmation = 'a' * 100
-person.valid? # => false
+# When the length of password exceeds 72.
+irb> person.password = person.password_confirmation = 'a' * 100
+irb> person.valid?
+=> false
 
-# 只有密码，没有密码确认
-person.password = 'aditya'
-person.valid? # => true
+# When only password is supplied with no password_confirmation.
+irb> person.password = 'aditya'
+irb> person.valid?
+=> true
 
-# 所有数据验证都通过时
-person.password = person.password_confirmation = 'aditya'
-person.valid? # => true
+# When all validations are passed.
+irb> person.password = person.password_confirmation = 'aditya'
+irb> person.valid?
+=> true
+
+irb> person.recovery_password = "42password"
+
+irb> person.authenticate('aditya')
+=> #<Person> # == person
+irb> person.authenticate('notright')
+=> false
+irb> person.authenticate_password('aditya')
+=> #<Person> # == person
+irb> person.authenticate_password('notright')
+=> false
+
+irb> person.authenticate_recovery_password('42password')
+=> #<Person> # == person
+irb> person.authenticate_recovery_password('notright')
+=> false
+
+irb> person.password_digest
+=> "$2a$04$gF8RfZdoXHvyTjHhiU4ZsO.kQqV9oonYZu31PRE4hLQn3xM2qkpIy"
+irb> person.recovery_password_digest
+=> "$2a$04$iOfhwahFymCs5weB3BNH/uXkTG65HR.qpW.bNhEjFP3ftli3o5DQC"
 ```

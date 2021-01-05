@@ -1,141 +1,156 @@
-# Rails 路由全解
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-本文介绍 Rails 路由面向用户的特性。
+Rails Routing from the Outside In
+=================================
 
-读完本文后，您将学到：
+This guide covers the user-facing features of Rails routing.
 
-*   如何理解 `config/routes.rb` 文件中的代码；
-*   如何使用推荐的资源式风格或 `match` 方法构建路由；
-*   如何声明传给控制器动作的路由参数；
-*   如何使用路由辅助方法自动创建路径和 URL 地址；
-*   创建约束和挂载 Rack 端点等高级技术。
+After reading this guide, you will know:
 
------------------------------------------------------------------------------
+* How to interpret the code in `config/routes.rb`.
+* How to construct your own routes, using either the preferred resourceful style or the `match` method.
+* How to declare route parameters, which are passed onto controller actions.
+* How to automatically create paths and URLs using route helpers.
+* Advanced techniques such as creating constraints and mounting Rack endpoints.
 
-<a class="anchor" id="the-purpose-of-the-rails-router"></a>
+--------------------------------------------------------------------------------
 
-## Rails 路由的用途
+The Purpose of the Rails Router
+-------------------------------
 
-Rails 路由能够识别 URL 地址，并把它们分派给控制器动作或 Rack 应用进行处理。它还能生成路径和 URL 地址，从而避免在视图中硬编码字符串。
+The Rails router recognizes URLs and dispatches them to a controller's action, or to a Rack application. It can also generate paths and URLs, avoiding the need to hardcode strings in your views.
 
-<a class="anchor" id="connecting-urls-to-code"></a>
+### Connecting URLs to Code
 
-### 把 URL 地址连接到代码
+When your Rails application receives an incoming request for:
 
-当 Rails 应用收到下面的请求时：
-
-```ruby
+```
 GET /patients/17
 ```
 
-会查询路由，找到匹配的控制器动作。如果第一个匹配的路由是：
+it asks the router to match it to a controller action. If the first matching route is:
 
 ```ruby
 get '/patients/:id', to: 'patients#show'
 ```
 
-该请求会被分派给 `patients` 控制器的 `show` 动作，同时把 `{ id: '17' }` 传入 `params`。
+the request is dispatched to the `patients` controller's `show` action with `{ id: '17' }` in `params`.
 
-<a class="anchor" id="generating-paths-and-urls-from-code"></a>
+NOTE: Rails uses snake_case for controller names here, if you have a multiple word controller like `MonsterTrucksController`, you want to use `monster_trucks#show` for example.
 
-### 从代码生成路径和 URL 地址
+### Generating Paths and URLs from Code
 
-Rails 路由还可以生成路径和 URL 地址。如果把上面的路由修改为：
+You can also generate paths and URLs. If the route above is modified to be:
 
 ```ruby
 get '/patients/:id', to: 'patients#show', as: 'patient'
 ```
 
-并且在控制器中包含下面的代码：
+and your application contains this code in the controller:
 
 ```ruby
-@patient = Patient.find(17)
+@patient = Patient.find(params[:id])
 ```
 
-同时在对应的视图中包含下面的代码：
+and this in the corresponding view:
 
 ```erb
 <%= link_to 'Patient Record', patient_path(@patient) %>
 ```
 
-那么路由会生成路径 `/patients/17`。这种方式使视图代码更容易维护和理解。注意，在路由辅助方法中不需要指定 ID。
+then the router will generate the path `/patients/17`. This reduces the brittleness of your view and makes your code easier to understand. Note that the id does not need to be specified in the route helper.
 
-<a class="anchor" id="resource-routing-the-rails-default"></a>
+### Configuring the Rails Router
 
-## 资源路由：Rails 的默认风格
+The routes for your application or engine live in the file `config/routes.rb` and typically looks like this:
 
-资源路由（resource routing）允许我们为资源式控制器快速声明所有常见路由。只需一行代码即可完成资源路由的声明，无需为 `index`、`show`、`new`、`edit`、`create`、`update` 和 `destroy` 动作分别声明路由。
+```ruby
+Rails.application.routes.draw do
+  resources :brands, only: [:index, :show] do
+    resources :products, only: [:index, :show]
+  end
 
-<a class="anchor" id="resources-on-the-web"></a>
+  resource :basket, only: [:show, :update, :destroy]
 
-### 网络资源
+  resolve("Basket") { route_for(:basket) }
+end
+```
 
-浏览器使用特定的 HTTP 方法向 Rails 应用请求页面，例如 `GET`、`POST`、`PATCH`、`PUT` 和 `DELETE`。每个 HTTP 方法对应对资源的一种操作。资源路由会把多个相关请求映射到单个控制器的不同动作上。
+Since this is a regular Ruby source file you can use all of its features to help you define your routes but be careful with variable names as they can clash with the DSL methods of the router.
 
-当 Rails 应用收到下面的请求：
+NOTE: The `Rails.application.routes.draw do ... end` block that wraps your route definitions is required to establish the scope for the router DSL and must not be deleted.
+
+Resource Routing: the Rails Default
+-----------------------------------
+
+Resource routing allows you to quickly declare all of the common routes for a given resourceful controller. A single call to [`resources`][] can declare all of the necessary routes for your `index`, `show`, `new`, `edit`, `create`, `update` and `destroy` actions.
+
+[`resources`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Resources.html#method-i-resources
+
+### Resources on the Web
+
+Browsers request pages from Rails by making a request for a URL using a specific HTTP method, such as `GET`, `POST`, `PATCH`, `PUT` and `DELETE`. Each method is a request to perform an operation on the resource. A resource route maps a number of related requests to actions in a single controller.
+
+When your Rails application receives an incoming request for:
 
 ```
 DELETE /photos/17
 ```
 
-会查询路由，并把请求映射到控制器动作上。如果第一个匹配的路由是：
+it asks the router to map it to a controller action. If the first matching route is:
 
 ```ruby
 resources :photos
 ```
 
-Rails 会把请求分派给 `photos` 控制器的 `destroy` 动作，并把 `{ id: '17' }` 传入 `params`。
+Rails would dispatch that request to the `destroy` action on the `photos` controller with `{ id: '17' }` in `params`.
 
-<a class="anchor" id="crud-verbs-and-actions"></a>
+### CRUD, Verbs, and Actions
 
-### CRUD、HTTP 方法和控制器动作
-
-在 Rails 中，资源路由把 HTTP 方法和 URL 地址映射到控制器动作上。按照约定，每个控制器动作也会映射到对应的数据库 CRUD 操作上。路由文件中的单行声明，例如：
+In Rails, a resourceful route provides a mapping between HTTP verbs and URLs to
+controller actions. By convention, each action also maps to a specific CRUD
+operation in a database. A single entry in the routing file, such as:
 
 ```ruby
 resources :photos
 ```
 
-会在应用中创建 7 个不同的路由，这些路由都会映射到 `Photos` 控制器上。
+creates seven different routes in your application, all mapping to the `Photos` controller:
 
-| HTTP 方法 | 路径 | 控制器#动作 | 用途  |
-|---|---|---|---|
-| `GET` | `/photos` | `photos#index` | 显示所有照片的列表  |
-| `GET` | `/photos/new` | `photos#new` | 返回用于新建照片的 HTML 表单  |
-| `POST` | `/photos` | `photos#create` | 新建照片  |
-| `GET` | `/photos/:id` | `photos#show` | 显示指定照片  |
-| `GET` | `/photos/:id/edit` | `photos#edit` | 返回用于修改照片的 HTML 表单  |
-| `PATCH`/`PUT` | `/photos/:id` | `photos#update` | 更新指定照片  |
-| `DELETE` | `/photos/:id` | `photos#destroy` | 删除指定照片  |
+| HTTP Verb | Path             | Controller#Action | Used for                                     |
+| --------- | ---------------- | ----------------- | -------------------------------------------- |
+| GET       | /photos          | photos#index      | display a list of all photos                 |
+| GET       | /photos/new      | photos#new        | return an HTML form for creating a new photo |
+| POST      | /photos          | photos#create     | create a new photo                           |
+| GET       | /photos/:id      | photos#show       | display a specific photo                     |
+| GET       | /photos/:id/edit | photos#edit       | return an HTML form for editing a photo      |
+| PATCH/PUT | /photos/:id      | photos#update     | update a specific photo                      |
+| DELETE    | /photos/:id      | photos#destroy    | delete a specific photo                      |
 
-NOTE: 因为路由使用 HTTP 方法和 URL 地址来匹配请求，所以 4 个 URL 地址会映射到 7 个不同的控制器动作上。
+NOTE: Because the router uses the HTTP verb and URL to match inbound requests, four URLs map to seven different actions.
 
-NOTE: Rails 路由按照声明顺序进行匹配。如果 `resources :photos` 声明在先，`get 'photos/poll'` 声明在后，那么由前者声明的 `show` 动作的路由会先于后者匹配。要想匹配 `get 'photos/poll'`，就必须将其移到 `resources :photos` 之前。
+NOTE: Rails routes are matched in the order they are specified, so if you have a `resources :photos` above a `get 'photos/poll'` the `show` action's route for the `resources` line will be matched before the `get` line. To fix this, move the `get` line **above** the `resources` line so that it is matched first.
 
-<a class="anchor" id="path-and-url-helpers"></a>
+### Path and URL Helpers
 
-### 用于生成路径和 URL 地址的辅助方法
+Creating a resourceful route will also expose a number of helpers to the controllers in your application. In the case of `resources :photos`:
 
-在创建资源路由时，会同时创建多个可以在控制器中使用的辅助方法。例如，在创建 `resources :photos` 路由时，会同时创建下面的辅助方法：
+* `photos_path` returns `/photos`
+* `new_photo_path` returns `/photos/new`
+* `edit_photo_path(:id)` returns `/photos/:id/edit` (for instance, `edit_photo_path(10)` returns `/photos/10/edit`)
+* `photo_path(:id)` returns `/photos/:id` (for instance, `photo_path(10)` returns `/photos/10`)
 
-*   `photos_path` 辅助方法，返回值为 `/photos`
-*   `new_photo_path` 辅助方法，返回值为 `/photos/new`
-*   `edit_photo_path(:id)` 辅助方法，返回值为 `/photos/:id/edit`（例如，`edit_photo_path(10)` 的返回值为 `/photos/10/edit`）
-*   `photo_path(:id)` 辅助方法，返回值为 `/photos/:id`（例如，`photo_path(10)` 的返回值为 `/photos/10`）
+Each of these helpers has a corresponding `_url` helper (such as `photos_url`) which returns the same path prefixed with the current host, port, and path prefix.
 
-这些辅助方法都有对应的 `_url` 形式（例如 `photos_url`）。前者的返回值是路径，后者的返回值是路径加上由当前的主机名、端口和路径前缀组成的前缀。
+### Defining Multiple Resources at the Same Time
 
-<a class="anchor" id="defining-multiple-resources-at-the-same-time"></a>
-
-### 同时定义多个资源
-
-如果需要为多个资源创建路由，可以只调用一次 `resources` 方法，节约一点敲键盘的时间。
+If you need to create routes for more than one resource, you can save a bit of typing by defining them all with a single call to `resources`:
 
 ```ruby
 resources :photos, :books, :videos
 ```
 
-上面的代码等价于：
+This works exactly the same as:
 
 ```ruby
 resources :photos
@@ -143,63 +158,51 @@ resources :books
 resources :videos
 ```
 
-<a class="anchor" id="singular-resources"></a>
+### Singular Resources
 
-### 单数资源
-
-有时我们希望不使用 ID 就能查找资源。例如，让 `/profile` 总是显示当前登录用户的个人信息。这种情况下，我们可以使用单数资源来把 `/profile` 而不是 `/profile/:id` 映射到 `show` 动作：
+Sometimes, you have a resource that clients always look up without referencing an ID. For example, you would like `/profile` to always show the profile of the currently logged in user. In this case, you can use a singular resource to map `/profile` (rather than `/profile/:id`) to the `show` action:
 
 ```ruby
 get 'profile', to: 'users#show'
 ```
 
-如果 `get` 方法的 `to` 选项的值是字符串，那么这个字符串应该使用 `controller#action` 格式。如果 `to` 选项的值是表示动作的符号，那么还需要使用 `controller` 选项指定控制器：
+Passing a `String` to `to:` will expect a `controller#action` format. When using a `Symbol`, the `to:` option should be replaced with `action:`. When using a `String` without a `#`, the `to:` option should be replaced with `controller:`:
 
 ```ruby
-get 'profile', to: :show, controller: 'users'
+get 'profile', action: :show, controller: 'users'
 ```
 
-下面的资源路由：
+This resourceful route:
 
 ```ruby
 resource :geocoder
+resolve('Geocoder') { [:geocoder] }
 ```
 
-会在应用中创建 6 个不同的路由，这些路由会映射到 `Geocoders` 控制器的动作上：
+creates six different routes in your application, all mapping to the `Geocoders` controller:
 
-| HTTP 方法 | 路径 | 控制器#动作 | 用途  |
-|---|---|---|---|
-| `GET` | `/geocoder/new` | `geocoders#new` | 返回用于创建 geocoder 的 HTML 表单  |
-| `POST` | `/geocoder` | `geocoders#create` | 新建 geocoder  |
-| `GET` | `/geocoder` | `geocoders#show` | 显示唯一的 geocoder 资源  |
-| `GET` | `/geocoder/edit` | `geocoders#edit` | 返回用于修改 geocoder 的 HTML 表单  |
-| `PATCH`/`PUT` | `/geocoder` | `geocoders#update` | 更新唯一的 geocoder 资源  |
-| `DELETE` | `/geocoder` | `geocoders#destroy` | 删除 geocoder 资源  |
+| HTTP Verb | Path           | Controller#Action | Used for                                      |
+| --------- | -------------- | ----------------- | --------------------------------------------- |
+| GET       | /geocoder/new  | geocoders#new     | return an HTML form for creating the geocoder |
+| POST      | /geocoder      | geocoders#create  | create the new geocoder                       |
+| GET       | /geocoder      | geocoders#show    | display the one and only geocoder resource    |
+| GET       | /geocoder/edit | geocoders#edit    | return an HTML form for editing the geocoder  |
+| PATCH/PUT | /geocoder      | geocoders#update  | update the one and only geocoder resource     |
+| DELETE    | /geocoder      | geocoders#destroy | delete the geocoder resource                  |
 
-NOTE: 有时我们想要用同一个控制器处理单数路由（如 `/account`）和复数路由（如 `/accounts/45`），也就是把单数资源映射到复数资源对应的控制器上。例如，`resource :photo` 创建的单数路由和 `resources :photos` 创建的复数路由都会映射到相同的 `Photos` 控制器上。
+NOTE: Because you might want to use the same controller for a singular route (`/account`) and a plural route (`/accounts/45`), singular resources map to plural controllers. So that, for example, `resource :photo` and `resources :photos` creates both singular and plural routes that map to the same controller (`PhotosController`).
 
-在创建单数资源路由时，会同时创建下面的辅助方法：
+A singular resourceful route generates these helpers:
 
-*   `new_geocoder_path` 辅助方法，返回值是 `/geocoder/new`
-*   `edit_geocoder_path` 辅助方法，返回值是 `/geocoder/edit`
-*   `geocoder_path` 辅助方法，返回值是 `/geocoder`
+* `new_geocoder_path` returns `/geocoder/new`
+* `edit_geocoder_path` returns `/geocoder/edit`
+* `geocoder_path` returns `/geocoder`
 
-和创建复数资源路由时一样，上面这些辅助方法都有对应的 `_url` 形式，其返回值也包含了主机名、端口和路径前缀。
+As with plural resources, the same helpers ending in `_url` will also include the host, port, and path prefix.
 
-WARNING: 有一个长期存在的缺陷使 `form_for` 辅助方法无法自动处理单数资源。有一个解决方案是直接指定表单 URL，例如：
+### Controller Namespaces and Routing
 
-```ruby
-form_for @geocoder, url: geocoder_path do |f|
-
-# 为了行文简洁，省略以下内容
-```
-
-
-<a class="anchor" id="controller-namespaces-and-routing"></a>
-
-### 控制器命名空间和路由
-
-有时我们会把一组控制器放入同一个命名空间中。最常见的例子，是把和管理相关的控制器放入 `Admin::` 命名空间中。为此，我们可以把控制器文件放在 `app/controllers/admin` 文件夹中，然后在路由文件中作如下声明：
+You may wish to organize groups of controllers under a namespace. Most commonly, you might group a number of administrative controllers under an `Admin::` namespace, and place these controllers under the `app/controllers/admin` directory. You can route to such a group by using a [`namespace`][] block:
 
 ```ruby
 namespace :admin do
@@ -207,19 +210,19 @@ namespace :admin do
 end
 ```
 
-上面的代码会为 `articles` 和 `comments` 控制器分别创建多个路由。对于 `Admin::Articles` 控制器，Rails 会创建下列路由：
+This will create a number of routes for each of the `articles` and `comments` controller. For `Admin::ArticlesController`, Rails will create:
 
-| HTTP 方法 | 路径 | 控制器#动作 | 具名辅助方法  |
-|---|---|---|---|
-| `GET` | `/admin/articles` | `admin/articles#index` | `admin_articles_path`  |
-| `GET` | `/admin/articles/new` | `admin/articles#new` | `new_admin_article_path`  |
-| `POST` | `/admin/articles` | `admin/articles#create` | `admin_articles_path`  |
-| `GET` | `/admin/articles/:id` | `admin/articles#show` | `admin_article_path(:id)`  |
-| `GET` | `/admin/articles/:id/edit` | `admin/articles#edit` | `edit_admin_article_path(:id)`  |
-| `PATCH`/`PUT` | `/admin/articles/:id` | `admin/articles#update` | `admin_article_path(:id)`  |
-| `DELETE` | `/admin/articles/:id` | `admin/articles#destroy` | `admin_article_path(:id)`  |
+| HTTP Verb | Path                     | Controller#Action      | Named Route Helper           |
+| --------- | ------------------------ | ---------------------- | ---------------------------- |
+| GET       | /admin/articles          | admin/articles#index   | admin_articles_path          |
+| GET       | /admin/articles/new      | admin/articles#new     | new_admin_article_path       |
+| POST      | /admin/articles          | admin/articles#create  | admin_articles_path          |
+| GET       | /admin/articles/:id      | admin/articles#show    | admin_article_path(:id)      |
+| GET       | /admin/articles/:id/edit | admin/articles#edit    | edit_admin_article_path(:id) |
+| PATCH/PUT | /admin/articles/:id      | admin/articles#update  | admin_article_path(:id)      |
+| DELETE    | /admin/articles/:id      | admin/articles#destroy | admin_article_path(:id)      |
 
-如果想把 `/articles` 路径（不带 `/admin` 前缀） 映射到 `Admin::Articles` 控制器上，可以这样声明：
+If instead you want to route `/articles` (without the prefix `/admin`) to `Admin::ArticlesController`, you can specify the module with a [`scope`][] block:
 
 ```ruby
 scope module: 'admin' do
@@ -227,13 +230,13 @@ scope module: 'admin' do
 end
 ```
 
-对于单个资源的情况，还可以这样声明：
+This can also be done for a single route:
 
 ```ruby
 resources :articles, module: 'admin'
 ```
 
-如果想把 `/admin/articles` 路径映射到 `Articles` 控制器上（不带 `Admin::` 前缀），可以这样声明：
+If instead you want to route `/admin/articles` to `ArticlesController` (without the `Admin::` module prefix), you can specify the path with a `scope` block:
 
 ```ruby
 scope '/admin' do
@@ -241,31 +244,32 @@ scope '/admin' do
 end
 ```
 
-对于单个资源的情况，还可以这样声明：
+This can also be done for a single route:
 
 ```ruby
 resources :articles, path: '/admin/articles'
 ```
 
-在上述各个例子中，不管是否使用了 `scope` 方法，具名路由都保持不变。在最后一个例子中，下列路径都会映射到 `Articles` 控制器上：
+In each of these cases, the named routes remain the same as if you did not use `scope`. In the last case, the following paths map to `ArticlesController`:
 
-| HTTP 方法 | 路径 | 控制器#动作 | 具名辅助方法  |
-|---|---|---|---|
-| `GET` | `/admin/articles` | `articles#index` | `articles_path`  |
-| `GET` | `/admin/articles/new` | `articles#new` | `new_article_path`  |
-| `POST` | `/admin/articles` | `articles#create` | `articles_path`  |
-| `GET` | `/admin/articles/:id` | `articles#show` | `article_path(:id)`  |
-| `GET` | `/admin/articles/:id/edit` | `articles#edit` | `edit_article_path(:id)`  |
-| `PATCH`/`PUT` | `/admin/articles/:id` | `articles#update` | `article_path(:id)`  |
-| `DELETE` | `/admin/articles/:id` | `articles#destroy` | `article_path(:id)`  |
+| HTTP Verb | Path                     | Controller#Action    | Named Route Helper     |
+| --------- | ------------------------ | -------------------- | ---------------------- |
+| GET       | /admin/articles          | articles#index       | articles_path          |
+| GET       | /admin/articles/new      | articles#new         | new_article_path       |
+| POST      | /admin/articles          | articles#create      | articles_path          |
+| GET       | /admin/articles/:id      | articles#show        | article_path(:id)      |
+| GET       | /admin/articles/:id/edit | articles#edit        | edit_article_path(:id) |
+| PATCH/PUT | /admin/articles/:id      | articles#update      | article_path(:id)      |
+| DELETE    | /admin/articles/:id      | articles#destroy     | article_path(:id)      |
 
-NOTE: 如果想在命名空间代码块中使用另一个控制器命名空间，可以指定控制器的绝对路径，例如 `get '/foo' => '/foo#index'`。
+TIP: _If you need to use a different controller namespace inside a `namespace` block you can specify an absolute controller path, e.g: `get '/foo', to: '/foo#index'`._
 
-<a class="anchor" id="nested-resources"></a>
+[`namespace`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Scoping.html#method-i-namespace
+[`scope`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Scoping.html#method-i-scope
 
-### 嵌套资源
+### Nested Resources
 
-有的资源是其他资源的子资源，这种情况很常见。例如，假设我们的应用中包含下列模型：
+It's common to have resources that are logically children of other resources. For example, suppose your application includes these models:
 
 ```ruby
 class Magazine < ApplicationRecord
@@ -277,7 +281,7 @@ class Ad < ApplicationRecord
 end
 ```
 
-通过嵌套路由，我们可以在路由中反映模型关联。在本例中，我们可以这样声明路由：
+Nested routes allow you to capture this relationship in your routing. In this case, you could include this route declaration:
 
 ```ruby
 resources :magazines do
@@ -285,25 +289,23 @@ resources :magazines do
 end
 ```
 
-上面的代码不仅为 `magazines` 创建了路由，还创建了映射到 `Ads` 控制器的路由。在 `ad` 的 URL 地址中，需要指定对应的 `magazine` 的 ID：
+In addition to the routes for magazines, this declaration will also route ads to an `AdsController`. The ad URLs require a magazine:
 
-| HTTP 方法 | 路径 | 控制器#动作 | 用途  |
-|---|---|---|---|
-| `GET` | `/magazines/:magazine_id/ads` | `ads#index` | 显示指定杂志的所有广告的列表  |
-| `GET` | `/magazines/:magazine_id/ads/new` | `ads#new` | 返回为指定杂志新建广告的 HTML 表单  |
-| `POST` | `/magazines/:magazine_id/ads` | `ads#create` | 为指定杂志新建广告  |
-| `GET` | `/magazines/:magazine_id/ads/:id` | `ads#show` | 显示指定杂志的指定广告  |
-| `GET` | `/magazines/:magazine_id/ads/:id/edit` | `ads#edit` | 返回用于修改指定杂志的广告的 HTML 表单  |
-| `PATCH`/`PUT` | `/magazines/:magazine_id/ads/:id` | `ads#update` | 更新指定杂志的指定广告  |
-| `DELETE` | `/magazines/:magazine_id/ads/:id` | `ads#destroy` | 删除指定杂志的指定广告  |
+| HTTP Verb | Path                                 | Controller#Action | Used for                                                                   |
+| --------- | ------------------------------------ | ----------------- | -------------------------------------------------------------------------- |
+| GET       | /magazines/:magazine_id/ads          | ads#index         | display a list of all ads for a specific magazine                          |
+| GET       | /magazines/:magazine_id/ads/new      | ads#new           | return an HTML form for creating a new ad belonging to a specific magazine |
+| POST      | /magazines/:magazine_id/ads          | ads#create        | create a new ad belonging to a specific magazine                           |
+| GET       | /magazines/:magazine_id/ads/:id      | ads#show          | display a specific ad belonging to a specific magazine                     |
+| GET       | /magazines/:magazine_id/ads/:id/edit | ads#edit          | return an HTML form for editing an ad belonging to a specific magazine     |
+| PATCH/PUT | /magazines/:magazine_id/ads/:id      | ads#update        | update a specific ad belonging to a specific magazine                      |
+| DELETE    | /magazines/:magazine_id/ads/:id      | ads#destroy       | delete a specific ad belonging to a specific magazine                      |
 
-在创建路由的同时，还会创建 `magazine_ads_url` 和 `edit_magazine_ad_path` 等路由辅助方法。这些辅助方法以 `Magazine` 类的实例作为第一个参数，例如 `magazine_ads_url(@magazine)`。
+This will also create routing helpers such as `magazine_ads_url` and `edit_magazine_ad_path`. These helpers take an instance of Magazine as the first parameter (`magazine_ads_url(@magazine)`).
 
-<a class="anchor" id="limits-to-nesting"></a>
+#### Limits to Nesting
 
-#### 嵌套限制
-
-我们可以在嵌套资源中继续嵌套资源。例如：
+You can nest resources within other nested resources if you like. For example:
 
 ```ruby
 resources :publishers do
@@ -313,21 +315,19 @@ resources :publishers do
 end
 ```
 
-随着嵌套层级的增加，嵌套资源的处理会变得很困难。例如，下面这个路径：
+Deeply-nested resources quickly become cumbersome. In this case, for example, the application would recognize paths such as:
 
-```ruby
+```
 /publishers/1/magazines/2/photos/3
 ```
 
-对应的路由辅助方法是 `publisher_magazine_photo_url`，需要指定三层对象。这种用法很容易就把人搞糊涂了，为此，Jamis Buck 在[一篇广为流传的文章](http://weblog.jamisbuck.org/2007/2/5/nesting-resources)中提出了使用嵌套路由的经验法则：
+The corresponding route helper would be `publisher_magazine_photo_url`, requiring you to specify objects at all three levels. Indeed, this situation is confusing enough that a popular [article](http://weblog.jamisbuck.org/2007/2/5/nesting-resources) by Jamis Buck proposes a rule of thumb for good Rails design:
 
-TIP: 嵌套资源的层级不应超过 1 层。
+TIP: _Resources should never be nested more than 1 level deep._
 
-<a class="anchor" id="shallow-nesting"></a>
+#### Shallow Nesting
 
-#### 浅层嵌套
-
-如前文所述，避免深层嵌套（deep nesting）的方法之一，是把动作集合放在在父资源中，这样既可以表明层级关系，又不必嵌套成员动作。换句话说，只用最少的信息创建路由，同样可以唯一地标识资源，例如：
+One way to avoid deep nesting (as recommended above) is to generate the collection actions scoped under the parent, so as to get a sense of the hierarchy, but to not nest the member actions. In other words, to only build routes with the minimal amount of information to uniquely identify the resource, like this:
 
 ```ruby
 resources :articles do
@@ -336,7 +336,7 @@ end
 resources :comments, only: [:show, :edit, :update, :destroy]
 ```
 
-这种方式在描述性路由（descriptive route）和深层嵌套之间取得了平衡。上面的代码还有简易写法，即使用 `:shallow` 选项：
+This idea strikes a balance between descriptive routes and deep nesting. There exists shorthand syntax to achieve just that, via the `:shallow` option:
 
 ```ruby
 resources :articles do
@@ -344,7 +344,7 @@ resources :articles do
 end
 ```
 
-这两种写法创建的路由完全相同。我们还可以在父资源中使用 `:shallow` 选项，这样会在所有嵌套的子资源中应用 `:shallow` 选项：
+This will generate the exact same routes as the first example. You can also specify the `:shallow` option in the parent resource, in which case all of the nested resources will be shallow:
 
 ```ruby
 resources :articles, shallow: true do
@@ -354,7 +354,7 @@ resources :articles, shallow: true do
 end
 ```
 
-可以用 `shallow` 方法创建作用域，使其中的所有嵌套都成为浅层嵌套。通过这种方式创建的路由，仍然和上面的例子相同：
+The `shallow` method of the DSL creates a scope inside of which every nesting is shallow. This generates the same routes as the previous example:
 
 ```ruby
 shallow do
@@ -366,7 +366,7 @@ shallow do
 end
 ```
 
-`scope` 方法有两个选项用于自定义浅层路由。`:shallow_path` 选项会为成员路径添加指定前缀：
+There exist two options for `scope` to customize shallow routes. `:shallow_path` prefixes member paths with the specified parameter:
 
 ```ruby
 scope shallow_path: "sekret" do
@@ -376,19 +376,19 @@ scope shallow_path: "sekret" do
 end
 ```
 
-上面的代码会为 `comments` 资源生成下列路由：
+The comments resource here will have the following routes generated for it:
 
-| HTTP 方法 | 路径 | 控制器#动作 | 具名辅助方法  |
-|---|---|---|---|
-| `GET` | `/articles/:article_id/comments(.:format)` | `comments#index` | `article_comments_path`  |
-| `POST` | `/articles/:article_id/comments(.:format)` | `comments#create` | `article_comments_path`  |
-| `GET` | `/articles/:article_id/comments/new(.:format)` | `comments#new` | `new_article_comment_path`  |
-| `GET` | `/sekret/comments/:id/edit(.:format)` | `comments#edit` | `edit_comment_path`  |
-| `GET` | `/sekret/comments/:id(.:format)` | `comments#show` | `comment_path`  |
-| `PATCH`/`PUT` | `/sekret/comments/:id(.:format)` | `comments#update` | `comment_path`  |
-| `DELETE` | `/sekret/comments/:id(.:format)` | `comments#destroy` | `comment_path`  |
+| HTTP Verb | Path                                         | Controller#Action | Named Route Helper       |
+| --------- | -------------------------------------------- | ----------------- | ------------------------ |
+| GET       | /articles/:article_id/comments(.:format)     | comments#index    | article_comments_path    |
+| POST      | /articles/:article_id/comments(.:format)     | comments#create   | article_comments_path    |
+| GET       | /articles/:article_id/comments/new(.:format) | comments#new      | new_article_comment_path |
+| GET       | /sekret/comments/:id/edit(.:format)          | comments#edit     | edit_comment_path        |
+| GET       | /sekret/comments/:id(.:format)               | comments#show     | comment_path             |
+| PATCH/PUT | /sekret/comments/:id(.:format)               | comments#update   | comment_path             |
+| DELETE    | /sekret/comments/:id(.:format)               | comments#destroy  | comment_path             |
 
-`:shallow_prefix` 选项会为具名辅助方法添加指定前缀：
+The `:shallow_prefix` option adds the specified parameter to the named route helpers:
 
 ```ruby
 scope shallow_prefix: "sekret" do
@@ -398,23 +398,21 @@ scope shallow_prefix: "sekret" do
 end
 ```
 
-上面的代码会为 `comments` 资源生成下列路由：
+The comments resource here will have the following routes generated for it:
 
-| HTTP 方法 | 路径 | 控制器#动作 | 具名辅助方法  |
-|---|---|---|---|
-| `GET` | `/articles/:article_id/comments(.:format)` | `comments#index` | `article_comments_path`  |
-| `POST` | `/articles/:article_id/comments(.:format)` | `comments#create` | `article_comments_path`  |
-| `GET` | `/articles/:article_id/comments/new(.:format)` | `comments#new` | `new_article_comment_path`  |
-| `GET` | `/comments/:id/edit(.:format)` | `comments#edit` | `edit_sekret_comment_path`  |
-| `GET` | `/comments/:id(.:format)` | `comments#show` | `sekret_comment_path`  |
-| `PATCH`/`PUT` | `/comments/:id(.:format)` | `comments#update` | `sekret_comment_path`  |
-| `DELETE` | `/comments/:id(.:format)` | `comments#destroy` | `sekret_comment_path`  |
+| HTTP Verb | Path                                         | Controller#Action | Named Route Helper          |
+| --------- | -------------------------------------------- | ----------------- | --------------------------- |
+| GET       | /articles/:article_id/comments(.:format)     | comments#index    | article_comments_path       |
+| POST      | /articles/:article_id/comments(.:format)     | comments#create   | article_comments_path       |
+| GET       | /articles/:article_id/comments/new(.:format) | comments#new      | new_article_comment_path    |
+| GET       | /comments/:id/edit(.:format)                 | comments#edit     | edit_sekret_comment_path    |
+| GET       | /comments/:id(.:format)                      | comments#show     | sekret_comment_path         |
+| PATCH/PUT | /comments/:id(.:format)                      | comments#update   | sekret_comment_path         |
+| DELETE    | /comments/:id(.:format)                      | comments#destroy  | sekret_comment_path         |
 
-<a class="anchor" id="routing-concerns"></a>
+### Routing Concerns
 
-### 路由 concern
-
-路由 concern 用于声明公共路由，公共路由可以在其他资源和路由中重复使用。定义路由 concern 的方式如下：
+Routing concerns allow you to declare common routes that can be reused inside other resources and routes. To define a concern, use a [`concern`][] block:
 
 ```ruby
 concern :commentable do
@@ -426,7 +424,7 @@ concern :image_attachable do
 end
 ```
 
-我们可以在资源中使用已定义的路由 concern，以避免代码重复，并在路由间共享行为：
+These concerns can be used in resources to avoid code duplication and share behavior across routes:
 
 ```ruby
 resources :messages, concerns: :commentable
@@ -434,7 +432,7 @@ resources :messages, concerns: :commentable
 resources :articles, concerns: [:commentable, :image_attachable]
 ```
 
-上面的代码等价于：
+The above is equivalent to:
 
 ```ruby
 resources :messages do
@@ -447,7 +445,7 @@ resources :articles do
 end
 ```
 
-我们还可以在各种路由声明中使用已定义的路由 concern，例如在作用域或命名空间中：
+You can also use them anywhere by calling [`concerns`][]. For example, in a `scope` or `namespace` block:
 
 ```ruby
 namespace :articles do
@@ -455,11 +453,12 @@ namespace :articles do
 end
 ```
 
-<a class="anchor" id="creating-paths-and-urls-from-objects"></a>
+[`concern`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Concerns.html#method-i-concern
+[`concerns`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Concerns.html#method-i-concerns
 
-### 从对象创建路径和 URL 地址
+### Creating Paths and URLs from Objects
 
-除了使用路由辅助方法，Rails 还可以从参数数组创建路径和 URL 地址。例如，假设有下面的路由：
+In addition to using the routing helpers, Rails can also create paths and URLs from an array of parameters. For example, suppose you have this set of routes:
 
 ```ruby
 resources :magazines do
@@ -467,49 +466,45 @@ resources :magazines do
 end
 ```
 
-在使用 `magazine_ad_path` 方法时，我们可以传入 `Magazine` 和 `Ad` 的实例，而不是数字 ID：
+When using `magazine_ad_path`, you can pass in instances of `Magazine` and `Ad` instead of the numeric IDs:
 
 ```erb
 <%= link_to 'Ad details', magazine_ad_path(@magazine, @ad) %>
 ```
 
-我们还可以在使用 `url_for` 方法时传入一组对象，Rails 会自动确定对应的路由：
+You can also use `url_for` with a set of objects, and Rails will automatically determine which route you want:
 
 ```erb
 <%= link_to 'Ad details', url_for([@magazine, @ad]) %>
 ```
 
-在这种情况下，Rails 知道 `@magazine` 是 `Magazine` 的实例，而 `@ad` 是 `Ad` 的实例，因此会使用 `magazine_ad_path` 辅助方法。在使用 `link_to` 等辅助方法时，我们可以只指定对象，而不必完整调用 `url_for` 方法：
+In this case, Rails will see that `@magazine` is a `Magazine` and `@ad` is an `Ad` and will therefore use the `magazine_ad_path` helper. In helpers like `link_to`, you can specify just the object in place of the full `url_for` call:
 
 ```erb
 <%= link_to 'Ad details', [@magazine, @ad] %>
 ```
 
-如果想链接到一本杂志，可以直接指定 `Magazine` 的实例：
+If you wanted to link to just a magazine:
 
 ```erb
 <%= link_to 'Magazine details', @magazine %>
 ```
 
-如果想链接到其他控制器动作，只需把动作名称作为第一个元素插入对象数组即可：
+For other actions, you just need to insert the action name as the first element of the array:
 
 ```erb
 <%= link_to 'Edit Ad', [:edit, @magazine, @ad] %>
 ```
 
-这样，我们就可以把模型实例看作 URL 地址，这是使用资源式风格最关键的优势之一。
+This allows you to treat instances of your models as URLs, and is a key advantage to using the resourceful style.
 
-<a class="anchor" id="adding-more-restful-actions"></a>
+### Adding More RESTful Actions
 
-### 添加更多 REST 式动作
+You are not limited to the seven routes that RESTful routing creates by default. If you like, you may add additional routes that apply to the collection or individual members of the collection.
 
-我们可以使用的路由，并不仅限于 REST 式路由默认创建的那 7 个。我们可以根据需要添加其他路由，包括集合路由（collection route）和成员路由（member route）。
+#### Adding Member Routes
 
-<a class="anchor" id="adding-member-routes"></a>
-
-#### 添加成员路由
-
-要添加成员路由，只需在 `resource` 块中添加 `member` 块：
+To add a member route, just add a [`member`][] block into the resource block:
 
 ```ruby
 resources :photos do
@@ -519,9 +514,12 @@ resources :photos do
 end
 ```
 
-通过上述声明，Rails 路由能够识别 `/photos/1/preview` 路径上的 `GET` 请求，并把请求映射到 `Photos` 控制器的 `preview` 动作上，同时把资源 ID 传入 `params[:id]`，并创建 `preview_photo_url` 和 `preview_photo_path` 辅助方法。
+This will recognize `/photos/1/preview` with GET, and route to the `preview` action of `PhotosController`, with the resource id value passed in `params[:id]`. It will also create the `preview_photo_url` and `preview_photo_path` helpers.
 
-在 `member` 块中，每个成员路由都要指定对应的 HTTP 方法，即 `get`、`patch`、`put`、`post` 或 `delete`。如果只有一个成员路由，我们就可以忽略 `member` 块，直接使用成员路由的 `:on` 选项。
+Within the block of member routes, each route name specifies the HTTP verb that
+will be recognized. You can use [`get`][], [`patch`][], [`put`][], [`post`][], or [`delete`][] here
+. If you don't have multiple `member` routes, you can also pass `:on` to a
+route, eliminating the block:
 
 ```ruby
 resources :photos do
@@ -529,13 +527,19 @@ resources :photos do
 end
 ```
 
-如果不使用 `:on` 选项，创建的成员路由也是相同的，但资源 ID 就必须通过 `params[:photo_id]` 而不是 `params[:id]` 来获取了。
+You can leave out the `:on` option, this will create the same member route except that the resource id value will be available in `params[:photo_id]` instead of `params[:id]`. Route helpers will also be renamed from `preview_photo_url` and `preview_photo_path` to `photo_preview_url` and `photo_preview_path`.
 
-<a class="anchor" id="adding-collection-routes"></a>
+[`delete`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/HttpHelpers.html#method-i-delete
+[`get`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/HttpHelpers.html#method-i-get
+[`member`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Resources.html#method-i-member
+[`patch`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/HttpHelpers.html#method-i-patch
+[`post`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/HttpHelpers.html#method-i-post
+[`put`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/HttpHelpers.html#method-i-put
+[`put`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/HttpHelpers.html#method-i-put
 
-#### 添加集合路由
+#### Adding Collection Routes
 
-添加集合路由的方式如下：
+To add a route to the collection, use a [`collection`][] block:
 
 ```ruby
 resources :photos do
@@ -545,9 +549,9 @@ resources :photos do
 end
 ```
 
-通过上述声明，Rails 路由能够识别 `/photos/search` 路径上的 `GET` 请求，并把请求映射到 `Photos` 控制器的 `search` 动作上，同时创建 `search_photos_url` 和 `search_photos_path` 辅助方法。
+This will enable Rails to recognize paths such as `/photos/search` with GET, and route to the `search` action of `PhotosController`. It will also create the `search_photos_url` and `search_photos_path` route helpers.
 
-和成员路由一样，我们可以使用集合路由的 `:on` 选项：
+Just as with member routes, you can pass `:on` to a route:
 
 ```ruby
 resources :photos do
@@ -555,11 +559,13 @@ resources :photos do
 end
 ```
 
-<a class="anchor" id="adding-routes-for-additional-new-actions"></a>
+NOTE: If you're defining additional resource routes with a symbol as the first positional argument, be mindful that it is not equivalent to using a string. Symbols infer controller actions while strings infer paths.
 
-#### 为附加的 `new` 动作添加路由
+[`collection`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Resources.html#method-i-collection
 
-我们可以通过 `:on` 选项，为附加的 `new` 动作添加路由：
+#### Adding Routes for Additional New Actions
+
+To add an alternate new action using the `:on` shortcut:
 
 ```ruby
 resources :comments do
@@ -567,83 +573,72 @@ resources :comments do
 end
 ```
 
-通过上述声明，Rails 路由能够识别 `/comments/new/preview` 路径上的 `GET` 请求，并把请求映射到 `Comments` 控制器的 `preview` 动作上，同时创建 `preview_new_comment_url` 和 `preview_new_comment_path` 辅助方法。
+This will enable Rails to recognize paths such as `/comments/new/preview` with GET, and route to the `preview` action of `CommentsController`. It will also create the `preview_new_comment_url` and `preview_new_comment_path` route helpers.
 
-NOTE: 如果我们为资源路由添加了过多动作，就需要考虑一下，是不是应该声明新资源了。
+TIP: If you find yourself adding many extra actions to a resourceful route, it's time to stop and ask yourself whether you're disguising the presence of another resource.
 
-<a class="anchor" id="non-resourceful-routes"></a>
+Non-Resourceful Routes
+----------------------
 
-## 非资源式路由
+In addition to resource routing, Rails has powerful support for routing arbitrary URLs to actions. Here, you don't get groups of routes automatically generated by resourceful routing. Instead, you set up each route separately within your application.
 
-除了资源路由之外，对于把任意 URL 地址映射到控制器动作的路由，Rails 也提供了强大的支持。和资源路由自动生成一系列路由不同，这时我们需要分别声明各个路由。
+While you should usually use resourceful routing, there are still many places where the simpler routing is more appropriate. There's no need to try to shoehorn every last piece of your application into a resourceful framework if that's not a good fit.
 
-尽管我们通常会使用资源路由，但在一些情况下，使用简单路由更为合适。对于不适合使用资源路由的情况，我们也不必强迫自己使用资源路由。
+In particular, simple routing makes it very easy to map legacy URLs to new Rails actions.
 
-对于把旧系统的 URL 地址映射到新 Rails 应用上的情况，简单路由特别适用。
+### Bound Parameters
 
-<a class="anchor" id="bound-parameters"></a>
-
-### 绑定参数
-
-在声明普通路由时，我们可以使用符号，将其作为 HTTP 请求的一部分。例如，下面的路由：
+When you set up a regular route, you supply a series of symbols that Rails maps to parts of an incoming HTTP request. For example, consider this route:
 
 ```ruby
-get 'photos(/:id)', to: :display
+get 'photos(/:id)', to: 'photos#display'
 ```
 
-在处理 `/photos/1` 请求时（假设这个路由是第一个匹配的路由），会把请求映射到 `Photos` 控制器的 `display` 动作上，并把参数 1 传入 `params[:id]`。而 `/photos` 请求，也会被这个路由映射到 `PhotosController#display` 上，因为 `:id` 在括号中，是可选参数。
+If an incoming request of `/photos/1` is processed by this route (because it hasn't matched any previous route in the file), then the result will be to invoke the `display` action of the `PhotosController`, and to make the final parameter `"1"` available as `params[:id]`. This route will also route the incoming request of `/photos` to `PhotosController#display`, since `:id` is an optional parameter, denoted by parentheses.
 
-<a class="anchor" id="dynamic-segments"></a>
+### Dynamic Segments
 
-### 动态片段
-
-在声明普通路由时，我们可以根据需要使用多个动态片段（dynamic segment）。动态片段会传入 `params`，以便在控制器动作中使用。例如，对于下面的路由：
+You can set up as many dynamic segments within a regular route as you like. Any segment will be available to the action as part of `params`. If you set up this route:
 
 ```ruby
 get 'photos/:id/:user_id', to: 'photos#show'
 ```
 
-`/photos/1/2` 路径会被映射到 `Photos` 控制器的 `show` 动作上。此时，`params[:id]` 的值是 `"1"`，`params[:user_id]` 的值是 `"2"`。
+An incoming path of `/photos/1/2` will be dispatched to the `show` action of the `PhotosController`. `params[:id]` will be `"1"`, and `params[:user_id]` will be `"2"`.
 
-TIP: 默认情况下，在动态片段中不能使用小圆点（`.`），因为小圆点是格式化路由（formatted route）的分隔符。如果想在动态片段中使用小圆点，可以通过添加约束来实现相同效果，例如，`id: /[^\/]+/` 可以匹配除斜线外的一个或多个字符。
+TIP: By default, dynamic segments don't accept dots - this is because the dot is used as a separator for formatted routes. If you need to use a dot within a dynamic segment, add a constraint that overrides this – for example, `id: /[^\/]+/` allows anything except a slash.
 
-<a class="anchor" id="static-segments"></a>
+### Static Segments
 
-### 静态片段
-
-在创建路由时，我们可以用不带冒号的片段来指定静态片段（static segment）：
+You can specify static segments when creating a route by not prepending a colon to a segment:
 
 ```ruby
 get 'photos/:id/with_user/:user_id', to: 'photos#show'
 ```
 
-这个路由可以响应像 `/photos/1/with_user/2` 这样的路径，此时，`params` 的值为 `{ controller: 'photos', action: 'show', id: '1', user_id: '2' }`。
+This route would respond to paths such as `/photos/1/with_user/2`. In this case, `params` would be `{ controller: 'photos', action: 'show', id: '1', user_id: '2' }`.
 
-<a class="anchor" id="the-query-string"></a>
+### The Query String
 
-### 查询字符串
-
-`params` 也包含了查询字符串中的所有参数。例如，对于下面的路由：
+The `params` will also include any parameters from the query string. For example, with this route:
 
 ```ruby
 get 'photos/:id', to: 'photos#show'
 ```
 
-`/photos/1?user_id=2` 路径会被映射到 `Photos` 控制器的 `show` 动作上，此时，`params` 的值是 `{ controller: 'photos', action: 'show', id: '1', user_id: '2' }`。
+An incoming path of `/photos/1?user_id=2` will be dispatched to the `show` action of the `Photos` controller. `params` will be `{ controller: 'photos', action: 'show', id: '1', user_id: '2' }`.
 
-<a class="anchor" id="defining-defaults"></a>
+### Defining Defaults
 
-### 定义默认值
-
-`:defaults` 选项设定的散列为路由定义默认值。未通过动态片段定义的参数也可以指定默认值。例如：
+You can define defaults in a route by supplying a hash for the `:defaults` option. This even applies to parameters that you do not specify as dynamic segments. For example:
 
 ```ruby
 get 'photos/:id', to: 'photos#show', defaults: { format: 'jpg' }
 ```
 
-Rails 会把 `/photos/12` 路径映射到 `Photos` 控制器的 `show` 动作上，并把 `params[:format]` 设为 `"jpg"`。
+Rails would match `photos/12` to the `show` action of `PhotosController`, and set `params[:format]` to `"jpg"`.
 
-`defaults` 还有块的形式，可为多个路由定义默认值：
+You can also use a [`defaults`][] block to define the defaults for multiple items:
 
 ```ruby
 defaults format: :json do
@@ -651,92 +646,89 @@ defaults format: :json do
 end
 ```
 
-NOTE: 出于安全考虑，Rails 不允许用查询参数来覆盖默认值。只有一种情况下可以覆盖默认值，即通过 URL 路径替换来覆盖动态片段。
+NOTE: You cannot override defaults via query parameters - this is for security reasons. The only defaults that can be overridden are dynamic segments via substitution in the URL path.
 
-<a class="anchor" id="naming-routes"></a>
+[`defaults`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Scoping.html#method-i-defaults
 
-### 为路由命名
+### Naming Routes
 
-通过 `:as` 选项，我们可以为路由命名：
+You can specify a name for any route using the `:as` option:
 
 ```ruby
 get 'exit', to: 'sessions#destroy', as: :logout
 ```
 
-这个路由声明会创建 `logout_path` 和 `logout_url` 具名辅助方法。其中，`logout_path` 辅助方法的返回值是 `/exit`。
+This will create `logout_path` and `logout_url` as named route helpers in your application. Calling `logout_path` will return `/exit`
 
-通过为路由命名，我们还可以覆盖由资源路由定义的路由辅助方法，例如：
+You can also use this to override routing methods defined by resources by placing custom routes before the resource is defined, like this:
 
 ```ruby
 get ':username', to: 'users#show', as: :user
+resources :users
 ```
 
-这个路由声明会定义 `user_path` 辅助方法，此方法可以在控制器、辅助方法和视图中使用，其返回值类似 `/bob`。在 `Users` 控制器的 `show` 动作中，`params[:username]` 的值是用户名。如果不想使用 `:username` 作为参数名，可以在路由声明中把 `:username` 改为其他名字。
+This will define a `user_path` method that will be available in controllers, helpers, and views that will go to a route such as `/bob`. Inside the `show` action of `UsersController`, `params[:username]` will contain the username for the user. Change `:username` in the route definition if you do not want your parameter name to be `:username`.
 
-<a class="anchor" id="http-verb-constraints"></a>
+### HTTP Verb Constraints
 
-### HTTP 方法约束
-
-通常，我们应该使用 `get`、`post`、`put`、`patch` 和 `delete` 方法来约束路由可以匹配的 HTTP 方法。通过使用 `match` 方法和 `:via` 选项，我们可以一次匹配多个 HTTP 方法：
+In general, you should use the [`get`][], [`post`][], [`put`][], [`patch`][], and [`delete`][] methods to constrain a route to a particular verb. You can use the [`match`][] method with the `:via` option to match multiple verbs at once:
 
 ```ruby
 match 'photos', to: 'photos#show', via: [:get, :post]
 ```
 
-通过 `via: :all` 选项，路由可以匹配所有 HTTP 方法：
+You can match all verbs to a particular route using `via: :all`:
 
 ```ruby
 match 'photos', to: 'photos#show', via: :all
 ```
 
-NOTE: 把 `GET` 和 `POST` 请求映射到同一个控制器动作上会带来安全隐患。通常，除非有足够的理由，我们应该避免把使用不同 HTTP 方法的所有请求映射到同一个控制器动作上。
+NOTE: Routing both `GET` and `POST` requests to a single action has security implications. In general, you should avoid routing all verbs to an action unless you have a good reason to.
 
-NOTE: Rails 在处理 `GET` 请求时不会检查 CSRF 令牌。在处理 `GET` 请求时绝对不可以对数据库进行写操作，更多介绍请参阅 [CSRF 对策](security.html#csrf-countermeasures)。
+NOTE: `GET` in Rails won't check for CSRF token. You should never write to the database from `GET` requests, for more information see the [security guide](security.html#csrf-countermeasures) on CSRF countermeasures.
 
-<a class="anchor" id="segment-constraints"></a>
+[`match`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Base.html#method-i-match
 
-### 片段约束
+### Segment Constraints
 
-我们可以使用 `:constraints` 选项来约束动态片段的格式：
+You can use the `:constraints` option to enforce a format for a dynamic segment:
 
 ```ruby
 get 'photos/:id', to: 'photos#show', constraints: { id: /[A-Z]\d{5}/ }
 ```
 
-这个路由会匹配 `/photos/A12345` 路径，但不会匹配 `/photos/893` 路径。此路由还可以简写为：
+This route would match paths such as `/photos/A12345`, but not `/photos/893`. You can more succinctly express the same route this way:
 
 ```ruby
 get 'photos/:id', to: 'photos#show', id: /[A-Z]\d{5}/
 ```
 
-`:constraints` 选项的值可以是正则表达式，但不能使用 `^` 符号。例如，下面的路由写法是错误的：
+`:constraints` takes regular expressions with the restriction that regexp anchors can't be used. For example, the following route will not work:
 
 ```ruby
 get '/:id', to: 'articles#show', constraints: { id: /^\d/ }
 ```
 
-其实，使用 `^` 符号也完全没有必要，因为路由总是从头开始匹配。
+However, note that you don't need to use anchors because all routes are anchored at the start and the end.
 
-例如，对于下面的路由，`/1-hello-world` 路径会被映射到 `articles#show` 上，而 `/david` 路径会被映射到 `users#show` 上：
+For example, the following routes would allow for `articles` with `to_param` values like `1-hello-world` that always begin with a number and `users` with `to_param` values like `david` that never begin with a number to share the root namespace:
 
 ```ruby
 get '/:id', to: 'articles#show', constraints: { id: /\d.+/ }
 get '/:username', to: 'users#show'
 ```
 
-<a class="anchor" id="request-based-constraints"></a>
+### Request-Based Constraints
 
-### 请求约束
+You can also constrain a route based on any method on the [Request object](action_controller_overview.html#the-request-object) that returns a `String`.
 
-如果在[请求对象](action_controller_overview.html#the-request-object)上调用某个方法的返回值是字符串，我们就可以用这个方法来约束路由。
-
-请求约束和片段约束的用法相同：
+You specify a request-based constraint the same way that you specify a segment constraint:
 
 ```ruby
 get 'photos', to: 'photos#index', constraints: { subdomain: 'admin' }
 ```
 
-我们还可以用块来指定约束：
+You can also specify constraints by using a [`constraints`][] block:
 
 ```ruby
 namespace :admin do
@@ -746,20 +738,20 @@ namespace :admin do
 end
 ```
 
-NOTE: 请求约束（request constraint）的工作原理，是在[请求对象](action_controller_overview.html#the-request-object)上调用和约束条件中散列的键同名的方法，然后比较返回值和散列的值。因此，约束中散列的值和调用方法返回的值的类型应当相同。例如，`constraints: { subdomain: 'api' }` 会匹配 `api` 子域名，但是 `constraints: { subdomain: :api }` 不会匹配 `api` 子域名，因为后者散列的值是符号，而 `request.subdomain` 方法的返回值 `'api'` 是字符串。
+NOTE: Request constraints work by calling a method on the [Request object](action_controller_overview.html#the-request-object) with the same name as the hash key and then comparing the return value with the hash value. Therefore, constraint values should match the corresponding Request object method return type. For example: `constraints: { subdomain: 'api' }` will match an `api` subdomain as expected. However, using a symbol `constraints: { subdomain: :api }` will not, because `request.subdomain` returns `'api'` as a String.
 
-NOTE: 格式约束（format constraint）是一个例外：尽管格式约束是在请求对象上调用的方法，但同时也是路径的隐式可选参数（implicit optional parameter）。片段约束的优先级高于格式约束，而格式约束在通过散列指定时仅作为隐式可选参数。例如，`get 'foo', constraints: { format: 'json' }` 路由会匹配 `GET  /foo` 请求，因为默认情况下格式约束是可选的。尽管如此，我们可以[使用 lambda](#advanced-constraints)，例如，`get 'foo', constraints: lambda { |req| req.format == :json }` 路由只匹配显式 JSON 请求。
+NOTE: There is an exception for the `format` constraint: while it's a method on the Request object, it's also an implicit optional parameter on every path. Segment constraints take precedence and the `format` constraint is only applied as such when enforced through a hash. For example, `get 'foo', constraints: { format: 'json' }` will match `GET  /foo` because the format is optional by default. However, you can [use a lambda](#advanced-constraints) like in `get 'foo', constraints: lambda { |req| req.format == :json }` and the route will only match explicit JSON requests.
 
-<a class="anchor" id="advanced-constraints"></a>
+[`constraints`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Scoping.html#method-i-constraints
 
-### 高级约束
+### Advanced Constraints
 
-如果需要更复杂的约束，我们可以使用能够响应 `matches?` 方法的对象作为约束。假设我们想把所有黑名单用户映射到 `Blacklist` 控制器，可以这么做：
+If you have a more advanced constraint, you can provide an object that responds to `matches?` that Rails should use. Let's say you wanted to route all users on a restricted list to the `RestrictedListController`. You could do:
 
 ```ruby
-class BlacklistConstraint
+class RestrictedListConstraint
   def initialize
-    @ips = Blacklist.retrieve_ips
+    @ips = RestrictedList.retrieve_ips
   end
 
   def matches?(request)
@@ -768,136 +760,163 @@ class BlacklistConstraint
 end
 
 Rails.application.routes.draw do
-  get '*path', to: 'blacklist#index',
-    constraints: BlacklistConstraint.new
+  get '*path', to: 'restricted_list#index',
+    constraints: RestrictedListConstraint.new
 end
 ```
 
-我们还可以用 lambda 来指定约束：
+You can also specify constraints as a lambda:
 
 ```ruby
 Rails.application.routes.draw do
-  get '*path', to: 'blacklist#index',
-    constraints: lambda { |request| Blacklist.retrieve_ips.include?(request.remote_ip) }
+  get '*path', to: 'restricted_list#index',
+    constraints: lambda { |request| RestrictedList.retrieve_ips.include?(request.remote_ip) }
 end
 ```
 
-在上面两段代码中，`matches?` 方法和 lambda 都是把请求对象作为参数。
+Both the `matches?` method and the lambda gets the `request` object as an argument.
 
-<a class="anchor" id="route-globbing-and-wildcard-segments"></a>
+#### Constraints in a block form
 
-### 路由通配符和通配符片段
+You can specify constraints in a block form. This is useful for when you need to apply the same rule to several routes. For example
 
-路由通配符用于指定特殊参数，这一参数会匹配路由的所有剩余部分。例如：
+```
+class RestrictedListConstraint
+  # ...Same as the example above
+end
+
+Rails.application.routes.draw do
+  constraints(RestrictedListConstraint.new) do
+    get '*path', to: 'restricted_list#index',
+    get '*other-path', to: 'other_restricted_list#index',
+  end
+end
+```
+
+You also use a `lambda`:
+
+```
+Rails.application.routes.draw do
+  constraints(lambda { |request| RestrictedList.retrieve_ips.include?(request.remote_ip) }) do
+    get '*path', to: 'restricted_list#index',
+    get '*other-path', to: 'other_restricted_list#index',
+  end
+end
+```
+
+
+### Route Globbing and Wildcard Segments
+
+Route globbing is a way to specify that a particular parameter should be matched to all the remaining parts of a route. For example:
 
 ```ruby
 get 'photos/*other', to: 'photos#unknown'
 ```
 
-这个路由会匹配 `photos/12` 和 `/photos/long/path/to/12` 路径，并把 `params[:other]` 分别设置为 `"12"` 和 `"long/path/to/12"`。像 `*other` 这样以星号开头的片段，称作“通配符片段”。
+This route would match `photos/12` or `/photos/long/path/to/12`, setting `params[:other]` to `"12"` or `"long/path/to/12"`. The segments prefixed with a star are called "wildcard segments".
 
-通配符片段可以出现在路由中的任何位置。例如：
+Wildcard segments can occur anywhere in a route. For example:
 
 ```ruby
 get 'books/*section/:title', to: 'books#show'
 ```
 
-这个路由会匹配 `books/some/section/last-words-a-memoir` 路径，此时，`params[:section]` 的值是 `'some/section'`，`params[:title]` 的值是 `'last-words-a-memoir'`。
+would match `books/some/section/last-words-a-memoir` with `params[:section]` equals `'some/section'`, and `params[:title]` equals `'last-words-a-memoir'`.
 
-严格来说，路由中甚至可以有多个通配符片段，其匹配方式也非常直观。例如：
+Technically, a route can have even more than one wildcard segment. The matcher assigns segments to parameters in an intuitive way. For example:
 
 ```ruby
 get '*a/foo/*b', to: 'test#index'
 ```
 
-会匹配 `zoo/woo/foo/bar/baz` 路径，此时，`params[:a]` 的值是 `'zoo/woo'`，`params[:b]` 的值是 `'bar/baz'`。
+would match `zoo/woo/foo/bar/baz` with `params[:a]` equals `'zoo/woo'`, and `params[:b]` equals `'bar/baz'`.
 
-NOTE: `get '*pages', to: 'pages#show'` 路由在处理 `'/foo/bar.json'` 请求时，`params[:pages]` 的值是 `'foo/bar'`，请求格式（request format）是 `JSON`。如果想让 Rails 按 `3.0.x` 版本的方式进行匹配，可以使用 `format: false` 选项，例如：
+NOTE: By requesting `'/foo/bar.json'`, your `params[:pages]` will be equal to `'foo/bar'` with the request format of JSON. If you want the old 3.0.x behavior back, you could supply `format: false` like this:
 
 ```ruby
 get '*pages', to: 'pages#show', format: false
 ```
 
-如果想强制使用格式约束，或者说让格式约束不再是可选的，我们可以使用 `format: true` 选项，例如：
+NOTE: If you want to make the format segment mandatory, so it cannot be omitted, you can supply `format: true` like this:
 
 ```ruby
 get '*pages', to: 'pages#show', format: true
 ```
 
+### Redirection
 
-<a class="anchor" id="redirection"></a>
-
-### 重定向
-
-在路由中，通过 `redirect` 辅助方法可以把一个路径重定向到另一个路径：
+You can redirect any path to another path using the [`redirect`][] helper in your router:
 
 ```ruby
 get '/stories', to: redirect('/articles')
 ```
 
-在重定向的目标路径中，可以使用源路径中的动态片段：
+You can also reuse dynamic segments from the match in the path to redirect to:
 
 ```ruby
 get '/stories/:name', to: redirect('/articles/%{name}')
 ```
 
-我们还可以重定向到块，这个块可以接受符号化的路径参数和请求对象：
+You can also provide a block to redirect, which receives the symbolized path parameters and the request object:
 
 ```ruby
 get '/stories/:name', to: redirect { |path_params, req| "/articles/#{path_params[:name].pluralize}" }
 get '/stories', to: redirect { |path_params, req| "/articles/#{req.subdomain}" }
 ```
 
-请注意，`redirect` 重定向默认是 301 永久重定向，有些浏览器或代理服务器会缓存这种类型的重定向，从而导致无法访问重定向前的网页。为了避免这种情况，我们可以使用 `:status` 选项修改响应状态：
+Please note that default redirection is a 301 "Moved Permanently" redirect. Keep in mind that some web browsers or proxy servers will cache this type of redirect, making the old page inaccessible. You can use the `:status` option to change the response status:
 
 ```ruby
 get '/stories/:name', to: redirect('/articles/%{name}', status: 302)
 ```
 
-在重定向时，如果不指定主机（例如 http://www.example.com），Rails 会使用当前请求的主机。
+In all of these cases, if you don't provide the leading host (`http://www.example.com`), Rails will take those details from the current request.
 
-<a class="anchor" id="routing-to-rack-applications"></a>
+[`redirect`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Redirection.html#method-i-redirect
 
-### 映射到 Rack 应用的路由
+### Routing to Rack Applications
 
-在声明路由时，我们不仅可以使用字符串，例如映射到 `Articles` 控制器的 `index` 动作的 `'articles#index'`，还可以指定 [Rack 应用](rails_on_rack.html)为端点：
+Instead of a String like `'articles#index'`, which corresponds to the `index` action in the `ArticlesController`, you can specify any [Rack application](rails_on_rack.html) as the endpoint for a matcher:
 
 ```ruby
 match '/application.js', to: MyRackApp, via: :all
 ```
 
-只要 `MyRackApp` 应用能够响应 `call` 方法并返回 `[status, headers, body]` 数组，对于路由来说，Rack 应用和控制器动作就没有区别。`via: :all` 选项使 Rack 应用可以处理所有 HTTP 方法。
+As long as `MyRackApp` responds to `call` and returns a `[status, headers, body]`, the router won't know the difference between the Rack application and an action. This is an appropriate use of `via: :all`, as you will want to allow your Rack application to handle all verbs as it considers appropriate.
 
-NOTE: 实际上，`'articles#index'` 会被展开为 `ArticlesController.action(:index)`，其返回值正是一个 Rack 应用。
+NOTE: For the curious, `'articles#index'` actually expands out to `ArticlesController.action(:index)`, which returns a valid Rack application.
 
-记住，路由所匹配的路径，就是 Rack 应用接收的路径。例如，对于下面的路由，Rack 应用接收的路径是 `/admin`：
+If you specify a Rack application as the endpoint for a matcher, remember that
+the route will be unchanged in the receiving application. With the following
+route your Rack application should expect the route to be `/admin`:
 
 ```ruby
 match '/admin', to: AdminApp, via: :all
 ```
 
-如果想让 Rack 应用接收根路径上的请求，可以使用 `mount` 方法：
+If you would prefer to have your Rack application receive requests at the root
+path instead, use [`mount`][]:
 
 ```ruby
 mount AdminApp, at: '/admin'
 ```
 
-<a class="anchor" id="using-root"></a>
+[`mount`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Base.html#method-i-mount
 
-### 使用 `root` 方法
+### Using `root`
 
-`root` 方法指明如何处理根路径（`/`）上的请求：
+You can specify what Rails should route `'/'` to with the [`root`][] method:
 
 ```ruby
 root to: 'pages#main'
-root 'pages#main' # 上一行代码的简易写法
+root 'pages#main' # shortcut for the above
 ```
 
-`root` 路由应该放在路由文件的顶部，因为最常用的路由应该首先匹配。
+You should put the `root` route at the top of the file, because it is the most popular route and should be matched first.
 
-NOTE: `root` 路由只处理 `GET` 请求。
+NOTE: The `root` route only routes `GET` requests to the action.
 
-我们还可以在命名空间和作用域中使用 `root` 方法，例如：
+You can also use root inside namespaces and scopes as well. For example:
 
 ```ruby
 namespace :admin do
@@ -907,69 +926,114 @@ end
 root to: "home#index"
 ```
 
-<a class="anchor" id="unicode-character-routes"></a>
+[`root`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Resources.html#method-i-root
 
-### Unicode 字符路由
+### Unicode Character Routes
 
-在声明路由时，可以直接使用 Unicode 字符，例如：
+You can specify unicode character routes directly. For example:
 
 ```ruby
 get 'こんにちは', to: 'welcome#index'
 ```
 
-<a class="anchor" id="customizing-resourceful-routes"></a>
+### Direct Routes
 
-## 自定义资源路由
+You can create custom URL helpers directly by calling [`direct`][]. For example:
 
-尽管 `resources :articles` 默认生成的路由和辅助方法通常都能很好地满足需求，但是也有一些情况下我们需要自定义资源路由。Rails 允许我们通过各种方式自定义资源式辅助方法（resourceful helper）。
+```ruby
+direct :homepage do
+  "http://www.rubyonrails.org"
+end
 
-<a class="anchor" id="specifying-a-ontroller-to-use"></a>
+# >> homepage_url
+# => "http://www.rubyonrails.org"
+```
 
-### 指定控制器
+The return value of the block must be a valid argument for the `url_for` method. So, you can pass a valid string URL, Hash, Array, an Active Model instance, or an Active Model class.
 
-`:controller` 选项用于显式指定资源使用的控制器，例如：
+```ruby
+direct :commentable do |model|
+  [ model, anchor: model.dom_id ]
+end
+
+direct :main do
+  { controller: 'pages', action: 'index', subdomain: 'www' }
+end
+```
+
+[`direct`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/CustomUrls.html#method-i-direct
+
+### Using `resolve`
+
+The [`resolve`][] method allows customizing polymorphic mapping of models. For example:
+
+``` ruby
+resource :basket
+
+resolve("Basket") { [:basket] }
+```
+
+``` erb
+<%= form_with model: @basket do |form| %>
+  <!-- basket form -->
+<% end %>
+```
+
+This will generate the singular URL `/basket` instead of the usual `/baskets/:id`.
+
+[`resolve`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/CustomUrls.html#method-i-resolve
+
+Customizing Resourceful Routes
+------------------------------
+
+While the default routes and helpers generated by [`resources`][] will usually serve you well, you may want to customize them in some way. Rails allows you to customize virtually any generic part of the resourceful helpers.
+
+### Specifying a Controller to Use
+
+The `:controller` option lets you explicitly specify a controller to use for the resource. For example:
 
 ```ruby
 resources :photos, controller: 'images'
 ```
 
-这个路由会把 `/photos` 路径映射到 `Images` 控制器上：
+will recognize incoming paths beginning with `/photos` but route to the `Images` controller:
 
-| HTTP 方法 | 路径 | 控制器#动作 | 具名辅助方法  |
-|---|---|---|---|
-| `GET` | `/photos` | `images#index` | `photos_path`  |
-| `GET` | `/photos/new` | `images#new` | `new_photo_path`  |
-| `POST` | `/photos` | `images#create` | `photos_path`  |
-| `GET` | `/photos/:id` | `images#show` | `photo_path(:id)`  |
-| `GET` | `/photos/:id/edit` | `images#edit` | `edit_photo_path(:id)`  |
-| `PATCH`/`PUT` | `/photos/:id` | `images#update` | `photo_path(:id)`  |
-| `DELETE` | `/photos/:id` | `images#destroy` | `photo_path(:id)`  |
+| HTTP Verb | Path             | Controller#Action | Named Route Helper   |
+| --------- | ---------------- | ----------------- | -------------------- |
+| GET       | /photos          | images#index      | photos_path          |
+| GET       | /photos/new      | images#new        | new_photo_path       |
+| POST      | /photos          | images#create     | photos_path          |
+| GET       | /photos/:id      | images#show       | photo_path(:id)      |
+| GET       | /photos/:id/edit | images#edit       | edit_photo_path(:id) |
+| PATCH/PUT | /photos/:id      | images#update     | photo_path(:id)      |
+| DELETE    | /photos/:id      | images#destroy    | photo_path(:id)      |
 
-NOTE: 请使用 `photos_path`、`new_photo_path` 等辅助方法为资源生成路径。
+NOTE: Use `photos_path`, `new_photo_path`, etc. to generate paths for this resource.
 
-对于命名空间中的控制器，我们可以使用目录表示法（directory notation）。例如：
+For namespaced controllers you can use the directory notation. For example:
 
 ```ruby
 resources :user_permissions, controller: 'admin/user_permissions'
 ```
 
-这个路由会映射到 `Admin::UserPermissions` 控制器。
+This will route to the `Admin::UserPermissions` controller.
 
-NOTE: 在这种情况下，我们只能使用目录表示法。如果我们使用 Ruby 的常量表示法（constant notation），例如 `controller: 'Admin::UserPermissions'`，有可能导致路由错误，而使 Rails 显示警告信息。
+NOTE: Only the directory notation is supported. Specifying the
+controller with Ruby constant notation (e.g. `controller: 'Admin::UserPermissions'`)
+can lead to routing problems and results in
+a warning.
 
-<a class="anchor" id="specifying-constraints"></a>
+### Specifying Constraints
 
-### 指定约束
-
-`:constraints` 选项用于指定隐式 ID 必须满足的格式要求。例如：
+You can use the `:constraints` option to specify a required format on the implicit `id`. For example:
 
 ```ruby
 resources :photos, constraints: { id: /[A-Z][A-Z][0-9]+/ }
 ```
 
-这个路由声明使用正则表达式来约束 `:id` 参数。此时，路由将不会匹配 `/photos/1` 路径，但会匹配 `/photos/RR27` 路径。
+This declaration constrains the `:id` parameter to match the supplied regular expression. So, in this case, the router would no longer match `/photos/1` to this route. Instead, `/photos/RR27` would match.
 
-我们可以通过块把一个约束应用于多个路由：
+You can specify a single constraint to apply to a number of routes by using the block form:
 
 ```ruby
 constraints(id: /[A-Z][A-Z][0-9]+/) do
@@ -978,64 +1042,58 @@ constraints(id: /[A-Z][A-Z][0-9]+/) do
 end
 ```
 
-NOTE: 当然，在这种情况下，我们也可以使用非资源路由的高级约束。
+NOTE: Of course, you can use the more advanced constraints available in non-resourceful routes in this context.
 
-TIP: 默认情况下，在 `:id` 参数中不能使用小圆点，因为小圆点是格式化路由的分隔符。如果想在 `:id` 参数中使用小圆点，可以通过添加约束来实现相同效果，例如，`id: /[^\/]+/` 可以匹配除斜线外的一个或多个字符。
+TIP: By default the `:id` parameter doesn't accept dots - this is because the dot is used as a separator for formatted routes. If you need to use a dot within an `:id` add a constraint which overrides this - for example `id: /[^\/]+/` allows anything except a slash.
 
-<a class="anchor" id="overriding-the-named-helpers"></a>
+### Overriding the Named Route Helpers
 
-### 覆盖具名路由辅助方法
-
-通过 `:as` 选项，我们可以覆盖具名路由辅助方法的默认名称。例如：
+The `:as` option lets you override the normal naming for the named route helpers. For example:
 
 ```ruby
 resources :photos, as: 'images'
 ```
 
-这个路由会把以 `/photos` 开头的路径映射到 `Photos` 控制器上，同时通过 `:as` 选项设置具名辅助方法的名称。
+will recognize incoming paths beginning with `/photos` and route the requests to `PhotosController`, but use the value of the `:as` option to name the helpers.
 
-| HTTP 方法 | 路径 | 控制器#动作 | 具名辅助方法  |
-|---|---|---|---|
-| `GET` | `/photos` | `photos#index` | `images_path`  |
-| `GET` | `/photos/new` | `photos#new` | `new_image_path`  |
-| `POST` | `/photos` | `photos#create` | `images_path`  |
-| `GET` | `/photos/:id` | `photos#show` | `image_path(:id)`  |
-| `GET` | `/photos/:id/edit` | `photos#edit` | `edit_image_path(:id)`  |
-| `PATCH`/`PUT` | `/photos/:id` | `photos#update` | `image_path(:id)`  |
-| `DELETE` | `/photos/:id` | `photos#destroy` | `image_path(:id)`  |
+| HTTP Verb | Path             | Controller#Action | Named Route Helper   |
+| --------- | ---------------- | ----------------- | -------------------- |
+| GET       | /photos          | photos#index      | images_path          |
+| GET       | /photos/new      | photos#new        | new_image_path       |
+| POST      | /photos          | photos#create     | images_path          |
+| GET       | /photos/:id      | photos#show       | image_path(:id)      |
+| GET       | /photos/:id/edit | photos#edit       | edit_image_path(:id) |
+| PATCH/PUT | /photos/:id      | photos#update     | image_path(:id)      |
+| DELETE    | /photos/:id      | photos#destroy    | image_path(:id)      |
 
-<a class="anchor" id="overriding-the-new-and-edit-segments"></a>
+### Overriding the `new` and `edit` Segments
 
-### 覆盖 `new` 和 `edit` 片段
-
-`:path_names` 选项用于覆盖路径中自动生成的 `new` 和 `edit` 片段，例如：
+The `:path_names` option lets you override the automatically-generated `new` and `edit` segments in paths:
 
 ```ruby
 resources :photos, path_names: { new: 'make', edit: 'change' }
 ```
 
-这个路由能够识别下面的路径：
+This would cause the routing to recognize paths such as:
 
 ```
 /photos/make
 /photos/1/change
 ```
 
-NOTE: `:path_names` 选项不会改变控制器动作的名称，上面这两个路径仍然被分别映射到 `new` 和 `edit` 动作上。
+NOTE: The actual action names aren't changed by this option. The two paths shown would still route to the `new` and `edit` actions.
 
-TIP: 通过作用域，我们可以对所有路由应用 `:path_names` 选项。
+TIP: If you find yourself wanting to change this option uniformly for all of your routes, you can use a scope.
 
 ```ruby
 scope path_names: { new: 'make' } do
-  # 其余路由
+  # rest of your routes
 end
 ```
 
-<a class="anchor" id="prefixing-the-named-route-helpers"></a>
+### Prefixing the Named Route Helpers
 
-### 为具名路由辅助方法添加前缀
-
-通过 `:as` 选项，我们可以为具名路由辅助方法添加前缀。通过在作用域中使用 `:as` 选项，我们可以解决路由名称冲突的问题。例如：
+You can use the `:as` option to prefix the named route helpers that Rails generates for a route. Use this option to prevent name collisions between routes using a path scope. For example:
 
 ```ruby
 scope 'admin' do
@@ -1045,9 +1103,9 @@ end
 resources :photos
 ```
 
-上述路由声明会生成 `admin_photos_path`、`new_admin_photo_path` 等辅助方法。
+This will provide route helpers such as `admin_photos_path`, `new_admin_photo_path`, etc.
 
-通过在作用域中使用 `:as` 选项，我们可以为一组路由辅助方法添加前缀：
+To prefix a group of route helpers, use `:as` with `scope`:
 
 ```ruby
 scope 'admin', as: 'admin' do
@@ -1057,11 +1115,11 @@ end
 resources :photos, :accounts
 ```
 
-上述路由会生成 `admin_photos_path`、`admin_accounts_path` 等辅助方法，其返回值分别为 `/admin/photos`、`/admin/accounts` 等。
+This will generate routes such as `admin_photos_path` and `admin_accounts_path` which map to `/admin/photos` and `/admin/accounts` respectively.
 
-NOTE: `namespace` 作用域除了添加 `:as` 选项指定的前缀，还会添加 `:module` 和 `:path` 前缀。
+NOTE: The `namespace` scope will automatically add `:as` as well as `:module` and `:path` prefixes.
 
-我们还可以使用具名参数指定路由前缀，例如：
+You can prefix routes with a named parameter also:
 
 ```ruby
 scope ':username' do
@@ -1069,35 +1127,31 @@ scope ':username' do
 end
 ```
 
-这个路由能够识别 `/bob/articles/1` 路径，此时，在控制器、辅助方法和视图中，我们可以使用 `params[:username]` 获取路径中的 `username` 部分，即 `bob`。
+This will provide you with URLs such as `/bob/articles/1` and will allow you to reference the `username` part of the path as `params[:username]` in controllers, helpers, and views.
 
-<a class="anchor" id="restricting-the-routes-created"></a>
+### Restricting the Routes Created
 
-### 限制所创建的路由
-
-默认情况下，Rails 会为每个 REST 式路由创建 7 个默认动作（`index`、`show`、`new`、`create`、`edit`、`update` 和 `destroy`）。我们可以使用 `:only` 和 `:except` 选项来微调此行为。`:only` 选项用于指定想要生成的路由：
+By default, Rails creates routes for the seven default actions (`index`, `show`, `new`, `create`, `edit`, `update`, and `destroy`) for every RESTful route in your application. You can use the `:only` and `:except` options to fine-tune this behavior. The `:only` option tells Rails to create only the specified routes:
 
 ```ruby
 resources :photos, only: [:index, :show]
 ```
 
-此时，`/photos` 路径上的 `GET` 请求会成功，而 `POST` 请求会失败，因为后者会被映射到 `create` 动作上。
+Now, a `GET` request to `/photos` would succeed, but a `POST` request to `/photos` (which would ordinarily be routed to the `create` action) will fail.
 
-`:except` 选项用于指定不想生成的路由：
+The `:except` option specifies a route or list of routes that Rails should _not_ create:
 
 ```ruby
 resources :photos, except: :destroy
 ```
 
-此时，Rails 会创建除 `destroy` 之外的所有路由，因此 `/photos/:id` 路径上的 `DELETE` 请求会失败。
+In this case, Rails will create all of the normal routes except the route for `destroy` (a `DELETE` request to `/photos/:id`).
 
-TIP: 如果应用中有很多资源式路由，通过 `:only` 和 `:except` 选项，我们可以只生成实际需要的路由，这样可以减少内存使用、加速路由处理过程。
+TIP: If your application has many RESTful routes, using `:only` and `:except` to generate only the routes that you actually need can cut down on memory use and speed up the routing process.
 
-<a class="anchor" id="translated-paths"></a>
+### Translated Paths
 
-### 本地化路径
-
-在使用 `scope` 方法时，我们可以修改 `resources` 方法生成的路径名称。例如：
+Using `scope`, we can alter path names generated by `resources`:
 
 ```ruby
 scope(path_names: { new: 'neu', edit: 'bearbeiten' }) do
@@ -1105,23 +1159,21 @@ scope(path_names: { new: 'neu', edit: 'bearbeiten' }) do
 end
 ```
 
-Rails 会生成下列映射到 `Categories` 控制器的路由：
+Rails now creates routes to the `CategoriesController`.
 
-| HTTP 方法 | 路径 | 控制器#动作 | 具名辅助方法  |
-|---|---|---|---|
-| `GET` | `/kategorien` | `categories#index` | `categories_path`  |
-| `GET` | `/kategorien/neu` | `categories#new` | `new_category_path`  |
-| `POST` | `/kategorien` | `categories#create` | `categories_path`  |
-| `GET` | `/kategorien/:id` | `categories#show` | `category_path(:id)`  |
-| `GET` | `/kategorien/:id/bearbeiten` | `categories#edit` | `edit_category_path(:id)`  |
-| `PATCH`/`PUT` | `/kategorien/:id` | `categories#update` | `category_path(:id)`  |
-| `DELETE` | `/kategorien/:id` | `categories#destroy` | `category_path(:id)`  |
+| HTTP Verb | Path                       | Controller#Action  | Named Route Helper      |
+| --------- | -------------------------- | ------------------ | ----------------------- |
+| GET       | /kategorien                | categories#index   | categories_path         |
+| GET       | /kategorien/neu            | categories#new     | new_category_path       |
+| POST      | /kategorien                | categories#create  | categories_path         |
+| GET       | /kategorien/:id            | categories#show    | category_path(:id)      |
+| GET       | /kategorien/:id/bearbeiten | categories#edit    | edit_category_path(:id) |
+| PATCH/PUT | /kategorien/:id            | categories#update  | category_path(:id)      |
+| DELETE    | /kategorien/:id            | categories#destroy | category_path(:id)      |
 
-<a class="anchor" id="overriding-the-singular-form"></a>
+### Overriding the Singular Form
 
-### 覆盖资源的单数形式
-
-通过为 `Inflector` 添加附加的规则，我们可以定义资源的单数形式。例如：
+If you want to define the singular form of a resource, you should add additional rules to the `Inflector` via [`inflections`][]:
 
 ```ruby
 ActiveSupport::Inflector.inflections do |inflect|
@@ -1129,11 +1181,11 @@ ActiveSupport::Inflector.inflections do |inflect|
 end
 ```
 
-<a class="anchor" id="using-as-in-nested-resources"></a>
+[`inflections`]: https://api.rubyonrails.org/classes/ActiveSupport/Inflector.html#method-i-inflections
 
-### 在嵌套资源中使用 `:as` 选项
+### Using `:as` in Nested Resources
 
-在嵌套资源中，我们可以使用 `:as` 选项覆盖自动生成的辅助方法名称。例如：
+The `:as` option overrides the automatically-generated name for the resource in nested route helpers. For example:
 
 ```ruby
 resources :magazines do
@@ -1141,30 +1193,32 @@ resources :magazines do
 end
 ```
 
-会生成 `magazine_periodical_ads_url` 和 `edit_magazine_periodical_ad_path` 等辅助方法。
+This will create routing helpers such as `magazine_periodical_ads_url` and `edit_magazine_periodical_ad_path`.
 
-<a class="anchor" id="overriding-named-route-parameters"></a>
+### Overriding Named Route Parameters
 
-### 覆盖具名路由的参数
-
-`:param` 选项用于覆盖默认的资源标识符 `:id`（用于生成路由的动态片段的名称）。在控制器中，我们可以通过 `params[<:param>]` 访问资源标识符。
+The `:param` option overrides the default resource identifier `:id` (name of
+the [dynamic segment](routing.html#dynamic-segments) used to generate the
+routes). You can access that segment from your controller using
+`params[<:param>]`.
 
 ```ruby
 resources :videos, param: :identifier
 ```
 
 ```
-videos GET  /videos(.:format)                  videos#index
-       POST /videos(.:format)                  videos#create
-new_videos GET  /videos/new(.:format)              videos#new
-edit_videos GET  /videos/:identifier/edit(.:format) videos#edit
+    videos GET  /videos(.:format)                  videos#index
+           POST /videos(.:format)                  videos#create
+ new_video GET  /videos/new(.:format)              videos#new
+edit_video GET  /videos/:identifier/edit(.:format) videos#edit
 ```
 
 ```ruby
 Video.find_by(identifier: params[:identifier])
 ```
 
-通过覆盖相关模型的 `ActiveRecord::Base#to_param` 方法，我们可以构造 URL 地址：
+You can override `ActiveRecord::Base#to_param` of the associated model to construct
+a URL:
 
 ```ruby
 class Video < ApplicationRecord
@@ -1174,29 +1228,65 @@ class Video < ApplicationRecord
 end
 
 video = Video.find_by(identifier: "Roman-Holiday")
-edit_videos_path(video) # => "/videos/Roman-Holiday"
+edit_video_path(video) # => "/videos/Roman-Holiday/edit"
 ```
 
-<a class="anchor" id="inspecting-and-testing-routes"></a>
+Breaking up *very* large route file into multiple small ones:
+-------------------------------------------------------
 
-## 审查和测试路由
+If you work in a large application with thousands of routes,
+a single `config/routes.rb` file can become cumbersome and hard to read.
 
-Rails 提供了路由检查和测试的相关功能。
+Rails offers a way to break a gigantic single `routes.rb` file into multiple small ones using the [`draw`][] macro.
 
-<a class="anchor" id="listing-existing-routes"></a>
+```ruby
+# config/routes.rb
 
-### 列出现有路由
+Rails.application.routes.draw do
+  get 'foo', to: 'foo#bar'
 
-要想得到应用中现有路由的完整列表，可以在开发环境中运行服务器，然后在浏览器中访问 http://localhost:3000/rails/info/routes。在终端中执行 `rails routes` 命令，也会得到相同的输出结果。
+  draw(:admin) # Will load another route file located in `config/routes/admin.rb`
+end
 
-这两种方式都会按照路由在 `config/routes.rb` 文件中的声明顺序，列出所有路由。每个路由都包含以下信息：
+# config/routes/admin.rb
 
-*   路由名称（如果有的话）
-*   所使用的 HTTP 方法（如果路由不响应所有的 HTTP 方法）
-*   所匹配的 URL 模式
-*   路由参数
+namespace :admin do
+  resources :comments
+end
+```
 
-例如，下面是执行 `rails routes` 命令后，REST 式路由的一部分输出结果：
+Calling `draw(:admin)` inside the `Rails.application.routes.draw` block itself will try to load a route
+file that has the same name as the argument given (`admin.rb` in this case).
+The file needs to be located inside the `config/routes` directory or any sub-directory (i.e. `config/routes/admin.rb` or `config/routes/external/admin.rb`).
+
+You can use the normal routing DSL inside the `admin.rb` routing file, **however** you shouldn't surround it with the `Rails.application.routes.draw` block like you did in the main `config/routes.rb` file.
+
+[`draw`]: https://api.rubyonrails.org/classes/ActionDispatch/Routing/Mapper/Resources.html#method-i-draw
+
+### When to use and not use this feature
+
+Drawing routes from external files can be very useful to organise a large set of routes into multiple organised ones. You could have a `admin.rb` route that contains all the routes for the admin area, another `api.rb` file to route API related resources etc...
+
+However, you shouldn't abuse this feature as having too many route files make discoverability and understandability more difficult. Depending on the application, it might be easier for developers to have a single routing file even if you have few hundreds routes. You shouldn't try to create a new routing file for each category (admin, api ...) at all cost; the Rails routing DSL already offers a way to break routes in a organised manner with `namespaces` and `scopes`.
+
+
+Inspecting and Testing Routes
+-----------------------------
+
+Rails offers facilities for inspecting and testing your routes.
+
+### Listing Existing Routes
+
+To get a complete list of the available routes in your application, visit `http://localhost:3000/rails/info/routes` in your browser while your server is running in the **development** environment. You can also execute the `bin/rails routes` command in your terminal to produce the same output.
+
+Both methods will list all of your routes, in the same order that they appear in `config/routes.rb`. For each route, you'll see:
+
+* The route name (if any)
+* The HTTP verb used (if the route doesn't respond to all verbs)
+* The URL pattern to match
+* The routing parameters for the route
+
+For example, here's a small section of the `bin/rails routes` output for a RESTful route:
 
 ```
     users GET    /users(.:format)          users#index
@@ -1205,67 +1295,90 @@ Rails 提供了路由检查和测试的相关功能。
 edit_user GET    /users/:id/edit(.:format) users#edit
 ```
 
-可以使用 `grep` 选项（即 `-g`）搜索路由。只要路由的 URL 辅助方法的名称、HTTP 方法或 URL 路径中有部分匹配，该路由就会显示在搜索结果中。
+You can also use the `--expanded` option to turn on the expanded table formatting mode.
 
-```sh
+```bash
+$ bin/rails routes --expanded
+
+--[ Route 1 ]----------------------------------------------------
+Prefix            | users
+Verb              | GET
+URI               | /users(.:format)
+Controller#Action | users#index
+--[ Route 2 ]----------------------------------------------------
+Prefix            |
+Verb              | POST
+URI               | /users(.:format)
+Controller#Action | users#create
+--[ Route 3 ]----------------------------------------------------
+Prefix            | new_user
+Verb              | GET
+URI               | /users/new(.:format)
+Controller#Action | users#new
+--[ Route 4 ]----------------------------------------------------
+Prefix            | edit_user
+Verb              | GET
+URI               | /users/:id/edit(.:format)
+Controller#Action | users#edit
+```
+
+You can search through your routes with the grep option: -g. This outputs any routes that partially match the URL helper method name, the HTTP verb, or the URL path.
+
+```bash
 $ bin/rails routes -g new_comment
 $ bin/rails routes -g POST
 $ bin/rails routes -g admin
 ```
 
-要想查看映射到指定控制器的路由，可以使用 `-c` 选项。
+If you only want to see the routes that map to a specific controller, there's the -c option.
 
-```sh
+```bash
 $ bin/rails routes -c users
 $ bin/rails routes -c admin/users
 $ bin/rails routes -c Comments
 $ bin/rails routes -c Articles::CommentsController
 ```
 
-TIP: 为了增加 `rails routes` 命令输出结果的可读性，可以增加终端窗口的宽度，避免输出结果折行。
+TIP: You'll find that the output from `bin/rails routes` is much more readable if you widen your terminal window until the output lines don't wrap.
 
-<a class="anchor" id="testing-routes"></a>
+### Testing Routes
 
-### 测试路由
+Routes should be included in your testing strategy (just like the rest of your application). Rails offers three built-in assertions designed to make testing routes simpler:
 
-路由和应用的其他部分一样，也应该包含在测试策略中。为了简化路由测试，Rails 提供了三个[内置断言](http://api.rubyonrails.org/classes/ActionDispatch/Assertions/RoutingAssertions.html)：
+* [`assert_generates`][]
+* [`assert_recognizes`][]
+* [`assert_routing`][]
 
-*   `assert_generates` 断言
-*   `assert_recognizes` 断言
-*   `assert_routing` 断言
+[`assert_generates`]: https://api.rubyonrails.org/classes/ActionDispatch/Assertions/RoutingAssertions.html#method-i-assert_generates
+[`assert_recognizes`]: https://api.rubyonrails.org/classes/ActionDispatch/Assertions/RoutingAssertions.html#method-i-assert_recognizes
+[`assert_routing`]: https://api.rubyonrails.org/classes/ActionDispatch/Assertions/RoutingAssertions.html#method-i-assert_routing
 
-<a class="anchor" id="the-assert-generates-assertion"></a>
+#### The `assert_generates` Assertion
 
-#### `assert_generates` 断言
-
-`assert_generates` 断言的功能是断定所指定的一组选项会生成指定路径，它可以用于默认路由或自定义路由。例如：
+[`assert_generates`][] asserts that a particular set of options generate a particular path and can be used with default routes or custom routes. For example:
 
 ```ruby
 assert_generates '/photos/1', { controller: 'photos', action: 'show', id: '1' }
 assert_generates '/about', controller: 'pages', action: 'about'
 ```
 
-<a class="anchor" id="the-assert-recognizes-assertion"></a>
+#### The `assert_recognizes` Assertion
 
-#### `assert_recognizes` 断言
-
-`assert_recognizes` 断言和 `assert_generates` 断言的功能相反，它断定所提供的路径能够被路由识别并映射到指定控制器动作。例如：
+[`assert_recognizes`][] is the inverse of `assert_generates`. It asserts that a given path is recognized and routes it to a particular spot in your application. For example:
 
 ```ruby
 assert_recognizes({ controller: 'photos', action: 'show', id: '1' }, '/photos/1')
 ```
 
-我们可以通过 `:method` 参数指定 HTTP 方法：
+You can supply a `:method` argument to specify the HTTP verb:
 
 ```ruby
-assert_recognizes（{controller：'photos'，action：'create'}，{path：'photos'，method：：post}）
+assert_recognizes({ controller: 'photos', action: 'create' }, { path: 'photos', method: :post })
 ```
 
-<a class="anchor" id="the-assert-routing-assertion"></a>
+#### The `assert_routing` Assertion
 
-#### `assert_routing` 断言
-
-`assert_routing` 断言会对路由进行双向测试：既测试路径能否生成选项，也测试选项能否生成路径。也就是集 `assert_generates` 和 `assert_recognizes` 这两种断言的功能于一身。
+The [`assert_routing`][] assertion checks the route both ways: it tests that the path generates the options, and that the options generate the path. Thus, it combines the functions of `assert_generates` and `assert_recognizes`:
 
 ```ruby
 assert_routing({ path: 'photos', method: :post }, { controller: 'photos', action: 'create' })

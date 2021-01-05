@@ -1,76 +1,80 @@
-# Rails 插件开发简介
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-Rails 插件是对核心框架的扩展或修改。插件有下述作用：
+The Basics of Creating Rails Plugins
+====================================
 
-*   供开发者分享突发奇想，但不破坏稳定的代码基
-*   碎片式架构，代码自成一体，能按照自己的日程表修正或更新
-*   核心开发者使用的外延工具，不必把每个新特性都集成到核心框架中
+A Rails plugin is either an extension or a modification of the core framework. Plugins provide:
 
-读完本文后，您将学到：
+* A way for developers to share bleeding-edge ideas without hurting the stable code base.
+* A segmented architecture so that units of code can be fixed or updated on their own release schedule.
+* An outlet for the core developers so that they don't have to include every cool new feature under the sun.
 
-*   如何从零开始创建一个插件
-*   如何编写插件的代码和测试
+After reading this guide, you will know:
 
-本文使用测试驱动开发方式编写一个插件，它具有下述功能：
+* How to create a plugin from scratch.
+* How to write and run tests for the plugin.
 
-*   扩展 Ruby 核心类，如 Hash 和 String
-*   通过传统的 `acts_as` 插件形式为 `ApplicationRecord` 添加方法
-*   说明生成器放在插件的什么位置
+This guide describes how to build a test-driven plugin that will:
 
-本文暂且假设你是热衷观察鸟类的人。你钟爱的鸟是绿啄木鸟（Yaffle），因此你想创建一个插件，供其他开发者分享心得。
+* Extend core Ruby classes like Hash and String.
+* Add methods to `ApplicationRecord` in the tradition of the `acts_as` plugins.
+* Give you information about where to put generators in your plugin.
 
------------------------------------------------------------------------------
+For the purpose of this guide pretend for a moment that you are an avid bird watcher.
+Your favorite bird is the Yaffle, and you want to create a plugin that allows other developers to share in the Yaffle
+goodness.
 
-NOTE: 本文原文尚未完工！
+--------------------------------------------------------------------------------
 
-<a class="anchor" id="setup"></a>
+Setup
+-----
 
-## 准备
+Currently, Rails plugins are built as gems, _gemified plugins_. They can be shared across
+different Rails applications using RubyGems and Bundler if desired.
 
-目前，Rails 插件构建成 gem 的形式，叫做 gem 式插件（gemified plugin）。如果愿意，可以通过 RubyGems 和 Bundler 在多个 Rails 应用中共享。
+### Generate a gemified plugin.
 
-<a class="anchor" id="generate-a-gemified-plugin"></a>
 
-### 生成 gem 式插件
+Rails ships with a `rails plugin new` command which creates a
+skeleton for developing any kind of Rails extension with the ability
+to run integration tests using a dummy Rails application. Create your
+plugin with the command:
 
-Rails 自带一个 `rails plugin new` 命令，用于创建任何 Rails 扩展的骨架。这个命令还会生成一个虚设的 Rails 应用，用于运行集成测试。请使用下述命令创建这个插件：
-
-```sh
+```bash
 $ rails plugin new yaffle
 ```
 
-如果想查看用法和选项，执行下述命令：
+See usage and options by asking for help:
 
-```sh
+```bash
 $ rails plugin new --help
 ```
 
-<a class="anchor" id="testing-your-newly-generated-plugin"></a>
+Testing Your Newly Generated Plugin
+-----------------------------------
 
-## 测试新生成的插件
+You can navigate to the directory that contains the plugin, run the `bundle install` command
+ and run the one generated test using the `bin/test` command.
 
-进入插件所在的目录，运行 `bundle install` 命令，然后使用 `bin/test` 命令运行生成的一个测试。
-
-你会看到下述输出：
+You should see:
 
 ```
-1 runs, 1 assertions, 0 failures, 0 errors, 0 skips
+  1 runs, 1 assertions, 0 failures, 0 errors, 0 skips
 ```
 
-这表明一切都正确生成了，接下来可以添加功能了。
+This will tell you that everything got generated properly and you are ready to start adding functionality.
 
-<a class="anchor" id="extending-core-classes"></a>
+Extending Core Classes
+----------------------
 
-## 扩展核心类
+This section will explain how to add a method to String that will be available anywhere in your Rails application.
 
-本节说明如何为 String 类添加一个方法，让它在整个 Rails 应用中都可以使用。
-
-这里，我们为 String 添加的方法名为 `to_squawk`。首先，创建一个测试文件，写入几个断言：
+In this example you will add a method to String named `to_squawk`. To begin, create a new test file with a few assertions:
 
 ```ruby
 # yaffle/test/core_ext_test.rb
 
-require 'test_helper'
+require "test_helper"
 
 class CoreExtTest < ActiveSupport::TestCase
   def test_to_squawk_prepends_the_word_squawk
@@ -79,7 +83,7 @@ class CoreExtTest < ActiveSupport::TestCase
 end
 ```
 
-然后使用 `bin/test` 运行测试。这个测试应该失败，因为我们还没实现 `to_squawk` 方法。
+Run `bin/test` to run the test. This test should fail because we haven't implemented the `to_squawk` method:
 
 ```
 E
@@ -98,57 +102,58 @@ Finished in 0.003358s, 595.6483 runs/s, 297.8242 assertions/s.
 2 runs, 1 assertions, 0 failures, 1 errors, 0 skips
 ```
 
-很好，下面可以开始开发了。
+Great - now you are ready to start development.
 
-在 `lib/yaffle.rb` 文件中添加 `require 'yaffle/core_ext'`：
+In `lib/yaffle.rb`, add `require "yaffle/core_ext"`:
 
 ```ruby
 # yaffle/lib/yaffle.rb
 
-require 'yaffle/core_ext'
+require "yaffle/railtie"
+require "yaffle/core_ext"
 
 module Yaffle
+  # Your code goes here...
 end
 ```
 
-最后，创建 `core_ext.rb` 文件，添加 `to_squawk` 方法：
+Finally, create the `core_ext.rb` file and add the `to_squawk` method:
 
 ```ruby
 # yaffle/lib/yaffle/core_ext.rb
 
-String.class_eval do
+class String
   def to_squawk
     "squawk! #{self}".strip
   end
 end
 ```
 
-为了测试方法的行为是否得当，在插件目录中使用 `bin/test` 运行单元测试：
+To test that your method does what it says it does, run the unit tests with `bin/test` from your plugin directory.
 
 ```
-2 runs, 2 assertions, 0 failures, 0 errors, 0 skips
+  2 runs, 2 assertions, 0 failures, 0 errors, 0 skips
 ```
 
-为了实测一下，进入 `test/dummy` 目录，打开控制台：
+To see this in action, change to the `test/dummy` directory, start `bin/rails console`, and commence squawking:
 
-```sh
-$ bin/rails console
->> "Hello World".to_squawk
+```irb
+irb> "Hello World".to_squawk
 => "squawk! Hello World"
 ```
 
-<a class="anchor" id="add-an-acts-as-method-to-active-record"></a>
+Add an "acts_as" Method to Active Record
+----------------------------------------
 
-## 为 Active Record 添加“acts_as”方法
+A common pattern in plugins is to add a method called `acts_as_something` to models. In this case, you
+want to write a method called `acts_as_yaffle` that adds a `squawk` method to your Active Record models.
 
-插件经常为模型添加名为 `acts_as_something` 的方法。这里，我们要编写一个名为 `acts_as_yaffle` 的方法，为 Active Record 添加 `squawk` 方法。
-
-首先，创建几个文件：
+To begin, set up your files so that you have:
 
 ```ruby
 # yaffle/test/acts_as_yaffle_test.rb
 
-require 'test_helper'
+require "test_helper"
 
 class ActsAsYaffleTest < ActiveSupport::TestCase
 end
@@ -157,10 +162,12 @@ end
 ```ruby
 # yaffle/lib/yaffle.rb
 
-require 'yaffle/core_ext'
-require 'yaffle/acts_as_yaffle'
+require "yaffle/railtie"
+require "yaffle/core_ext"
+require "yaffle/acts_as_yaffle"
 
 module Yaffle
+  # Your code goes here...
 end
 ```
 
@@ -169,23 +176,22 @@ end
 
 module Yaffle
   module ActsAsYaffle
-    # 在这里编写你的代码
   end
 end
 ```
 
-<a class="anchor" id="add-a-class-method"></a>
+### Add a Class Method
 
-### 添加一个类方法
+This plugin will expect that you've added a method to your model named `last_squawk`. However, the
+plugin users might have already defined a method on their model named `last_squawk` that they use
+for something else. This plugin will allow the name to be changed by adding a class method called `yaffle_text_field`.
 
-这个插件将为模型添加一个名为 `last_squawk` 的方法。然而，插件的用户可能已经在模型中定义了同名方法，做其他用途使用。这个插件将允许修改插件的名称，为此我们要添加一个名为 `yaffle_text_field` 的类方法。
-
-首先，为预期行为编写一个失败测试：
+To start out, write a failing test that shows the behavior you'd like:
 
 ```ruby
 # yaffle/test/acts_as_yaffle_test.rb
 
-require 'test_helper'
+require "test_helper"
 
 class ActsAsYaffleTest < ActiveSupport::TestCase
   def test_a_hickwalls_yaffle_text_field_should_be_last_squawk
@@ -198,7 +204,7 @@ class ActsAsYaffleTest < ActiveSupport::TestCase
 end
 ```
 
-执行 `bin/test` 命令，应该看到下述输出：
+When you run `bin/test`, you should see the following:
 
 ```
 # Running:
@@ -228,22 +234,26 @@ Finished in 0.004812s, 831.2949 runs/s, 415.6475 assertions/s.
 4 runs, 2 assertions, 0 failures, 2 errors, 0 skips
 ```
 
-输出表明，我们想测试的模型（Hickwall 和 Wickwall）不存在。为此，可以在 `test/dummy` 目录中运行下述命令生成：
+This tells us that we don't have the necessary models (Hickwall and Wickwall) that we are trying to test.
+We can easily generate these models in our "dummy" Rails application by running the following commands from the
+`test/dummy` directory:
 
-```sh
+```bash
 $ cd test/dummy
 $ bin/rails generate model Hickwall last_squawk:string
 $ bin/rails generate model Wickwall last_squawk:string last_tweet:string
 ```
 
-然后，进入虚设的应用，迁移数据库，创建所需的数据库表。首先，执行：
+Now you can create the necessary database tables in your testing database by navigating to your dummy app
+and migrating the database. First, run:
 
-```sh
+```bash
 $ cd test/dummy
 $ bin/rails db:migrate
 ```
 
-同时，修改 Hickwall 和 Wickwall 模型，让它们知道自己的行为像绿啄木鸟。
+While you are here, change the Hickwall and Wickwall models so that they know that they are supposed to act
+like yaffles.
 
 ```ruby
 # test/dummy/app/models/hickwall.rb
@@ -259,7 +269,7 @@ class Wickwall < ApplicationRecord
 end
 ```
 
-再添加定义 `acts_as_yaffle` 方法的代码：
+We will also add code to define the `acts_as_yaffle` method.
 
 ```ruby
 # yaffle/lib/yaffle/acts_as_yaffle.rb
@@ -268,12 +278,8 @@ module Yaffle
   module ActsAsYaffle
     extend ActiveSupport::Concern
 
-    included do
-    end
-
-    module ClassMethods
+    class_methods do
       def acts_as_yaffle(options = {})
-        # your code will go here
       end
     end
   end
@@ -288,7 +294,7 @@ class ApplicationRecord < ActiveRecord::Base
 end
 ```
 
-然后，回到插件的根目录（`cd ../..`），使用 `bin/test` 再次运行测试：
+You can then return to the root directory (`cd ../..`) of your plugin and rerun the tests using `bin/test`.
 
 ```
 # Running:
@@ -318,7 +324,7 @@ Finished in 0.008263s, 484.0999 runs/s, 242.0500 assertions/s.
 4 runs, 2 assertions, 0 failures, 2 errors, 0 skips
 ```
 
-快完工了……接下来实现 `acts_as_yaffle` 方法，让测试通过：
+Getting closer... Now we will implement the code of the `acts_as_yaffle` method to make the tests pass.
 
 ```ruby
 # yaffle/lib/yaffle/acts_as_yaffle.rb
@@ -327,13 +333,9 @@ module Yaffle
   module ActsAsYaffle
     extend ActiveSupport::Concern
 
-    included do
-    end
-
-    module ClassMethods
+    class_methods do
       def acts_as_yaffle(options = {})
-        cattr_accessor :yaffle_text_field
-        self.yaffle_text_field = (options[:yaffle_text_field] || :last_squawk).to_s
+        cattr_accessor :yaffle_text_field, default: (options[:yaffle_text_field] || :last_squawk).to_s
       end
     end
   end
@@ -348,23 +350,22 @@ class ApplicationRecord < ActiveRecord::Base
 end
 ```
 
-再次运行 `bin/test`，测试应该都能通过：
+When you run `bin/test`, you should see the tests all pass:
 
 ```
-4 runs, 4 assertions, 0 failures, 0 errors, 0 skips
+  4 runs, 4 assertions, 0 failures, 0 errors, 0 skips
 ```
 
-<a class="anchor" id="add-an-instance-method"></a>
+### Add an Instance Method
 
-### 添加一个实例方法
+This plugin will add a method named 'squawk' to any Active Record object that calls `acts_as_yaffle`. The 'squawk'
+method will simply set the value of one of the fields in the database.
 
-这个插件能为任何模型添加调用 `acts_as_yaffle` 方法的 `squawk` 方法。`squawk` 方法的作用很简单，设定数据库中某个字段的值。
-
-首先，为预期行为编写一个失败测试：
+To start out, write a failing test that shows the behavior you'd like:
 
 ```ruby
 # yaffle/test/acts_as_yaffle_test.rb
-require 'test_helper'
+require "test_helper"
 
 class ActsAsYaffleTest < ActiveSupport::TestCase
   def test_a_hickwalls_yaffle_text_field_should_be_last_squawk
@@ -389,7 +390,8 @@ class ActsAsYaffleTest < ActiveSupport::TestCase
 end
 ```
 
-运行测试，确保最后两个测试的失败消息中有“NoMethodError: undefined method `squawk'”。然后，按照下述方式修改 `acts_as_yaffle.rb` 文件：
+Run the test to make sure the last two tests fail with an error that contains "NoMethodError: undefined method \`squawk'",
+then update `acts_as_yaffle.rb` to look like this:
 
 ```ruby
 # yaffle/lib/yaffle/acts_as_yaffle.rb
@@ -399,20 +401,14 @@ module Yaffle
     extend ActiveSupport::Concern
 
     included do
-    end
-
-    module ClassMethods
-      def acts_as_yaffle(options = {})
-        cattr_accessor :yaffle_text_field
-        self.yaffle_text_field = (options[:yaffle_text_field] || :last_squawk).to_s
-
-        include Yaffle::ActsAsYaffle::LocalInstanceMethods
+      def squawk(string)
+        write_attribute(self.class.yaffle_text_field, string.to_squawk)
       end
     end
 
-    module LocalInstanceMethods
-      def squawk(string)
-        write_attribute(self.class.yaffle_text_field, string.to_squawk)
+    class_methods do
+      def acts_as_yaffle(options = {})
+        cattr_accessor :yaffle_text_field, default: (options[:yaffle_text_field] || :last_squawk).to_s
       end
     end
   end
@@ -427,64 +423,77 @@ class ApplicationRecord < ActiveRecord::Base
 end
 ```
 
-最后再运行一次 `bin/test`，应该看到：
+Run `bin/test` one final time and you should see:
 
 ```
-6 runs, 6 assertions, 0 failures, 0 errors, 0 skips
+  6 runs, 6 assertions, 0 failures, 0 errors, 0 skips
 ```
 
-NOTE: 这里使用 `write_attribute` 写入模型中的字段，这只是插件与模型交互的方式之一，并不总是应该使用它。例如，也可以使用：
+NOTE: The use of `write_attribute` to write to the field in model is just one example of how a plugin can interact with the model, and will not always be the right method to use. For example, you could also use:
 
 ```ruby
 send("#{self.class.yaffle_text_field}=", string.to_squawk)
 ```
 
+Generators
+----------
 
-<a class="anchor" id="generators"></a>
+Generators can be included in your gem simply by creating them in a `lib/generators` directory of your plugin. More information about
+the creation of generators can be found in the [Generators Guide](generators.html).
 
-## 生成器
+Publishing Your Gem
+-------------------
 
-gem 中可以包含生成器，只需将其放在插件的 `lib/generators` 目录中。创建生成器的更多信息参见[创建及定制 Rails 生成器和模板](generators.html)。
-
-<a class="anchor" id="publishing-your-gem"></a>
-
-## 发布 gem
-
-正在开发的 gem 式插件可以通过 Git 仓库轻易分享。如果想与他人分享这个 Yaffle gem，只需把代码纳入一个 Git 仓库（如 GitHub），然后在想使用它的应用中，在 Gemfile 中添加一行代码：
+Gem plugins currently in development can easily be shared from any Git repository. To share the Yaffle gem with others, simply
+commit the code to a Git repository (like GitHub) and add a line to the `Gemfile` of the application in question:
 
 ```ruby
-gem 'yaffle', git: 'git://github.com/yaffle_watcher/yaffle.git'
+gem "yaffle", git: "https://github.com/rails/yaffle.git"
 ```
 
-运行 `bundle install` 之后，应用就可以使用插件提供的功能了。
+After running `bundle install`, your gem functionality will be available to the application.
 
-gem 式插件准备好正式发布之后，可以发布到 [RubyGems](http://www.rubygems.org/) 网站中。关于这个话题的详细信息，参阅“[Creating and Publishing Your First Ruby Gem](http://blog.thepete.net/2010/11/creating-and-publishing-your-first-ruby.html)”一文。
+When the gem is ready to be shared as a formal release, it can be published to [RubyGems](https://rubygems.org).
 
-<a class="anchor" id="rdoc-documentation"></a>
+Alternatively, you can benefit from Bundler's Rake tasks. You can see a full list with the following:
 
-## RDoc 文档
+```bash
+$ bundle exec rake -T
 
-插件稳定后可以部署了，为了他人使用方便，一定要编写文档！幸好，为插件编写文档并不难。
+$ bundle exec rake build
+# Build yaffle-0.1.0.gem into the pkg directory
 
-首先，更新 README 文件，说明插件的用法。要包含以下几个要点：
+$ bundle exec rake install
+# Build and install yaffle-0.1.0.gem into system gems
 
-*   你的名字
-*   插件用法
-*   如何把插件的功能添加到应用中（举几个示例，说明常见用例）
-*   提醒、缺陷或小贴士，这样能节省用户的时间
+$ bundle exec rake release
+# Create tag v0.1.0 and build and push yaffle-0.1.0.gem to Rubygems
+```
 
-README 文件写好之后，为开发者将使用的方法添加 rdoc 注释。通常，还要为不在公开 API 中的代码添加 `#:nodoc:` 注释。
+For more information about publishing gems to RubyGems, see: [Publishing your gem](https://guides.rubygems.org/publishing).
 
-添加好注释之后，进入插件所在的目录，执行：
+RDoc Documentation
+------------------
 
-```sh
+Once your plugin is stable and you are ready to deploy, do everyone else a favor and document it! Luckily, writing documentation for your plugin is easy.
+
+The first step is to update the README file with detailed information about how to use your plugin. A few key things to include are:
+
+* Your name
+* How to install
+* How to add the functionality to the app (several examples of common use cases)
+* Warnings, gotchas or tips that might help users and save them time
+
+Once your README is solid, go through and add rdoc comments to all of the methods that developers will use. It's also customary to add `#:nodoc:` comments to those parts of the code that are not included in the public API.
+
+Once your comments are good to go, navigate to your plugin directory and run:
+
+```bash
 $ bundle exec rake rdoc
 ```
 
-<a class="anchor" id="references"></a>
+### References
 
-## 参考资料
-
-*   [Developing a RubyGem using Bundler](https://github.com/radar/guides/blob/master/gem-development.md)
-*   [Using .gemspecs as Intended](http://yehudakatz.com/2010/04/02/using-gemspecs-as-intended/)
-*   [Gemspec Reference](http://guides.rubygems.org/specification-reference/)
+* [Developing a RubyGem using Bundler](https://github.com/radar/guides/blob/master/gem-development.md)
+* [Using .gemspecs as Intended](https://yehudakatz.com/2010/04/02/using-gemspecs-as-intended/)
+* [Gemspec Reference](https://guides.rubygems.org/specification-reference/)

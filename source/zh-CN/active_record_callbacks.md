@@ -1,34 +1,34 @@
-# Active Record 回调
+**DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON https://guides.rubyonrails.org.**
 
-本文介绍如何介入 Active Record 对象的生命周期。
+Active Record Callbacks
+=======================
 
-读完本文后，您将学到：
+This guide teaches you how to hook into the life cycle of your Active Record
+objects.
 
-*   Active Record 对象的生命周期；
-*   如何创建用于响应对象生命周期内事件的回调方法；
-*   如何把常用的回调封装到特殊的类中。
+After reading this guide, you will know:
 
------------------------------------------------------------------------------
+* The life cycle of Active Record objects.
+* How to create callback methods that respond to events in the object life cycle.
+* How to create special classes that encapsulate common behavior for your callbacks.
 
-<a class="anchor" id="the-object-life-cycle"></a>
+--------------------------------------------------------------------------------
 
-## 对象的生命周期
+The Object Life Cycle
+---------------------
 
-在 Rails 应用正常运作期间，对象可以被创建、更新或删除。Active Record 为对象的生命周期提供了钩子，使我们可以控制应用及其数据。
+During the normal operation of a Rails application, objects may be created, updated, and destroyed. Active Record provides hooks into this *object life cycle* so that you can control your application and its data.
 
-回调使我们可以在对象状态更改之前或之后触发逻辑。
+Callbacks allow you to trigger logic before or after an alteration of an object's state.
 
-<a class="anchor" id="callbacks-overview"></a>
+Callbacks Overview
+------------------
 
-## 回调概述
+Callbacks are methods that get called at certain moments of an object's life cycle. With callbacks it is possible to write code that will run whenever an Active Record object is created, saved, updated, deleted, validated, or loaded from the database.
 
-回调是在对象生命周期的某些时刻被调用的方法。通过回调，我们可以编写在创建、保存、更新、删除、验证或从数据库中加载 Active Record 对象时执行的代码。
+### Callback Registration
 
-<a class="anchor" id="callback-registration"></a>
-
-### 注册回调
-
-回调在使用之前需要注册。我们可以先把回调定义为普通方法，然后使用宏式类方法把这些普通方法注册为回调：
+In order to use the available callbacks, you need to register them. You can implement the callbacks as ordinary methods and use a macro-style class method to register them as callbacks:
 
 ```ruby
 class User < ApplicationRecord
@@ -45,7 +45,7 @@ class User < ApplicationRecord
 end
 ```
 
-宏式类方法也接受块。如果块中的代码短到可以放在一行里，可以考虑使用这种编程风格：
+The macro-style class methods can also receive a block. Consider using this style if the code inside your block is so short that it fits in a single line:
 
 ```ruby
 class User < ApplicationRecord
@@ -57,13 +57,13 @@ class User < ApplicationRecord
 end
 ```
 
-回调也可以注册为仅被某些生命周期事件触发：
+Callbacks can also be registered to only fire on certain life cycle events:
 
 ```ruby
 class User < ApplicationRecord
   before_validation :normalize_name, on: :create
 
-  # :on 选项的值也可以是数组
+  # :on takes an array as well
   after_validation :set_location, on: [ :create, :update ]
 
   private
@@ -77,62 +77,78 @@ class User < ApplicationRecord
 end
 ```
 
-通常应该把回调定义为私有方法。如果把回调定义为公共方法，就可以从模型外部调用回调，这样做违反了对象封装原则。
+It is considered good practice to declare callback methods as private. If left public, they can be called from outside of the model and violate the principle of object encapsulation.
 
-<a class="anchor" id="available-callbacks"></a>
+Available Callbacks
+-------------------
 
-## 可用的回调
+Here is a list with all the available Active Record callbacks, listed in the same order in which they will get called during the respective operations:
 
-下面按照回调在 Rails 应用正常运作期间被调用的顺序，列出所有可用的 Active Record 回调。
+### Creating an Object
 
-<a class="anchor" id="creating-an-object"></a>
+* [`before_validation`][]
+* [`after_validation`][]
+* [`before_save`][]
+* [`around_save`][]
+* [`before_create`][]
+* [`around_create`][]
+* [`after_create`][]
+* [`after_save`][]
+* [`after_commit`][] / [`after_rollback`][]
 
-### 创建对象
+[`after_create`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-after_create
+[`after_commit`]: https://api.rubyonrails.org/classes/ActiveRecord/Transactions/ClassMethods.html#method-i-after_commit
+[`after_rollback`]: https://api.rubyonrails.org/classes/ActiveRecord/Transactions/ClassMethods.html#method-i-after_rollback
+[`after_save`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-after_save
+[`after_validation`]: https://api.rubyonrails.org/classes/ActiveModel/Validations/Callbacks/ClassMethods.html#method-i-after_validation
+[`around_create`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-around_create
+[`around_save`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-around_save
+[`before_create`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-before_create
+[`before_save`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-before_save
+[`before_validation`]: https://api.rubyonrails.org/classes/ActiveModel/Validations/Callbacks/ClassMethods.html#method-i-before_validation
 
-*   `before_validation`
-*   `after_validation`
-*   `before_save`
-*   `around_save`
-*   `before_create`
-*   `around_create`
-*   `after_create`
-*   `after_save`
-*   `after_commit/after_rollback`
+### Updating an Object
 
-<a class="anchor" id="updating-an-object"></a>
+* [`before_validation`][]
+* [`after_validation`][]
+* [`before_save`][]
+* [`around_save`][]
+* [`before_update`][]
+* [`around_update`][]
+* [`after_update`][]
+* [`after_save`][]
+* [`after_commit`][] / [`after_rollback`][]
 
-### 更新对象
+[`after_update`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-after_update
+[`around_update`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-around_update
+[`before_update`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-before_update
 
-*   `before_validation`
-*   `after_validation`
-*   `before_save`
-*   `around_save`
-*   `before_update`
-*   `around_update`
-*   `after_update`
-*   `after_save`
-*   `after_commit/after_rollback`
+### Destroying an Object
 
-<a class="anchor" id="destroying-an-object"></a>
+* [`before_destroy`][]
+* [`around_destroy`][]
+* [`after_destroy`][]
+* [`after_commit`][] / [`after_rollback`][]
 
-### 删除对象
+[`after_destroy`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-after_destroy
+[`around_destroy`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-around_destroy
+[`before_destroy`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-before_destroy
 
-*   `before_destroy`
-*   `around_destroy`
-*   `after_destroy`
-*   `after_commit/after_rollback`
+WARNING. `after_save` runs both on create and update, but always _after_ the more specific callbacks `after_create` and `after_update`, no matter the order in which the macro calls were executed.
 
-WARNING: 无论按什么顺序注册回调，在创建和更新对象时，`after_save` 回调总是在更明确的 `after_create` 和 `after_update` 回调之后被调用。
+WARNING. Avoid updating or saving attributes in callbacks. For example, don't call `update(attribute: "value")` within a callback. This can alter the state of the model and may result in unexpected side effects during commit. Instead, you can safely assign values directly (for example, `self.attribute = "value"`) in `before_create` / `before_update` or earlier callbacks.
 
-<a class="anchor" id="after-initialize-and-after-find"></a>
+NOTE: `before_destroy` callbacks should be placed before `dependent: :destroy`
+associations (or use the `prepend: true` option), to ensure they execute before
+the records are deleted by `dependent: :destroy`.
 
-### `after_initialize` 和 `after_find` 回调
+### `after_initialize` and `after_find`
 
-当 Active Record 对象被实例化时，不管是通过直接使用 `new` 方法还是从数据库加载记录，都会调用 `after_initialize` 回调。使用这个回调可以避免直接覆盖 Active Record 的 `initialize` 方法。
+The [`after_initialize`][] callback will be called whenever an Active Record object is instantiated, either by directly using `new` or when a record is loaded from the database. It can be useful to avoid the need to directly override your Active Record `initialize` method.
 
-当 Active Record 从数据库中加载记录时，会调用 `after_find` 回调。如果同时定义了 `after_initialize` 和 `after_find` 回调，会先调用 `after_find` 回调。
+The [`after_find`][] callback will be called whenever Active Record loads a record from the database. `after_find` is called before `after_initialize` if both are defined.
 
-`after_initialize` 和 `after_find` 回调没有对应的 `before_*` 回调，这两个回调的注册方式和其他 Active Record 回调一样。
+The `after_initialize` and `after_find` callbacks have no `before_*` counterparts, but they can be registered just like the other Active Record callbacks.
 
 ```ruby
 class User < ApplicationRecord
@@ -147,21 +163,22 @@ end
 ```
 
 ```irb
->> User.new
+irb> User.new
 You have initialized an object!
 => #<User id: nil>
 
->> User.first
+irb> User.first
 You have found an object!
 You have initialized an object!
 => #<User id: 1>
 ```
 
-<a class="anchor" id="after-touch"></a>
+[`after_find`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-after_find
+[`after_initialize`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-after_initialize
 
-### `after_touch` 回调
+### `after_touch`
 
-当我们在 Active Record 对象上调用 `touch` 方法时，会调用 `after_touch` 回调。
+The [`after_touch`][] callback will be called whenever an Active Record object is touched.
 
 ```ruby
 class User < ApplicationRecord
@@ -172,15 +189,15 @@ end
 ```
 
 ```irb
->> u = User.create(name: 'Kuldeep')
+irb> u = User.create(name: 'Kuldeep')
 => #<User id: 1, name: "Kuldeep", created_at: "2013-11-25 12:17:49", updated_at: "2013-11-25 12:17:49">
 
->> u.touch
+irb> u.touch
 You have touched an object
 => true
 ```
 
-`after_touch` 回调可以和 `belongs_to` 一起使用：
+It can be used along with `belongs_to`:
 
 ```ruby
 class Employee < ApplicationRecord
@@ -195,100 +212,103 @@ class Company < ApplicationRecord
   after_touch :log_when_employees_or_company_touched
 
   private
-  def log_when_employees_or_company_touched
-    puts 'Employee/Company was touched'
-  end
+    def log_when_employees_or_company_touched
+      puts 'Employee/Company was touched'
+    end
 end
 ```
 
 ```irb
->> @employee = Employee.last
+irb> @employee = Employee.last
 => #<Employee id: 1, company_id: 1, created_at: "2013-11-25 17:04:22", updated_at: "2013-11-25 17:05:05">
 
-# triggers @employee.company.touch
->> @employee.touch
-Employee/Company was touched
+irb> @employee.touch # triggers @employee.company.touch
 An Employee was touched
+Employee/Company was touched
 => true
 ```
 
-<a class="anchor" id="running-callbacks"></a>
+[`after_touch`]: https://api.rubyonrails.org/classes/ActiveRecord/Callbacks/ClassMethods.html#method-i-after_touch
 
-## 调用回调
+Running Callbacks
+-----------------
 
-下面这些方法会触发回调：
+The following methods trigger callbacks:
 
-*   `create`
-*   `create!`
-*   `decrement!`
-*   `destroy`
-*   `destroy!`
-*   `destroy_all`
-*   `increment!`
-*   `save`
-*   `save!`
-*   `save(validate: false)`
-*   `toggle!`
-*   `update_attribute`
-*   `update`
-*   `update!`
-*   `valid?`
+* `create`
+* `create!`
+* `destroy`
+* `destroy!`
+* `destroy_all`
+* `destroy_by`
+* `save`
+* `save!`
+* `save(validate: false)`
+* `toggle!`
+* `touch`
+* `update_attribute`
+* `update`
+* `update!`
+* `valid?`
 
-此外，下面这些查找方法会触发 `after_find` 回调：
+Additionally, the `after_find` callback is triggered by the following finder methods:
 
-*   `all`
-*   `first`
-*   `find`
-*   `find_by`
-*   `find_by_*`
-*   `find_by_*!`
-*   `find_by_sql`
-*   `last`
+* `all`
+* `first`
+* `find`
+* `find_by`
+* `find_by_*`
+* `find_by_*!`
+* `find_by_sql`
+* `last`
 
-每次初始化类的新对象时都会触发 `after_initialize` 回调。
+The `after_initialize` callback is triggered every time a new object of the class is initialized.
 
-NOTE: `find_by_*` 和 `find_by_*!` 方法是为每个属性自动生成的动态查找方法。关于动态查找方法的更多介绍，请参阅 [动态查找方法](active_record_querying.html#dynamic-finders)。
+NOTE: The `find_by_*` and `find_by_*!` methods are dynamic finders generated automatically for every attribute. Learn more about them at the [Dynamic finders section](active_record_querying.html#dynamic-finders)
 
-<a class="anchor" id="skipping-callbacks"></a>
+Skipping Callbacks
+------------------
 
-## 跳过回调
+Just as with validations, it is also possible to skip callbacks by using the following methods:
 
-和验证一样，我们可以跳过回调。使用下面这些方法可以跳过回调：
+* `decrement!`
+* `decrement_counter`
+* `delete`
+* `delete_all`
+* `delete_by`
+* `increment!`
+* `increment_counter`
+* `insert`
+* `insert!`
+* `insert_all`
+* `insert_all!`
+* `touch_all`
+* `update_column`
+* `update_columns`
+* `update_all`
+* `update_counters`
+* `upsert`
+* `upsert_all`
 
-*   `decrement`
-*   `decrement_counter`
-*   `delete`
-*   `delete_all`
-*   `increment`
-*   `increment_counter`
-*   `toggle`
-*   `touch`
-*   `update_column`
-*   `update_columns`
-*   `update_all`
-*   `update_counters`
+These methods should be used with caution, however, because important business rules and application logic may be kept in callbacks. Bypassing them without understanding the potential implications may lead to invalid data.
 
-请慎重地使用这些方法，因为有些回调包含了重要的业务规则和应用逻辑，在不了解潜在影响的情况下就跳过回调，可能导致无效数据。
+Halting Execution
+-----------------
 
-<a class="anchor" id="halting-execution"></a>
+As you start registering new callbacks for your models, they will be queued for execution. This queue will include all your model's validations, the registered callbacks, and the database operation to be executed.
 
-## 停止执行
-
-回调在模型中注册后，将被加入队列等待执行。这个队列包含了所有模型的验证、已注册的回调和将要执行的数据库操作。
-
-整个回调链包装在一个事务中。只要有回调抛出异常，回调链随即停止，并且发出 `ROLLBACK` 消息。如果想故意停止回调链，可以这么做：
+The whole callback chain is wrapped in a transaction. If any callback raises an exception, the execution chain gets halted and a ROLLBACK is issued. To intentionally stop a chain use:
 
 ```ruby
 throw :abort
 ```
 
-WARNING: 当回调链停止后，Rails 会重新抛出除了 `ActiveRecord::Rollback` 和 `ActiveRecord::RecordInvalid` 之外的其他异常。这可能导致那些预期 `save` 和 `update_attributes` 等方法（通常返回 `true` 或 `false` ）不会引发异常的代码出错。
+WARNING. Any exception that is not `ActiveRecord::Rollback` or `ActiveRecord::RecordInvalid` will be re-raised by Rails after the callback chain is halted. Raising an exception other than `ActiveRecord::Rollback` or `ActiveRecord::RecordInvalid` may break code that does not expect methods like `save` and `update` (which normally try to return `true` or `false`) to raise an exception.
 
-<a class="anchor" id="relational-callbacks"></a>
+Relational Callbacks
+--------------------
 
-## 关联回调
-
-回调不仅可以在模型关联中使用，还可以通过模型关联定义。假设有一个用户在博客中发表了多篇文章，现在我们要删除这个用户，那么这个用户的所有文章也应该删除，为此我们通过 `Article` 模型和 `User` 模型的关联来给 `User` 模型添加一个 `after_destroy` 回调：
+Callbacks work through model relationships, and can even be defined by them. Suppose an example where a user has many articles. A user's articles should be destroyed if the user is destroyed. Let's add an `after_destroy` callback to the `User` model by way of its relationship to the `Article` model:
 
 ```ruby
 class User < ApplicationRecord
@@ -305,26 +325,23 @@ end
 ```
 
 ```irb
->> user = User.first
+irb> user = User.first
 => #<User id: 1>
->> user.articles.create!
+irb> user.articles.create!
 => #<Article id: 1, user_id: 1>
->> user.destroy
+irb> user.destroy
 Article destroyed
 => #<User id: 1>
 ```
 
-<a class="anchor" id="conditional-callbacks"></a>
+Conditional Callbacks
+---------------------
 
-## 条件回调
+As with validations, we can also make the calling of a callback method conditional on the satisfaction of a given predicate. We can do this using the `:if` and `:unless` options, which can take a symbol, a `Proc` or an `Array`. You may use the `:if` option when you want to specify under which conditions the callback **should** be called. If you want to specify the conditions under which the callback **should not** be called, then you may use the `:unless` option.
 
-和验证一样，我们可以在满足指定条件时再调用回调方法。为此，我们可以使用 `:if` 和 `:unless` 选项，选项的值可以是符号、`Proc` 或数组。要想指定在哪些条件下调用回调，可以使用 `:if` 选项。要想指定在哪些条件下不调用回调，可以使用 `:unless` 选项。
+### Using `:if` and `:unless` with a `Symbol`
 
-<a class="anchor" id="using-if-and-unless-with-a-symbol"></a>
-
-### 使用符号作为 `:if` 和 `:unless` 选项的值
-
-可以使用符号作为 `:if` 和 `:unless` 选项的值，这个符号用于表示先于回调调用的断言方法。当使用 `:if` 选项时，如果断言方法返回 `false` 就不会调用回调；当使用 `:unless` 选项时，如果断言方法返回 `true` 就不会调用回调。使用符号作为 `:if` 和 `:unless` 选项的值是最常见的方式。在使用这种方式注册回调时，我们可以同时使用几个不同的断言，用于检查是否应该调用回调。
+You can associate the `:if` and `:unless` options with a symbol corresponding to the name of a predicate method that will get called right before the callback. When using the `:if` option, the callback won't be executed if the predicate method returns false; when using the `:unless` option, the callback won't be executed if the predicate method returns true. This is the most common option. Using this form of registration it is also possible to register several different predicates that should be called to check if the callback should be executed.
 
 ```ruby
 class Order < ApplicationRecord
@@ -332,11 +349,9 @@ class Order < ApplicationRecord
 end
 ```
 
-<a class="anchor" id="using-if-and-unless-with-a-proc"></a>
+### Using `:if` and `:unless` with a `Proc`
 
-### 使用 Proc 作为 `:if` 和 `:unless` 选项的值
-
-最后，可以使用 Proc 作为 `:if` 和 `:unless` 选项的值。在验证方法非常短时最适合使用这种方式，这类验证方法通常只有一行代码：
+It is possible to associate `:if` and `:unless` with a `Proc` object. This option is best suited when writing short validation methods, usually one-liners:
 
 ```ruby
 class Order < ApplicationRecord
@@ -345,11 +360,17 @@ class Order < ApplicationRecord
 end
 ```
 
-<a class="anchor" id="multiple-conditions-for-callbacks"></a>
+As the proc is evaluated in the context of the object, it is also possible to write this as:
 
-### 在条件回调中使用多个条件
+```ruby
+class Order < ApplicationRecord
+  before_save :normalize_card_number, if: Proc.new { paid_with_card? }
+end
+```
 
-在编写条件回调时，我们可以在同一个回调声明中混合使用 `:if` 和 `:unless` 选项：
+### Multiple Conditions for Callbacks
+
+When writing conditional callbacks, it is possible to mix both `:if` and `:unless` in the same callback declaration:
 
 ```ruby
 class Comment < ApplicationRecord
@@ -358,13 +379,26 @@ class Comment < ApplicationRecord
 end
 ```
 
-<a class="anchor" id="callback-classes"></a>
+### Combining Callback Conditions
 
-## 回调类
+When multiple conditions define whether or not a callback should happen, an `Array` can be used. Moreover, you can apply both `:if` and `:unless` to the same callback.
 
-有时需要在其他模型中重用已有的回调方法，为了解决这个问题，Active Record 允许我们用类来封装回调方法。有了回调类，回调方法的重用就变得非常容易。
+```ruby
+class Comment < ApplicationRecord
+  after_create :send_email_to_author,
+    if: [Proc.new { |c| c.user.allow_send_email? }, :author_wants_emails?],
+    unless: Proc.new { |c| c.article.ignore_comments? }
+end
+```
 
-在下面的例子中，我们为 `PictureFile` 模型创建了 `PictureFileCallbacks` 回调类，在这个回调类中包含了 `after_destroy` 回调方法：
+The callback only runs when all the `:if` conditions and none of the `:unless` conditions are evaluated to `true`.
+
+Callback Classes
+----------------
+
+Sometimes the callback methods that you'll write will be useful enough to be reused by other models. Active Record makes it possible to create classes that encapsulate the callback methods, so they can be reused.
+
+Here's an example where we create a class with an `after_destroy` callback for a `PictureFile` model:
 
 ```ruby
 class PictureFileCallbacks
@@ -376,7 +410,7 @@ class PictureFileCallbacks
 end
 ```
 
-在上面的代码中我们可以看到，当在回调类中声明回调方法时，回调方法接受模型对象作为参数。回调类定义之后就可以在模型中使用了：
+When declared inside a class, as above, the callback methods will receive the model object as a parameter. We can now use the callback class in the model:
 
 ```ruby
 class PictureFile < ApplicationRecord
@@ -384,7 +418,7 @@ class PictureFile < ApplicationRecord
 end
 ```
 
-请注意，上面我们把回调声明为实例方法，因此需要实例化新的 `PictureFileCallbacks` 对象。当回调想要使用实例化的对象的状态时，这种声明方式特别有用。尽管如此，一般我们会把回调声明为类方法：
+Note that we needed to instantiate a new `PictureFileCallbacks` object, since we declared our callback as an instance method. This is particularly useful if the callbacks make use of the state of the instantiated object. Often, however, it will make more sense to declare the callbacks as class methods:
 
 ```ruby
 class PictureFileCallbacks
@@ -396,7 +430,7 @@ class PictureFileCallbacks
 end
 ```
 
-如果把回调声明为类方法，就不需要实例化新的 `PictureFileCallbacks` 对象。
+If the callback method is declared this way, it won't be necessary to instantiate a `PictureFileCallbacks` object.
 
 ```ruby
 class PictureFile < ApplicationRecord
@@ -404,15 +438,14 @@ class PictureFile < ApplicationRecord
 end
 ```
 
-我们可以根据需要在回调类中声明任意多个回调。
+You can declare as many callbacks as you want inside your callback classes.
 
-<a class="anchor" id="transaction-callbacks"></a>
+Transaction Callbacks
+---------------------
 
-## 事务回调
+There are two additional callbacks that are triggered by the completion of a database transaction: [`after_commit`][] and [`after_rollback`][]. These callbacks are very similar to the `after_save` callback except that they don't execute until after database changes have either been committed or rolled back. They are most useful when your active record models need to interact with external systems which are not part of the database transaction.
 
-`after_commit` 和 `after_rollback` 这两个回调会在数据库事务完成时触发。它们和 `after_save` 回调非常相似，区别在于它们在数据库变更已经提交或回滚后才会执行，常用于 Active Record 模型需要和数据库事务之外的系统交互的场景。
-
-例如，在前面的例子中，`PictureFile` 模型中的记录删除后，还要删除相应的文件。如果 `after_destroy` 回调执行后应用引发异常，事务就会回滚，文件会被删除，模型会保持不一致的状态。例如，假设在下面的代码中，`picture_file_2` 对象是无效的，那么调用 `save!` 方法会引发错误：
+Consider, for example, the previous example where the `PictureFile` model needs to delete a file after the corresponding record is destroyed. If anything raises an exception after the `after_destroy` callback is called and the transaction rolls back, the file will have been deleted and the model will be left in an inconsistent state. For example, suppose that `picture_file_2` in the code below is not valid and the `save!` method raises an error.
 
 ```ruby
 PictureFile.transaction do
@@ -421,7 +454,7 @@ PictureFile.transaction do
 end
 ```
 
-通过使用 `after_commit` 回调，我们可以解决这个问题：
+By using the `after_commit` callback we can account for this case.
 
 ```ruby
 class PictureFile < ApplicationRecord
@@ -435,13 +468,15 @@ class PictureFile < ApplicationRecord
 end
 ```
 
-NOTE: `:on` 选项说明什么时候触发回调。如果不提供 `:on` 选项，那么每个动作都会触发回调。
+NOTE: The `:on` option specifies when a callback will be fired. If you
+don't supply the `:on` option the callback will fire for every action.
 
-由于只在执行创建、更新或删除动作时触发 `after_commit` 回调是很常见的，这些操作都拥有别名：
+Since using the `after_commit` callback only on create, update, or delete is
+common, there are aliases for those operations:
 
-*   `after_create_commit`
-*   `after_update_commit`
-*   `after_destroy_commit`
+* [`after_create_commit`][]
+* [`after_update_commit`][]
+* [`after_destroy_commit`][]
 
 ```ruby
 class PictureFile < ApplicationRecord
@@ -455,4 +490,55 @@ class PictureFile < ApplicationRecord
 end
 ```
 
-WARNING: 在事务中创建、更新或删除模型时会调用 `after_commit` 和 `after_rollback` 回调。然而，如果其中有一个回调引发异常，异常会向上冒泡，后续 `after_commit` 和 `after_rollback` 回调不再执行。因此，如果回调代码可能引发异常，就需要在回调中救援并进行适当处理，以便让其他回调继续运行。
+WARNING. When a transaction completes, the `after_commit` or `after_rollback` callbacks are called for all models created, updated, or destroyed within that transaction. However, if an exception is raised within one of these callbacks, the exception will bubble up and any remaining `after_commit` or `after_rollback` methods will _not_ be executed. As such, if your callback code could raise an exception, you'll need to rescue it and handle it within the callback in order to allow other callbacks to run.
+
+WARNING. The code executed within `after_commit` or `after_rollback` callbacks is itself not enclosed within a transaction.
+
+WARNING. Using both `after_create_commit` and `after_update_commit` in the same model will only allow the last callback defined to take effect, and will override all others.
+
+```ruby
+class User < ApplicationRecord
+  after_create_commit :log_user_saved_to_db
+  after_update_commit :log_user_saved_to_db
+
+  private
+  def log_user_saved_to_db
+    puts 'User was saved to database'
+  end
+end
+```
+
+```irb
+irb> @user = User.create # prints nothing
+
+irb> @user.save # updating @user
+User was saved to database
+```
+
+There is also an alias for using the `after_commit` callback for both create and update together:
+
+* [`after_save_commit`][]
+
+```ruby
+class User < ApplicationRecord
+  after_save_commit :log_user_saved_to_db
+
+  private
+  def log_user_saved_to_db
+    puts 'User was saved to database'
+  end
+end
+```
+
+```irb
+irb> @user = User.create # creating a User
+User was saved to database
+
+irb> @user.save # updating @user
+User was saved to database
+```
+
+[`after_create_commit`]: https://api.rubyonrails.org/classes/ActiveRecord/Transactions/ClassMethods.html#method-i-after_create_commit
+[`after_destroy_commit`]: https://api.rubyonrails.org/classes/ActiveRecord/Transactions/ClassMethods.html#method-i-after_destroy_commit
+[`after_save_commit`]: https://api.rubyonrails.org/classes/ActiveRecord/Transactions/ClassMethods.html#method-i-after_save_commit
+[`after_update_commit`]: https://api.rubyonrails.org/classes/ActiveRecord/Transactions/ClassMethods.html#method-i-after_update_commit

@@ -5,12 +5,12 @@
   <meta name="cover" content="cover" />
   <dc-metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
 
-  	<dc:title>Ruby on Rails 指南 (<%= @version %>)</dc:title>
+       <dc:title>Ruby on Rails 指南 (<%= @version || "master@#{@edge[0, 7]}" %>)</dc:title>
 
   	<dc:language>zh-CN</dc:language>
   	<dc:creator>Ruby on Rails</dc:creator>
   	<dc:publisher>Ruby on Rails</dc:publisher>
-  	<dc:subject>Reference</dc:subject>
+  	<dc:subject>参考</dc:subject>
   	<dc:date><%= Time.now.strftime('%Y-%m-%d') %></dc:date>
 
     <dc:description>这份指南旨在使您立即获得 Rails 的生产力，并帮助您了解所有组件如何组合在一起。</dc:description>
@@ -26,7 +26,7 @@
     <item id="<%= document['url'] %>" media-type="text/html" href="<%= document['url'] %>" />
   <% end %>
 
-  <% %w{toc.html credits.html welcome.html copyright.html}.each do |url| %>
+  <% %w{toc.html welcome.html copyright.html}.each do |url| %>
     <item id="<%= url %>" media-type="text/html" href="<%= url %>" />
   <% end %>
 
@@ -38,7 +38,6 @@
 <spine toc="toc">
   <itemref idref="toc.html" />
   <itemref idref="welcome.html" />
-  <itemref idref="credits.html" />
   <itemref idref="copyright.html" />
   <% documents_flat.each do |document| %>
     <itemref idref="<%= document['url'] %>" />
@@ -46,7 +45,7 @@
 </spine>
 
 <guide>
-	<reference type="toc" title="Table of Contents" href="toc.html"></reference>
+	<reference type="toc" title="目录" href="toc.html"></reference>
 </guide>
 
 </package>
